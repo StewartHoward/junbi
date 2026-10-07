@@ -10,7 +10,7 @@ const LINKS = [
   { href: "/#payments", label: "Direct Debit" },
   { href: "/#associations", label: "Associations" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/dev/login", label: "Try the demo" },
+  { href: "/login", label: "Sign in" },
 ];
 
 export function NavLinks() {
@@ -28,9 +28,9 @@ export function NavLinks() {
           </Link>
         ))}
       </div>
-      <Link href="/founding-clubs" className="m-pill-sm" aria-current={current("/founding-clubs")}>
-        <span className="m-long">Become a Founding Club</span>
-        <span className="m-short">Join</span>
+      <Link href="/signup" className="m-pill-sm">
+        <span className="m-long">Start free trial</span>
+        <span className="m-short">Try free</span>
       </Link>
       <button
         type="button"

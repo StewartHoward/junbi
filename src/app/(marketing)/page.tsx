@@ -46,10 +46,10 @@ export default function Home() {
         <h1 className="m-hero-title">Your club, ready.</h1>
         <p className="m-sub">Members, payments and gradings, all set before the class bows in.</p>
         <div className="m-actions">
-          <Link href="/founding-clubs" className="m-btn primary">Become a Founding Club</Link>
-          <Link href="/dev/login" className="m-link">Try the demo</Link>
+          <Link href="/signup" className="m-btn primary">Start free trial</Link>
+          <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
-        <p className="m-fine">Built in the UK, for UK taekwondo clubs.</p>
+        <p className="m-fine">Free for 30 days. No card needed. Built in the UK, for UK taekwondo clubs.</p>
 
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students ready to grade">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>yourclub.junbi.app</span></div>
@@ -156,8 +156,8 @@ export default function Home() {
         <h2 className="m-h2 xl">Ready when you are.</h2>
         <p className="m-sub" style={{ maxWidth: 600 }}>The first 100 Founding Clubs get 50% off for six months, free migration from your current system, and their price locked for two years.</p>
         <div className="m-actions">
-          <Link href="/founding-clubs" className="m-btn primary">Become a Founding Club</Link>
-          <Link href="/dev/login" className="m-link">Try the demo</Link>
+          <Link href="/signup" className="m-btn primary">Start free trial</Link>
+          <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
       </section>
     </>

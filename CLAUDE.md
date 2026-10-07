@@ -13,7 +13,8 @@ Next.js 15 (App Router, server components), TypeScript, Drizzle ORM, PostgreSQL 
 - **Rank is derived** from the latest passing grading result. Never store a "current grade" on the student.
 - **Money is in pence** (integers). Format with `formatPence()`.
 - **Junbi never holds club money.** Each club connects its own GoCardless (Direct Debit) and Stripe accounts.
-- **`/dev/login` is development only** and must stay disabled in production.
+- **Sign-in data** (`users.password_hash`, `auth_sessions`, `auth_failures`) is only touched through the SECURITY DEFINER functions in `drizzle/0007_auth_security.sql`. Never grant the app role direct access to those tables.
+- **The seed wipes data** and only runs against localhost. Never point it at Supabase.
 
 ## Style
 

@@ -178,6 +178,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
 
     return {
       id: st.id,
+      householdId: st.householdId,
       name: `${st.firstName} ${st.lastName}`,
       initials: `${st.firstName[0]}${st.lastName[0]}`,
       status: st.status,

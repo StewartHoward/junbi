@@ -22,11 +22,29 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
   const students = await listStudents(actor, { q });
 
+  const canAdd = can(actor, "students.edit");
+
+  if (students.length === 0 && !q) {
+    return (
+      <>
+        <h1 className="page-title">Students</h1>
+        <div className="card empty" style={{ marginTop: 24 }}>
+          <h2>Add your first student.</h2>
+          <p>Each student gets a profile with their belt, family contacts, medical notes and attendance.</p>
+          {canAdd && <Link className="btn primary" href="/students/new">Add a student</Link>}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div className="head">
         <h1 className="page-title">Students</h1>
-        <span className="muted num">{students.length} shown</span>
+        <div className="actions">
+          <span className="muted num">{students.length} shown</span>
+          {canAdd && <Link className="btn primary" href="/students/new">Add student</Link>}
+        </div>
       </div>
 
       <form role="search" style={{ marginTop: 20 }}>

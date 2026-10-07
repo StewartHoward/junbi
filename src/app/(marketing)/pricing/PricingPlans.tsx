@@ -31,7 +31,7 @@ export function PricingPlans() {
               </p>
               <p className="limits">{p.limits}</p>
               <Link
-                href={`/founding-clubs?plan=${p.id}`}
+                href={dark ? "/founding-clubs" : `/signup?plan=${p.id}`}
                 className={`m-btn ${featured ? "primary" : dark ? "white" : "soft"}`}
               >
                 {dark ? "Talk to us" : `Choose ${p.name}`}

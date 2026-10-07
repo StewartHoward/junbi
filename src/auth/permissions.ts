@@ -9,6 +9,7 @@ export type Role = (typeof ROLES)[number];
 export const CAPABILITIES = [
   "club.manage", // club settings, plan, Junbi subscription
   "staff.manage", // add or remove staff
+  "classes.manage", // timetable: add, change or archive classes; sites
   "students.view",
   "students.edit",
   "medical.view",

@@ -169,3 +169,25 @@
 .m-footer-inner { max-width: 1024px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; border-top: 1px solid var(--m-line); padding-top: 20px; }
 .m-footer a { color: #424245; }
 .m-footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+
+/* Account forms: checkboxes, choice cards, auth card */
+.m-form input[type="checkbox"], .m-form input[type="radio"] { width: 22px; min-height: 22px; height: 22px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--m-action); padding: 0; }
+.m-check { display: flex !important; gap: 12px; align-items: flex-start; font-weight: 400 !important; margin: 0 !important; }
+.m-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.m-fieldset legend { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; padding: 0; margin-bottom: 4px; }
+.m-fieldset .hint { margin: 0 0 14px; }
+.m-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.m-choice { position: relative; display: flex !important; flex-direction: column; gap: 4px; padding: 16px; margin: 0 !important; border: 1px solid var(--m-line); border-radius: 14px; background: #fff; cursor: pointer; font-weight: 400 !important; min-height: 88px; }
+.m-choice:has(input:checked) { border-color: var(--m-action); box-shadow: 0 0 0 1px var(--m-action); }
+.m-choice:has(input:focus-visible) { outline: 2px solid var(--m-action); outline-offset: 2px; }
+.m-choice input { position: absolute; top: 14px; right: 14px; }
+.m-choice strong { font-size: 17px; font-weight: 600; padding-right: 28px; }
+.m-choice span { font-size: 13px; color: var(--m-muted); }
+.m-choice.soon { background: var(--m-alt); border-style: dashed; }
+.m-auth { max-width: 480px; margin: 0 auto; padding: 72px 22px 96px; }
+.m-auth h1 { font-size: clamp(32px, 5vw, 44px); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; margin: 0; }
+.m-auth .m-sub { margin: 10px 0 0; text-align: left; max-width: none; }
+.m-auth .m-form { margin-top: 32px; max-width: none; }
+.m-auth-alt { margin-top: 28px; font-size: 15px; color: var(--m-muted); }
+.m-wide { max-width: 720px; }
+.m-form .error[role="alert"]:first-child { background: #fff0f1; padding: 12px 14px; border-radius: 12px; margin: 0; }

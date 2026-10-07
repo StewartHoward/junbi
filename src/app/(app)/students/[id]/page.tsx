@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireActor } from "@/auth/session";
 import { getStudentProfile } from "@/data/students";
-import { ForbiddenError } from "@/auth/permissions";
+import { ForbiddenError, can } from "@/auth/permissions";
 import { BeltSwatch, PaymentPill, RankChip, StatusPill } from "@/components/badges";
 
 export const metadata: Metadata = { title: "Student" };
@@ -78,6 +78,12 @@ export default async function StudentProfilePage({
             </span>
           </div>
         </div>
+        {can(actor, "students.edit") && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Link className="btn secondary" href={`/students/new?household=${p.householdId}`}>Add sibling</Link>
+            <Link className="btn primary" href={`/students/${p.id}/edit`}>Edit</Link>
+          </div>
+        )}
       </header>
 
       <nav className="tabs" aria-label="Profile sections">
@@ -118,7 +124,7 @@ export default async function StudentProfilePage({
                 <p style={{ marginTop: 4, fontSize: 28, fontWeight: 600 }}>{p.current ? fmtDate(p.current.gradedOn) : "Not yet"}</p>
               </div>
             </div>
-            <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>Syllabus tracking arrives in Phase 2.</p>
+            <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>Syllabus tracking is coming soon.</p>
           </section>
 
           <div style={{ flex: "1 1 300px", display: "flex", flexDirection: "column", gap: 20 }}>

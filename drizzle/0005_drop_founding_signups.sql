@@ -1,0 +1,1 @@
+DROP TABLE "founding_club_signups" CASCADE;

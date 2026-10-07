@@ -1,0 +1,2 @@
+ALTER TABLE "classes" ADD COLUMN "archived" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "class_sessions_class_starts_key" ON "class_sessions" USING btree ("class_id","starts_at");

@@ -1,18 +1,20 @@
 import postgres from "postgres";
-import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as s from "../src/db/schema";
+import { hashPassword } from "../src/auth/password";
 
 /**
- * Development seed: one demo club with two sites, staff for each role,
+ * LOCAL DEVELOPMENT ONLY: one sample club with two sites, staff for each role,
  * families, a WT kup/dan ladder, grading history, classes, attendance and payments.
- * Wipes existing data first. Never run against production.
+ * Wipes existing data first, so it refuses to run against anything but localhost.
+ * Every sample login uses the password in LOCAL_PASSWORD below.
  */
 
 if (process.env.NODE_ENV === "production") throw new Error("Refusing to seed in production");
-if (process.env.JUNBI_CONFIRM_DEMO_SEED !== "1" && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_ADMIN_URL ?? "")) {
-  throw new Error("This wipes the database. Set JUNBI_CONFIRM_DEMO_SEED=1 to seed a hosted demo database.");
+if (!/@(localhost|127\.0\.0\.1)[:/]/.test(process.env.DATABASE_ADMIN_URL ?? "")) {
+  throw new Error("The seed wipes the database, so it only runs against a local database.");
 }
+const LOCAL_PASSWORD = "local-dev-only-pass";
 const url = process.env.DATABASE_ADMIN_URL;
 if (!url) throw new Error("DATABASE_ADMIN_URL is not set");
 
@@ -112,12 +114,14 @@ function addDays(iso: string, days: number) {
 }
 
 async function main() {
-  const tables = ["audit_log", "attendance", "class_sessions", "classes", "payments", "mandates", "memberships", "plans",
+  const tables = ["auth_sessions", "auth_failures", "club_disciplines", "audit_log", "attendance", "class_sessions", "classes", "payments", "mandates", "memberships", "plans",
     "grading_results", "grades", "students", "guardians", "households", "staff_sites", "club_staff", "sites", "clubs", "users"];
   await client.unsafe(`TRUNCATE ${tables.map((t) => `"${t}"`).join(", ")} CASCADE`);
 
-  const [club] = await db.insert(s.clubs).values({ name: "Demo Taekwondo Club", slug: "demo", plan: "academy" }).returning();
+  const [club] = await db.insert(s.clubs).values({ name: "Sample Taekwondo Club", slug: "sample", plan: "academy", onboardedAt: new Date() }).returning();
   const clubId = club.id;
+  await db.insert(s.clubDisciplines).values({ clubId, discipline: "taekwondo", active: true });
+  const passwordHash = await hashPassword(LOCAL_PASSWORD);
   const [southport, preston] = await db
     .insert(s.sites)
     .values([
@@ -128,7 +132,7 @@ async function main() {
   const siteIds = { southport: southport.id, preston: preston.id };
 
   for (const [email, name, role, sites] of STAFF) {
-    const [user] = await db.insert(s.users).values({ email, name }).returning();
+    const [user] = await db.insert(s.users).values({ email, name, passwordHash }).returning();
     const [staff] = await db
       .insert(s.clubStaff)
       .values({ clubId, userId: user.id, role, allSites: sites === "all" })
@@ -188,7 +192,7 @@ async function main() {
     const mandateStatus = fam.payment === "cancelled" ? "cancelled" : "active";
     const [mandate] = await db
       .insert(s.mandates)
-      .values({ clubId, householdId: hh.id, status: mandateStatus, providerMandateId: `MD_DEMO_${fam.name.toUpperCase()}` })
+      .values({ clubId, householdId: hh.id, status: mandateStatus, providerMandateId: `MD_SAMPLE_${fam.name.toUpperCase()}` })
       .returning();
 
     let householdTotal = 0;
@@ -235,10 +239,7 @@ async function main() {
     ]);
   }
 
-  // Demo sign-in helper (demo and local databases only).
-  await client.unsafe(readFileSync(new URL("./demo-login.sql", import.meta.url), "utf8"));
-
-  console.log(`Seeded "${club.name}" with ${seq} students. Staff logins: ${STAFF.map((x) => x[0]).join(", ")}`);
+  console.log(`Seeded "${club.name}" with ${seq} students. Staff logins (password "${LOCAL_PASSWORD}"): ${STAFF.map((x) => x[0]).join(", ")}`);
   await client.end();
 }
 

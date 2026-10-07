@@ -4,20 +4,23 @@ Club management software for UK taekwondo schools. *Your club, ready.*
 
 This repository holds the Junbi admin web app. The full plan is in [`docs/brief.md`](docs/brief.md) and the brand tokens are in [`docs/tokens.json`](docs/tokens.json).
 
-## What works so far (Phase 1, first slice)
+## What works now
 
-- **Database schema** for clubs, sites, staff, households, guardians, students, the belt ladder, grading results, plans, memberships, Direct Debit mandates, payments, classes, sessions, attendance and an audit log.
-- **Tenant isolation in the database.** Every table is protected by Postgres row-level security on `club_id`. The app connects as a role that cannot bypass it, so one club can never see another's data, even if a query forgets a `WHERE` clause. Tests prove it.
-- **Roles and permissions** (owner, admin, instructor, assistant) from the brief's matrix, including site scoping. Instructors and assistants never see payment details, only "Please see the office".
-- **Students list** with search, belt chip, status and flags.
-- **Student profile** with belt journey, classes since last grading, ready-to-grade badge, family, membership, medical notes (staff only), grading history and household payments (owners and admins only).
-- **Demo data** for one club with two sites.
+- **Club sign-up and sign-in.** A club owner signs up (30-day free trial, Founding Club offer), then signs in with email and password. Passwords are hashed with scrypt, sessions are random tokens stored only as hashes, and repeated wrong passwords lock the email for 15 minutes.
+- **Club set-up with "choose your art".** Pick the arts you teach (Taekwondo now; Kickboxing, Karate, Judo and Krav Maga can be ticked as "tell me when ready"), add the first site and load a WT or ITF belt ladder.
+- **Today:** greeting, trial status, today's classes with check-in counts, and a getting-started list.
+- **Students:** search, add (with a family contact and starting belt), add a sibling to the same family, edit, and the full profile.
+- **Classes and registers:** weekly timetable, add or remove classes, and a tap-to-mark register for any week.
+- **Settings:** club name, arts, sites and staff list.
+- **Tenant isolation in the database.** Every club table is protected by Postgres row-level security on `club_id`, and the app connects as a role that cannot bypass it. Sign-in data is only reachable through narrow database functions. Tests prove both.
+- **Roles and permissions** (owner, admin, instructor, assistant) with site scoping.
+- **Marketing site:** homepage, pricing and Founding Clubs, all leading to sign-up.
 
 ## Not built yet
 
-- **Real sign-in.** `/dev/login` lets you pick a demo user and is switched off in production. Email and password, magic links, Apple and Google sign-in and 2FA come next.
+- Password reset by email and staff invitations (both need an email service such as Resend or Postmark).
 - GoCardless and Stripe connections (the tables are ready; no live payments are taken).
-- Classes, registers, kiosk, gradings, messages, Family app, marketing site.
+- Gradings, kiosk, messages, reports and the Family app.
 
 ## Run it locally
 
@@ -34,30 +37,21 @@ createdb -O junbi junbi_test
 
 set -a && . ./.env.local && set +a
 npm run db:migrate                  # creates tables, RLS and the junbi_app role
-npm run db:seed                     # demo club
+npm run db:seed                     # optional sample club, local only
 npm run dev                         # http://localhost:3000
 ```
 
-Open `http://localhost:3000/dev/login` and sign in as the owner, an instructor or an assistant to see how each role differs.
+Sign up at `/signup`, or sign in as one of the sample staff the seed prints.
 
-## Online demo (Supabase + Netlify)
+## Hosting (Supabase + Netlify)
 
-The demo runs on fake data only. Never use demo mode for a real club.
-
-1. **Supabase:** create a project in the **London** region. Note the database password.
-2. **GitHub secrets** (repo Settings › Secrets and variables › Actions):
-   - `DEMO_DATABASE_ADMIN_URL`: Supabase's **Session pooler** connection string, with your database password filled in.
-   - `JUNBI_APP_DB_PASSWORD`: a new password for the app's restricted login (8+ letters, digits, `_` or `-`).
-3. **GitHub Actions:** run **Set up demo database**. It creates the tables, security rules, the restricted `junbi_app` login and the demo club. (Or run the same SQL in Supabase's SQL editor, plus `scripts/demo-login.sql`.)
-4. **Netlify** (or Vercel): import this repo and set these environment variables:
-   - `DATABASE_URL`: the Supabase **Transaction pooler** string, with the user changed from `postgres.<project-ref>` to `junbi_app.<project-ref>` and the password set to `JUNBI_APP_DB_PASSWORD`.
-   - `JUNBI_DEMO_MODE`: `1`
-5. Deploy, then open `/dev/login` on your site's address.
+- **Database:** Supabase, London region. Apply each new file in `drizzle/` in order (Supabase SQL editor, or `npm run db:migrate` with `DATABASE_ADMIN_URL` set to the session pooler string).
+- **App:** Netlify, deploying from `main`. It needs one environment variable, `DATABASE_URL`: the Supabase transaction pooler string using the restricted `junbi_app` login.
 
 ## Tests
 
 ```bash
-npm test          # permission matrix + tenant isolation against real Postgres
+npm test          # permissions, sign-in, set-up, registers and tenant isolation against real Postgres
 npm run typecheck
 ```
 

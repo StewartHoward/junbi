@@ -64,9 +64,29 @@ export const clubs = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     plan: text("plan").notNull().default("starter"),
+    /** Joined through the Founding Club offer (50% off six months, price locked two years). */
+    founding: boolean("founding").notNull().default(false),
+    trialEndsOn: date("trial_ends_on"),
+    /** Set when the owner finishes club set-up (arts, first site, belt syllabus). */
+    onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clubs_slug_key").on(t.slug)],
+);
+
+/**
+ * The martial arts a club teaches. active = false means "coming soon, tell me when it's ready".
+ * Discipline ids come from src/lib/disciplines.ts.
+ */
+export const clubDisciplines = pgTable(
+  "club_disciplines",
+  {
+    clubId: clubId(),
+    discipline: text("discipline").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.clubId, t.discipline] })],
 );
 
 export const sites = pgTable("sites", {
@@ -86,9 +106,36 @@ export const users = pgTable(
     id: id(),
     email: text("email").notNull(),
     name: text("name").notNull(),
+    /** scrypt hash (see src/auth/password.ts). Null for people who have never set a password. */
+    passwordHash: text("password_hash"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("users_email_key").on(t.email)],
+);
+
+/**
+ * Signed-in sessions. Only a SHA-256 of the cookie token is stored, so a leaked
+ * table can't be used to sign in. The app reaches this table only through the
+ * SECURITY DEFINER functions in drizzle/0006_auth_functions.sql.
+ */
+export const authSessions = pgTable("auth_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+/** Failed sign-ins, used to slow down password guessing. */
+export const authFailures = pgTable(
+  "auth_failures",
+  {
+    id: id(),
+    email: text("email").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_failures_email_at_idx").on(t.email, t.at)],
 );
 
 export const clubStaff = pgTable(
@@ -177,6 +224,7 @@ export const students = pgTable(
 export const grades = pgTable("grades", {
   id: id(),
   clubId: clubId(),
+  discipline: text("discipline").notNull().default("taekwondo"),
   name: text("name").notNull(),
   kind: gradeKind("kind").notNull(),
   sortOrder: integer("sort_order").notNull(),
@@ -261,22 +309,29 @@ export const classes = pgTable("classes", {
   siteId: uuid("site_id")
     .notNull()
     .references(() => sites.id, { onDelete: "cascade" }),
+  discipline: text("discipline").notNull().default("taekwondo"),
   name: text("name").notNull(),
   /** 1 = Monday … 7 = Sunday */
   weekday: integer("weekday").notNull(),
   startsAt: time("starts_at").notNull(),
   durationMinutes: integer("duration_minutes").notNull().default(60),
   capacity: integer("capacity"),
+  /** Archived classes drop off the timetable but keep their registers. */
+  archived: boolean("archived").notNull().default(false),
 });
 
-export const sessions = pgTable("class_sessions", {
-  id: id(),
-  clubId: clubId(),
-  classId: uuid("class_id")
-    .notNull()
-    .references(() => classes.id, { onDelete: "cascade" }),
-  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-});
+export const sessions = pgTable(
+  "class_sessions",
+  {
+    id: id(),
+    clubId: clubId(),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("class_sessions_class_starts_key").on(t.classId, t.startsAt)],
+);
 
 export const attendance = pgTable(
   "attendance",
@@ -309,28 +364,9 @@ export const auditLog = pgTable("audit_log", {
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/* ---------- Marketing ---------- */
-
-/**
- * Clubs registering interest from the public website. Not tenant data.
- * The app role may INSERT only; nobody can read these through the app (see drizzle/0004).
- */
-export const foundingClubSignups = pgTable("founding_club_signups", {
-  id: id(),
-  clubName: text("club_name").notNull(),
-  contactName: text("contact_name").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone"),
-  activeStudents: text("active_students").notNull(),
-  sites: integer("sites").notNull().default(1),
-  currentSystem: text("current_system"),
-  plan: text("plan"),
-  consentToContact: boolean("consent_to_contact").notNull(),
-  createdAt: createdAt(),
-});
-
 /** Tables protected by row-level security on club_id. Kept here so tests can check every one. */
 export const TENANT_TABLES = [
+  "club_disciplines",
   "sites",
   "club_staff",
   "staff_sites",
