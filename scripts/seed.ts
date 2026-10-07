@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as s from "../src/db/schema";
 
@@ -233,6 +234,9 @@ async function main() {
       { clubId, householdId: hh.id, mandateId: mandate.id, description: "October membership", amountPence: householdTotal, chargeDate: "2026-10-01", status: octStatus[fam.payment], retryCount: fam.payment === "paid" ? 0 : fam.payment === "retrying" ? 1 : 2 },
     ]);
   }
+
+  // Demo sign-in helper (demo and local databases only).
+  await client.unsafe(readFileSync(new URL("./demo-login.sql", import.meta.url), "utf8"));
 
   console.log(`Seeded "${club.name}" with ${seq} students. Staff logins: ${STAFF.map((x) => x[0]).join(", ")}`);
   await client.end();

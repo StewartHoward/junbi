@@ -48,10 +48,9 @@ The demo runs on fake data only. Never use demo mode for a real club.
 2. **GitHub secrets** (repo Settings › Secrets and variables › Actions):
    - `DEMO_DATABASE_ADMIN_URL`: Supabase's **Session pooler** connection string, with your database password filled in.
    - `JUNBI_APP_DB_PASSWORD`: a new password for the app's restricted login (8+ letters, digits, `_` or `-`).
-3. **GitHub Actions:** run **Set up demo database**. It creates the tables, security rules, the restricted `junbi_app` login and the demo club.
+3. **GitHub Actions:** run **Set up demo database**. It creates the tables, security rules, the restricted `junbi_app` login and the demo club. (Or run the same SQL in Supabase's SQL editor, plus `scripts/demo-login.sql`.)
 4. **Vercel:** import this repo and set these environment variables:
    - `DATABASE_URL`: the Supabase **Transaction pooler** string, with the user changed from `postgres.<project-ref>` to `junbi_app.<project-ref>` and the password set to `JUNBI_APP_DB_PASSWORD`.
-   - `DATABASE_ADMIN_URL`: the same value as the GitHub secret (only the demo sign-in page uses it).
    - `JUNBI_DEMO_MODE`: `1`
 5. Deploy, then open `/dev/login` on your Vercel address.
 
