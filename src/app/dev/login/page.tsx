@@ -1,17 +1,18 @@
 import { notFound } from "next/navigation";
 import postgres from "postgres";
 import { signInAs } from "./actions";
+import { devLoginEnabled } from "@/auth/dev-login";
 
 export const dynamic = "force-dynamic";
 
 /**
  * DEVELOPMENT ONLY. Pick a seeded staff user to see the app as that role.
- * Disabled unless JUNBI_DEV_LOGIN=1 and not in production.
+ * Disabled unless devLoginEnabled() (local dev, or a demo on fake data).
  */
 export default async function DevLogin() {
-  if (process.env.NODE_ENV === "production" || process.env.JUNBI_DEV_LOGIN !== "1") notFound();
+  if (!devLoginEnabled()) notFound();
 
-  const admin = postgres(process.env.DATABASE_ADMIN_URL!, { max: 1 });
+  const admin = postgres(process.env.DATABASE_ADMIN_URL!, { max: 1, prepare: false });
   const staff = await admin<Array<{ id: string; name: string; email: string; role: string; club: string }>>`
     select u.id, u.name, u.email, s.role, c.name as club
     from users u join club_staff s on s.user_id = u.id join clubs c on c.id = s.club_id

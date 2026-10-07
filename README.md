@@ -40,6 +40,21 @@ npm run dev                         # http://localhost:3000
 
 Open `http://localhost:3000/dev/login` and sign in as the owner, an instructor or an assistant to see how each role differs.
 
+## Online demo (Supabase + Vercel)
+
+The demo runs on fake data only. Never use demo mode for a real club.
+
+1. **Supabase:** create a project in the **London** region. Note the database password.
+2. **GitHub secrets** (repo Settings › Secrets and variables › Actions):
+   - `DEMO_DATABASE_ADMIN_URL`: Supabase's **Session pooler** connection string, with your database password filled in.
+   - `JUNBI_APP_DB_PASSWORD`: a new password for the app's restricted login (8+ letters, digits, `_` or `-`).
+3. **GitHub Actions:** run **Set up demo database**. It creates the tables, security rules, the restricted `junbi_app` login and the demo club.
+4. **Vercel:** import this repo and set these environment variables:
+   - `DATABASE_URL`: the Supabase **Transaction pooler** string, with the user changed from `postgres.<project-ref>` to `junbi_app.<project-ref>` and the password set to `JUNBI_APP_DB_PASSWORD`.
+   - `DATABASE_ADMIN_URL`: the same value as the GitHub secret (only the demo sign-in page uses it).
+   - `JUNBI_DEMO_MODE`: `1`
+5. Deploy, then open `/dev/login` on your Vercel address.
+
 ## Tests
 
 ```bash

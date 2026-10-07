@@ -19,7 +19,8 @@ function appUrl(): string {
 }
 
 export function connect(url = appUrl()): Db {
-  const client = globalThis.__junbiSql ?? postgres(url, { max: 10 });
+  // prepare: false keeps us compatible with transaction-mode poolers such as Supabase's.
+  const client = globalThis.__junbiSql ?? postgres(url, { max: 10, prepare: false });
   if (process.env.NODE_ENV !== "production") globalThis.__junbiSql = client;
   return drizzle(client, { schema });
 }

@@ -9,10 +9,13 @@ import * as s from "../src/db/schema";
  */
 
 if (process.env.NODE_ENV === "production") throw new Error("Refusing to seed in production");
+if (process.env.JUNBI_CONFIRM_DEMO_SEED !== "1" && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_ADMIN_URL ?? "")) {
+  throw new Error("This wipes the database. Set JUNBI_CONFIRM_DEMO_SEED=1 to seed a hosted demo database.");
+}
 const url = process.env.DATABASE_ADMIN_URL;
 if (!url) throw new Error("DATABASE_ADMIN_URL is not set");
 
-const client = postgres(url, { max: 1, onnotice: () => {} });
+const client = postgres(url, { max: 1, onnotice: () => {}, prepare: false });
 const db = drizzle(client, { schema: s });
 
 const LADDER: Array<[string, "kup" | "poom" | "dan", string]> = [
