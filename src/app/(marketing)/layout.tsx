@@ -4,7 +4,7 @@ import "./marketing.css";
 import { NavLinks } from "./NavLinks";
 
 export const metadata: Metadata = {
-  title: { default: "Junbi · Taekwondo club management", template: "%s · Junbi" },
+  title: { absolute: "Junbi · Taekwondo club management", template: "%s · Junbi" },
   description:
     "Junbi is club management software built only for UK taekwondo schools. Student profiles, Direct Debit, gradings and a family app, for one flat monthly price. Your fees stay yours.",
   openGraph: {
