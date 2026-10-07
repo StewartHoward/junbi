@@ -22,6 +22,20 @@
       "when": 1791407145913,
       "tag": "0002_staff_lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791411441861,
+      "tag": "0003_founding_club_signups",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791411442689,
+      "tag": "0004_signups_security",
+      "breakpoints": true
     }
   ]
 }

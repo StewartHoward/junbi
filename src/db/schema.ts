@@ -309,6 +309,26 @@ export const auditLog = pgTable("audit_log", {
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ---------- Marketing ---------- */
+
+/**
+ * Clubs registering interest from the public website. Not tenant data.
+ * The app role may INSERT only; nobody can read these through the app (see drizzle/0004).
+ */
+export const foundingClubSignups = pgTable("founding_club_signups", {
+  id: id(),
+  clubName: text("club_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  activeStudents: text("active_students").notNull(),
+  sites: integer("sites").notNull().default(1),
+  currentSystem: text("current_system"),
+  plan: text("plan"),
+  consentToContact: boolean("consent_to_contact").notNull(),
+  createdAt: createdAt(),
+});
+
 /** Tables protected by row-level security on club_id. Kept here so tests can check every one. */
 export const TENANT_TABLES = [
   "sites",

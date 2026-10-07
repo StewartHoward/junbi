@@ -4,7 +4,7 @@ const BELT: Record<string, { bg: string; fg: string; outline?: boolean }> = {
   green: { bg: "var(--belt-green)", fg: "#ffffff" },
   blue: { bg: "var(--belt-blue)", fg: "#ffffff" },
   red: { bg: "var(--belt-red)", fg: "#ffffff" },
-  black: { bg: "var(--belt-black)", fg: "#ffffff" },
+  black: { bg: "var(--belt-black)", fg: "#ffffff", outline: true },
 };
 
 export function RankChip({ grade }: { grade: { name: string; beltColour: string } | null }) {
