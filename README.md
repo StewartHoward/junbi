@@ -40,7 +40,7 @@ npm run dev                         # http://localhost:3000
 
 Open `http://localhost:3000/dev/login` and sign in as the owner, an instructor or an assistant to see how each role differs.
 
-## Online demo (Supabase + Vercel)
+## Online demo (Supabase + Netlify)
 
 The demo runs on fake data only. Never use demo mode for a real club.
 
@@ -49,10 +49,10 @@ The demo runs on fake data only. Never use demo mode for a real club.
    - `DEMO_DATABASE_ADMIN_URL`: Supabase's **Session pooler** connection string, with your database password filled in.
    - `JUNBI_APP_DB_PASSWORD`: a new password for the app's restricted login (8+ letters, digits, `_` or `-`).
 3. **GitHub Actions:** run **Set up demo database**. It creates the tables, security rules, the restricted `junbi_app` login and the demo club. (Or run the same SQL in Supabase's SQL editor, plus `scripts/demo-login.sql`.)
-4. **Vercel:** import this repo and set these environment variables:
+4. **Netlify** (or Vercel): import this repo and set these environment variables:
    - `DATABASE_URL`: the Supabase **Transaction pooler** string, with the user changed from `postgres.<project-ref>` to `junbi_app.<project-ref>` and the password set to `JUNBI_APP_DB_PASSWORD`.
    - `JUNBI_DEMO_MODE`: `1`
-5. Deploy, then open `/dev/login` on your Vercel address.
+5. Deploy, then open `/dev/login` on your site's address.
 
 ## Tests
 
