@@ -151,13 +151,25 @@ The stack below is a suggestion; developers may propose alternatives with reason
 - **Accessibility:** WCAG 2.2 AA across all surfaces.
 - **Design fidelity:** build to the Junbi design system tokens (colour, type, spacing, radius); no third-party UI themes.
 
+## Choose your art (club set-up)
+
+Junbi launches for Taekwondo only, but the set-up flow and data model must be ready for more arts without a rebuild.
+
+- **Set-up step:** when an owner creates their club, they pick "Which arts do you teach?" with one or more choices. At launch only Taekwondo is selectable; Karate, Kickboxing, Judo and Krav Maga show as "Coming soon" so clubs can register interest.
+- **Discipline packs:** each art is a pack that sets the belt ladder, grading syllabus, competition types, licence body and wording (dojang, dojo, gym). Taekwondo is the first pack (kup, poom and dan; WT and ITF syllabus presets).
+- **Dashboard follows the choice:** a single-art club sees no art switcher. A multi-art club gets a filter across the top (All, Taekwondo, Kickboxing...) on Today, Students, Classes and Gradings, and every class, grade and grading belongs to one art.
+- **Students across arts:** one student profile and one Direct Debit, with a separate rank per art they train in.
+- **Data model:** a `disciplines` reference list, a `club_disciplines` link table, and a `discipline` column on grades, classes and grading events. Rank stays derived from grading results, per discipline.
+- **Changing later:** owners can add or remove an art in settings. Removing one hides it but never deletes grading history.
+- **Accepted when:** a Taekwondo club completes set-up in under 15 minutes, and adding a second pack later needs no schema change to existing tables.
+
 ## Build phases and acceptance criteria
 
 Please quote each phase separately. A phase is accepted when every criterion passes on staging with real Total Taekwondo data.
 
 | Phase | Target | Scope | Accepted when |
 | --- | --- | --- | --- |
-| **1. Core** | Months 1 to 4 | Club sign-up and trial; logins, roles, 2FA; student profiles and households; CSV import; classes, timetable and registers; GoCardless connect, mandates, plans and failed-payment handling; Family mobile web (join, pay, timetable); marketing site; platform admin | Total Taekwondo's two sites run a full month's billing through Junbi; 100% of members imported with families matched; an instructor takes a register on a phone in under 60 seconds; tenant isolation tests pass |
+| **1. Core** | Months 1 to 4 | Club sign-up, trial and "choose your art" set-up (Taekwondo pack); logins, roles, 2FA; student profiles and households; CSV import; classes, timetable and registers; GoCardless connect, mandates, plans and failed-payment handling; Family mobile web (join, pay, timetable); marketing site; platform admin | Total Taekwondo's two sites run a full month's billing through Junbi; 100% of members imported with families matched; an instructor takes a register on a phone in under 60 seconds; tenant isolation tests pass |
 | **2. Taekwondo** | Months 5 to 7 | Syllabus presets and editor; grading readiness, events, fees, tablet scoring, PDF certificates; Junbi Kiosk (iPad); trials and lead follow-up; email, SMS and push messaging | A full grading is run end to end in Junbi; kiosk check-in works offline and syncs; a trial booked on the website gets automatic reminders |
 | **3. Grow** | Months 8 to 10 | Native Family app (App Store and Google Play); Stripe cards and shop; competitions; reports; multi-site dashboard; accounting exports | Apps approved in both stores; parent can pay by card or Direct Debit; reports match the payments ledger to the penny |
 | **4. Launch** | Months 11 to 12 | Association hub; migration tools for other systems; Founding Club offer; penetration test and fixes; public launch | Pen test has no high or critical findings open; 10 paying beta clubs live; a club can self-serve from sign-up to first Direct Debit in under 15 minutes |
@@ -184,6 +196,7 @@ Please quote each phase separately. A phase is accepted when every criterion pas
 - [ ] Commercial: will Junbi add a GoCardless partner app fee, or keep "0% of your fees" strictly? (Affects pricing claims, not the build.)
 - [ ] Should the native Family app ship in Phase 1 instead of mobile web? (Faster adoption, higher Phase 1 cost.)
 - [ ] Which association syllabi to preset first: WT only, or also ITF and the major UK associations?
+- [ ] Which art pack comes second after Taekwondo: Kickboxing or Karate? (Both grade in a similar way; Total Combat could pilot Kickboxing.)
 - [ ] Company set-up: Junbi as its own limited company, ICO registration and terms of service before the first outside club.
 - [ ] Domain: secure thejunbi.com or junbiworks.com, and check junbi.co.uk and junbi.app.
 
