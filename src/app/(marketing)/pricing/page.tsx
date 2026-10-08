@@ -14,7 +14,7 @@ const SAVINGS = [
 ];
 
 const FAQ = [
-  { q: "Do you take a percentage of our fees?", a: "No. You pay one flat monthly price. Membership money goes from the parent's bank to yours through your own GoCardless account." },
+  { q: "Do you take a percentage of our fees?", a: "No. You pay one flat monthly price. Membership money goes from the parent's bank to yours through your own Stripe account." },
   { q: "What's the difference between the plans?", a: "Only the size of your club. Every plan has every feature: students and families, belts, timetable and registers, Direct Debit and messages to parents." },
   { q: "Which martial arts does Junbi work with?", a: "Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai and MMA, with belt systems ready to go. Teach more than one? Pick them all when you set up." },
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, paused and past students are free." },
@@ -42,7 +42,7 @@ export default function PricingPage() {
           </div>
         </div>
         <p className="m-fine m-center" style={{ maxWidth: 820, margin: "28px auto 0", lineHeight: 1.5 }}>
-          Prices exclude VAT. Payment fees are charged by GoCardless directly, never by Junbi. UK Direct Debit is 1% + 20p per payment, capped at £4. Text messages are charged at cost.
+          Prices exclude VAT. Payment fees are charged by Stripe directly, never by Junbi. UK Direct Debit is 1% per payment, capped at £4. Text messages are charged at cost.
         </p>
       </section>
 

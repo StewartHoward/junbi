@@ -23,7 +23,7 @@ export function LoginForm() {
       <p className="m-auth-alt">
         New to Junbi? <Link href="/signup" className="m-link">Start a free trial</Link>
         <br />
-        Forgotten your password? Contact Junbi support and we&apos;ll reset it for you.
+        <Link href="/forgot-password" className="m-link">Forgotten your password?</Link>
       </p>
     </form>
   );

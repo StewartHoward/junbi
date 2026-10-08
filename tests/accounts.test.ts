@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -21,6 +21,7 @@ const studentsEdit = await import("@/data/student-edit");
 const students = await import("@/data/students");
 const classes = await import("@/data/classes");
 const club = await import("@/data/club");
+const flows = await import("@/data/email-flows");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -244,5 +245,101 @@ describe("students, classes and registers", () => {
 
   it("stops an assistant adding students", async () => {
     await expect(studentsEdit.createStudent({ ...a, role: "assistant" }, {} as never)).rejects.toThrow(/Not allowed/);
+  });
+});
+
+/** Emails aren't sent in tests (no RESEND_API_KEY); they're printed. This grabs the link from the last one. */
+async function captureLink(fn: () => Promise<unknown>, path: string) {
+  const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+  await fn();
+  const out = spy.mock.calls.map((c) => String(c[0])).join("\n");
+  spy.mockRestore();
+  const m = out.match(new RegExp(`${path}\\?token=([A-Za-z0-9_-]+)`));
+  return m?.[1] ?? null;
+}
+
+describe("password reset", () => {
+  it("emails a link only for real accounts, and the link sets a new password once", async () => {
+    expect(await captureLink(() => flows.requestPasswordReset("nobody@example.test"), "/reset-password")).toBeNull();
+    const token = await captureLink(() => flows.requestPasswordReset("Owner-B@example.test"), "/reset-password");
+    expect(token).toBeTruthy();
+    expect(await flows.resetLinkValid(token)).toBe(true);
+    expect((await flows.resetPassword(token, "short")).ok).toBe(false);
+    expect((await flows.resetPassword(token, "a brand new phrase")).ok).toBe(true);
+    expect(await flows.resetLinkValid(token)).toBe(false);
+    expect((await flows.resetPassword(token, "another new phrase")).ok).toBe(false);
+    expect((await accounts.checkLogin("owner-b@example.test", "a brand new phrase")).ok).toBe(true);
+    expect((await accounts.checkLogin("owner-b@example.test", "a long enough phrase")).ok).toBe(false);
+    await adminSql`delete from auth_failures`;
+  });
+  it("can't read reset links or the email log directly", async () => {
+    await expect(appSql`select * from password_resets`).rejects.toThrow(/permission denied/);
+    await expect(appSql`select * from email_log`).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("staff invites", () => {
+  it("invites a new instructor for one site, who sets up their login and joins", async () => {
+    const site = (await club.getClubOverview(a)).sites[0];
+    const token = await captureLink(async () => {
+      const r = await flows.inviteStaff(a, { email: "Coach.New@example.test", role: "instructor", siteIds: [site.id] });
+      expect(r.ok).toBe(true);
+    }, "/invite");
+    expect(token).toBeTruthy();
+    expect((await flows.listPendingInvites(a)).map((i) => i.email)).toEqual(["coach.new@example.test"]);
+    const inv = await flows.lookupInvite(token);
+    expect(inv).toMatchObject({ clubName: "Club A Taekwondo", email: "coach.new@example.test", role: "instructor", userExists: false });
+    const r = await flows.acceptInviteAsNewUser(token, "Casey Coach", "spinning back kick");
+    expect(r.ok).toBe(true);
+    const [m] = await appSql`select * from staff_memberships_for(${r.ok ? r.value.userId : ""}::uuid)`;
+    expect(m).toMatchObject({ club_id: a.clubId, role: "instructor", all_sites: false });
+    expect(m.site_ids).toEqual([site.id]);
+    expect(await flows.lookupInvite(token)).toBeNull();
+    expect((await flows.listPendingInvites(a)).length).toBe(0);
+  });
+
+  it("lets someone who already has a login accept by signing in", async () => {
+    const token = await captureLink(() => flows.inviteStaff(a, { email: "owner-b@example.test", role: "admin" }), "/invite");
+    expect((await flows.lookupInvite(token))?.userExists).toBe(true);
+    expect((await flows.acceptInviteAsNewUser(token, "Sneaky", "some password here")).ok).toBe(false);
+    expect((await flows.acceptInviteAsExistingUser(token, "wrong password here")).ok).toBe(false);
+    expect((await flows.acceptInviteAsExistingUser(token, "a brand new phrase")).ok).toBe(true);
+    await adminSql`delete from auth_failures`;
+  });
+
+  it("checks who can invite and remove", async () => {
+    await expect(flows.inviteStaff({ ...a, role: "instructor" }, { email: "x@example.test", role: "assistant" })).rejects.toThrow(/Not allowed/);
+    const r = await flows.inviteStaff({ ...a, role: "admin" }, { email: "x@example.test", role: "admin" });
+    expect(!r.ok && r.errors.role).toMatch(/Only the owner/);
+    const dup = await flows.inviteStaff(a, { email: "coach.new@example.test", role: "assistant", siteIds: [(await club.getClubOverview(a)).sites[0].id] });
+    expect(!dup.ok && dup.errors.email).toMatch(/already on your staff/);
+    const staff = (await club.getClubOverview(a)).staff;
+    const ownerRow = staff.find((x) => x.role === "owner")!;
+    expect((await flows.removeStaff(a, ownerRow.id)).ok).toBe(false);
+    const coach = staff.find((x) => x.email === "coach.new@example.test")!;
+    expect((await flows.removeStaff(a, coach.id)).ok).toBe(true);
+  });
+
+  it("an invite for one club can't be used to join another", async () => {
+    const bSite = (await club.getClubOverview(b)).sites[0].id;
+    const token = await captureLink(() => flows.inviteStaff(b, { email: "b-coach@example.test", role: "instructor", siteIds: [bSite] }), "/invite");
+    // Club A can't see or cancel club B's invites.
+    expect((await flows.listPendingInvites(a)).find((i) => i.email === "b-coach@example.test")).toBeUndefined();
+    expect((await flows.lookupInvite(token))?.clubName).toBe("Club B Taekwondo");
+  });
+});
+
+describe("trial reminders", () => {
+  it("emails owners 7, 3 and 1 days before the trial ends, once each", async () => {
+    await adminSql`update clubs set trial_ends_on = (now() at time zone 'Europe/London')::date + 7 where id = ${a.clubId}`;
+    await adminSql`update clubs set trial_ends_on = (now() at time zone 'Europe/London')::date + 5 where id <> ${a.clubId}`;
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const first = await flows.sendTrialReminders();
+    const second = await flows.sendTrialReminders();
+    spy.mockRestore();
+    expect(first).toEqual({ due: 1, sent: 1 });
+    expect(second).toEqual({ due: 1, sent: 0 });
+    const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'trial-7' and club_id = ${a.clubId}`;
+    expect(n).toBe(1);
   });
 });

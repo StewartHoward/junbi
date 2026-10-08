@@ -13,6 +13,7 @@ import {
   index,
   primaryKey,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /*
  * Junbi Phase 1 schema.
@@ -281,7 +282,7 @@ export const mandates = pgTable("mandates", {
   householdId: uuid("household_id")
     .notNull()
     .references(() => households.id, { onDelete: "cascade" }),
-  provider: text("provider").notNull().default("gocardless"),
+  provider: text("provider").notNull().default("stripe"),
   providerMandateId: text("provider_mandate_id"),
   status: mandateStatus("status").notNull().default("pending_customer_approval"),
   createdAt: createdAt(),
@@ -366,9 +367,63 @@ export const auditLog = pgTable("audit_log", {
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ---------- Email ---------- */
+
+/**
+ * Password reset links. Only a SHA-256 of the token is stored. Reached only through
+ * the SECURITY DEFINER functions in drizzle/0013_email_security.sql.
+ */
+export const passwordResets = pgTable("password_resets", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: createdAt(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
+/** Invitations for staff to join a club with a given role. */
+export const staffInvites = pgTable(
+  "staff_invites",
+  {
+    id: id(),
+    clubId: clubId(),
+    email: text("email").notNull(),
+    role: staffRole("role").notNull(),
+    allSites: boolean("all_sites").notNull().default(false),
+    siteIds: uuid("site_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    tokenHash: text("token_hash").notNull(),
+    invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("staff_invites_token_key").on(t.tokenHash)],
+);
+
+/** Every email Junbi sends, for support and to avoid sending the same reminder twice. */
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: id(),
+    clubId: uuid("club_id").references(() => clubs.id, { onDelete: "cascade" }),
+    toEmail: text("to_email").notNull(),
+    template: text("template").notNull(),
+    /** Stops duplicates, e.g. "trial-7:<club id>". */
+    dedupeKey: text("dedupe_key"),
+    status: text("status").notNull(),
+    providerId: text("provider_id"),
+    error: text("error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("email_log_dedupe_key").on(t.dedupeKey)],
+);
+
 /** Tables protected by row-level security on club_id. Kept here so tests can check every one. */
 export const TENANT_TABLES = [
   "club_disciplines",
+  "staff_invites",
   "sites",
   "club_staff",
   "staff_sites",

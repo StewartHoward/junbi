@@ -20,7 +20,9 @@ export async function getClubOverview(actor: Actor) {
       .select({ classes: sql<number>`count(*) filter (where not ${s.classes.archived})::int` })
       .from(s.classes);
     const staff = (await tx.execute(sql`
-      select u.name, u.email, cs.role from club_staff cs join users u on u.id = cs.user_id order by cs.created_at`)) as unknown as Array<{
+      select cs.id, cs.user_id, u.name, u.email, cs.role from club_staff cs join users u on u.id = cs.user_id order by cs.created_at`)) as unknown as Array<{
+      id: string;
+      user_id: string;
       name: string;
       email: string;
       role: string;

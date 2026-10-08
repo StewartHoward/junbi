@@ -6,6 +6,7 @@ import { requireActor } from "@/auth/session";
 import { archiveClass, createClass, setAttendance, validDate } from "@/data/classes";
 import { addSite, extendTrial, renameClub, setArt, setPlan } from "@/data/club";
 import type { FieldErrors } from "@/data/accounts";
+import { cancelInvite, inviteStaff, removeStaff } from "@/data/email-flows";
 
 export type ActionState = { errors?: FieldErrors; values?: Record<string, string>; saved?: boolean };
 
@@ -75,4 +76,28 @@ export async function extendTrialAction() {
   const actor = await requireActor();
   await extendTrial(actor);
   revalidatePath("/", "layout");
+}
+
+export async function inviteStaffAction(_prev: ActionState, f: FormData): Promise<ActionState> {
+  const actor = await requireActor();
+  const r = await inviteStaff(actor, {
+    email: str(f, "email"),
+    role: str(f, "role") as never,
+    siteIds: f.getAll("siteIds").map(String),
+  });
+  if (!r.ok) return { errors: r.errors, values: { email: str(f, "email"), role: str(f, "role") } };
+  revalidatePath("/settings");
+  return { saved: true, values: { email: str(f, "email") } };
+}
+
+export async function cancelInviteAction(f: FormData) {
+  const actor = await requireActor();
+  await cancelInvite(actor, str(f, "inviteId"));
+  revalidatePath("/settings");
+}
+
+export async function removeStaffAction(f: FormData) {
+  const actor = await requireActor();
+  await removeStaff(actor, str(f, "staffId"));
+  revalidatePath("/settings");
 }

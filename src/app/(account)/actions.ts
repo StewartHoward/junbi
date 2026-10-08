@@ -3,6 +3,13 @@
 import { redirect } from "next/navigation";
 import { checkLogin, completeSetup, createClubAccount, type FieldErrors } from "@/data/accounts";
 import { endSession, requireActorForSetup, startSession } from "@/auth/session";
+import {
+  acceptInviteAsExistingUser,
+  acceptInviteAsNewUser,
+  requestPasswordReset,
+  resetPassword,
+  sendWelcome,
+} from "@/data/email-flows";
 
 export type FormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -19,6 +26,8 @@ export async function signupAction(_prev: FormState, f: FormData): Promise<FormS
   });
   if (!r.ok) return { errors: r.errors, values };
   await startSession(r.value.userId);
+  // Never let a slow or failed email stop someone getting into their new club.
+  await sendWelcome({ ...r.value, name: values.name, email: values.email, clubName: values.clubName }).catch((err) => console.error("welcome email failed", err));
   redirect("/setup");
 }
 
@@ -51,5 +60,28 @@ export async function setupAction(_prev: FormState, f: FormData): Promise<FormSt
     syllabus,
   });
   if (!r.ok) return { errors: r.errors, values: { siteName: str(f, "siteName"), siteAddress: str(f, "siteAddress"), disciplines: disciplines.join(",") } };
+  redirect("/today");
+}
+
+export async function forgotPasswordAction(_prev: FormState, f: FormData): Promise<FormState> {
+  const email = str(f, "email");
+  await requestPasswordReset(email).catch((err) => console.error("password reset email failed", err));
+  // Same answer whether or not the email has an account.
+  return { values: { email, sent: "1" } };
+}
+
+export async function resetPasswordAction(token: string, _prev: FormState, f: FormData): Promise<FormState> {
+  const r = await resetPassword(token, str(f, "password"));
+  if (!r.ok) return { errors: r.errors };
+  await startSession(r.value.userId);
+  redirect("/today");
+}
+
+export async function acceptInviteAction(token: string, existing: boolean, _prev: FormState, f: FormData): Promise<FormState> {
+  const r = existing
+    ? await acceptInviteAsExistingUser(token, str(f, "password"))
+    : await acceptInviteAsNewUser(token, str(f, "name"), str(f, "password"));
+  if (!r.ok) return { errors: r.errors, values: { name: str(f, "name") } };
+  await startSession(r.value.userId);
   redirect("/today");
 }

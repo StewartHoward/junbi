@@ -16,10 +16,13 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 - **Roles and permissions** (owner, admin, instructor, assistant) with site scoping.
 - **Marketing site:** homepage, pricing and Founding Clubs, all leading to sign-up.
 
+## Email
+
+Password reset, staff invitations, a welcome email and trial reminders (7, 3 and 1 days before the trial ends) send through [Resend](https://resend.com). Set `RESEND_API_KEY` and `EMAIL_FROM` (e.g. `Junbi <hello@junbi.co.uk>`) in Netlify. Without a key, emails are printed to the server log instead, so local development works. Trial reminders run daily from `netlify/functions/trial-reminders.mts`.
+
 ## Not built yet
 
-- Password reset by email and staff invitations (both need an email service such as Resend or Postmark).
-- GoCardless and Stripe connections (the tables are ready; no live payments are taken).
+- Stripe connections for Direct Debit and cards (the tables are ready; no live payments are taken).
 - Gradings, kiosk, messages, reports and the Family app.
 
 ## Run it locally

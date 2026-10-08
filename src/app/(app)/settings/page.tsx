@@ -5,8 +5,10 @@ import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
 import { DISCIPLINES, type Preset } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
-import { extendTrialAction, setArtAction, setPlanAction } from "../actions";
-import { AddSiteForm, ClubNameForm } from "./SettingsForms";
+import { cancelInviteAction, extendTrialAction, removeStaffAction, setArtAction, setPlanAction } from "../actions";
+import { AddSiteForm, ClubNameForm, InviteStaffForm } from "./SettingsForms";
+import { listPendingInvites } from "@/data/email-flows";
+import { emailConfigured } from "@/lib/email";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -14,7 +16,7 @@ export default async function SettingsPage() {
   const actor = await requireActor();
   const owner = can(actor, "club.manage");
   if (!owner && !can(actor, "classes.manage")) redirect("/today");
-  const o = await getClubOverview(actor);
+  const [o, invites] = await Promise.all([getClubOverview(actor), listPendingInvites(actor)]);
   const plan = PLANS.find((p) => p.id === o.club.plan);
 
   return (
@@ -112,13 +114,39 @@ export default async function SettingsPage() {
         <h2 className="section-title">Staff</h2>
         <div className="list" style={{ marginTop: 8 }}>
           {o.staff.map((s) => (
-            <div key={s.email}>
+            <div key={s.id}>
               <span><strong>{s.name}</strong> <span className="muted">· {s.email}</span></span>
-              <span className="pill neutral">{s.role[0].toUpperCase() + s.role.slice(1)}</span>
+              <span className="actions">
+                <span className="pill neutral">{s.role[0].toUpperCase() + s.role.slice(1)}</span>
+                {can(actor, "staff.manage") && s.role !== "owner" && s.user_id !== actor.userId && (s.role !== "admin" || owner) && (
+                  <form action={removeStaffAction}>
+                    <input type="hidden" name="staffId" value={s.id} />
+                    <button className="btn ghost" aria-label={`Remove ${s.name}`}>Remove</button>
+                  </form>
+                )}
+              </span>
+            </div>
+          ))}
+          {invites.map((i) => (
+            <div key={i.id}>
+              <span><strong>{i.email}</strong> <span className="muted">· invited, waiting to accept</span></span>
+              <span className="actions">
+                <span className="pill neutral">{i.role[0].toUpperCase() + i.role.slice(1)}</span>
+                <form action={cancelInviteAction}>
+                  <input type="hidden" name="inviteId" value={i.id} />
+                  <button className="btn ghost" aria-label={`Cancel invitation for ${i.email}`}>Cancel</button>
+                </form>
+              </span>
             </div>
           ))}
         </div>
-        <p className="muted" style={{ marginTop: 12, fontSize: 14 }}>Inviting instructors and assistants is coming next.</p>
+        {can(actor, "staff.manage") && (
+          <div style={{ marginTop: 20 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>Invite someone</h3>
+            <InviteStaffForm sites={o.sites.filter((x) => actor.sites === "all" || actor.sites.includes(x.id)).map((x) => ({ id: x.id, name: x.name }))} canInviteAdmin={owner} />
+            {!emailConfigured() && <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Email isn&apos;t switched on yet, so invitations are saved but not sent.</p>}
+          </div>
+        )}
       </section>
     </>
   );
