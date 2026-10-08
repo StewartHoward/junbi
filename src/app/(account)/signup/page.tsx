@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { currentActor } from "@/auth/session";
-import { PLAN_IDS } from "@/lib/plans";
+import { SELF_SERVE_PLANS } from "@/lib/plans";
 import { SignupForm } from "./SignupForm";
 
 export const metadata: Metadata = { title: "Start your free trial" };
@@ -19,7 +19,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           ? "50% off for six months once your trial ends, free migration, and your price locked for two years."
           : "Free for 30 days. Takes about five minutes."}
       </p>
-      <SignupForm plan={(PLAN_IDS as readonly string[]).includes(plan ?? "") ? plan! : "club"} founding={isFounding} />
+      <SignupForm plan={SELF_SERVE_PLANS.some((p) => p.id === plan) ? plan! : "essentials"} founding={isFounding} />
     </div>
   );
 }

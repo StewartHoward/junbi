@@ -4,8 +4,8 @@ import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
 import { DISCIPLINES } from "@/lib/disciplines";
-import { PLANS } from "@/lib/plans";
-import { setArtAction } from "../actions";
+import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
+import { setArtAction, setPlanAction } from "../actions";
 import { AddSiteForm, ClubNameForm } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -27,11 +27,39 @@ export default async function SettingsPage() {
           <div style={{ marginTop: 16 }}>
             <ClubNameForm name={o.club.name} />
           </div>
-          <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
-            Plan: <strong style={{ color: "var(--ink)" }}>{plan?.name ?? o.club.plan}</strong>
-            {o.club.founding ? " · Founding Club" : ""}
-            {o.club.trialEndsOn ? ` · Free trial until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : ""}
+        </section>
+      )}
+
+      {owner && (
+        <section className="card" style={{ marginTop: 20 }}>
+          <h2 className="section-title">Plan</h2>
+          <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
+            You&apos;re on <strong style={{ color: "var(--ink)" }}>{plan?.name ?? o.club.plan}</strong>
+            {o.club.founding ? " as a Founding Club" : ""}
+            {o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}, with everything in Pro.` : "."}
           </p>
+          {o.club.plan !== "association" && (
+            <div className="list" style={{ marginTop: 8 }}>
+              {SELF_SERVE_PLANS.map((p) => {
+                const current = p.id === o.club.plan;
+                return (
+                  <form key={p.id} action={setPlanAction}>
+                    <input type="hidden" name="plan" value={p.id} />
+                    <span>
+                      <strong>{p.name}</strong>
+                      <span className="muted" style={{ fontSize: 13 }}> · from {formatPounds(p.monthlyPence.s)} a month · {p.limits}</span>
+                    </span>
+                    {current ? (
+                      <span className="pill ok">Current plan</span>
+                    ) : (
+                      <button className="btn secondary">Switch to {p.name}</button>
+                    )}
+                  </form>
+                );
+              })}
+            </div>
+          )}
+          <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Your price follows your active students each month. <a href="/pricing">See pricing</a></p>
         </section>
       )}
 

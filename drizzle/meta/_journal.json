@@ -64,6 +64,13 @@
       "when": 1791413157307,
       "tag": "0008_class_sessions_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791466697747,
+      "tag": "0009_essentials_pro_plans",
+      "breakpoints": true
     }
   ]
 }

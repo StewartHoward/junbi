@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
 import { archiveClass, createClass, setAttendance, validDate } from "@/data/classes";
-import { addSite, renameClub, setArt } from "@/data/club";
+import { addSite, renameClub, setArt, setPlan } from "@/data/club";
 import type { FieldErrors } from "@/data/accounts";
 
 export type ActionState = { errors?: FieldErrors; values?: Record<string, string>; saved?: boolean };
@@ -63,4 +63,10 @@ export async function setArtAction(f: FormData) {
   const actor = await requireActor();
   await setArt(actor, str(f, "discipline"), str(f, "on") === "1");
   revalidatePath("/", "layout");
+}
+
+export async function setPlanAction(f: FormData) {
+  const actor = await requireActor();
+  await setPlan(actor, str(f, "plan"));
+  revalidatePath("/settings");
 }

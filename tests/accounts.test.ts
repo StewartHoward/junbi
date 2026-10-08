@@ -27,7 +27,7 @@ type Actor = import("@/auth/permissions").Actor;
 const owner = (userId: string, clubId: string): Actor => ({ userId, clubId, role: "owner", sites: "all" });
 
 async function signUp(email: string, clubName: string) {
-  const r = await accounts.createClubAccount({ clubName, name: "Sam Owner", email, password: "a long enough phrase", plan: "club", founding: true, terms: true });
+  const r = await accounts.createClubAccount({ clubName, name: "Sam Owner", email, password: "a long enough phrase", plan: "pro", founding: true, terms: true });
   if (!r.ok) throw new Error(JSON.stringify(r.errors));
   return owner(r.value.userId, r.value.clubId);
 }
@@ -75,14 +75,14 @@ describe("sign-up", () => {
     expect(String(rows[0].password_hash)).toMatch(/^scrypt\$/);
   });
   it("refuses a second account with the same email, any capitalisation", async () => {
-    const r = await accounts.createClubAccount({ clubName: "Copy", name: "Xavier", email: "OWNER-A@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    const r = await accounts.createClubAccount({ clubName: "Copy", name: "Xavier", email: "OWNER-A@example.test", password: "a long enough phrase", plan: "pro", founding: false, terms: true });
     expect(r.ok).toBe(false);
     expect(!r.ok && r.errors.email).toMatch(/already an account/);
     const [{ n }] = await adminSql`select count(*)::int as n from clubs where name = 'Copy'`;
     expect(n).toBe(0);
   });
   it("needs the terms ticked and a decent password", async () => {
-    const r = await accounts.createClubAccount({ clubName: "Club C", name: "Y", email: "c@example.test", password: "short", plan: "club", founding: false, terms: false });
+    const r = await accounts.createClubAccount({ clubName: "Club C", name: "Y", email: "c@example.test", password: "short", plan: "pro", founding: false, terms: false });
     expect(r.ok).toBe(false);
     expect(!r.ok && (r.errors.terms || r.errors.password)).toBeTruthy();
   });
@@ -134,6 +134,13 @@ describe("club set-up", () => {
   it("requires at least one art", async () => {
     const r = await accounts.completeSetup(b, { disciplines: [], interest: ["judo"], siteName: "Preston", syllabus: "itf" });
     expect(!r.ok && r.errors.disciplines).toMatch(/at least one/);
+  });
+  it("lets the owner switch between Essentials and Pro, and nobody else", async () => {
+    expect((await club.setPlan(a, "essentials")).ok).toBe(true);
+    expect((await club.getClubOverview(a)).club.plan).toBe("essentials");
+    expect((await club.setPlan(a, "association")).ok).toBe(false);
+    await expect(club.setPlan({ ...a, role: "admin" }, "pro")).rejects.toThrow(/Not allowed/);
+    await club.setPlan(a, "pro");
   });
   it("only lets the owner do it", async () => {
     await expect(accounts.completeSetup({ ...b, role: "instructor" }, { disciplines: ["taekwondo"], siteName: "X" })).rejects.toThrow(/Not allowed/);

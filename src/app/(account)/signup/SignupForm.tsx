@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { signupAction, type FormState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
-import { PLANS } from "@/lib/plans";
+import { SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
 
 export function SignupForm({ plan, founding }: { plan: string; founding: boolean }) {
   const [state, action, pending] = useActionState<FormState, FormData>(signupAction, {});
@@ -37,13 +37,13 @@ export function SignupForm({ plan, founding }: { plan: string; founding: boolean
       <div>
         <label htmlFor="plan">Plan</label>
         <select id="plan" name="plan" defaultValue={v.plan || plan}>
-          {PLANS.filter((p) => p.id !== "association").map((p) => (
+          {SELF_SERVE_PLANS.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} · {p.limits}
+              {p.name} · from {formatPounds(p.monthlyPence.s)} a month
             </option>
           ))}
         </select>
-        <p className="hint">Free for 30 days. No card needed, and you can change plan any time.</p>
+        <p className="hint">Free for 30 days with everything in Pro. No card needed, and you can change plan any time.</p>
       </div>
       <div className="hp" aria-hidden="true">
         <label htmlFor="website">Leave this empty</label>

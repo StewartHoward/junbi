@@ -191,3 +191,17 @@
 .m-auth-alt { margin-top: 28px; font-size: 15px; color: var(--m-muted); }
 .m-wide { max-width: 720px; }
 .m-form .error[role="alert"]:first-child { background: #fff0f1; padding: 12px 14px; border-radius: 12px; margin: 0; }
+
+/* Pricing: size picker, three plans, compare table */
+.m-toggle-label { margin: 24px 0 0; font-size: 15px; font-weight: 500; color: var(--m-ink); }
+.m-toggle { flex-wrap: wrap; justify-content: center; max-width: 100%; }
+.m-plans.three { max-width: 1080px; }
+.m-plans.three .m-plan { flex: 1 1 300px; }
+.m-plan-tag { font-size: 12px; font-weight: 500; color: var(--m-muted); margin-left: 4px; }
+.m-compare { min-width: 520px; }
+.m-compare th:not(:first-child), .m-compare td { text-align: center; width: 22%; }
+.m-compare tbody th { font-weight: 400; }
+.m-compare-group th { font-size: 17px; font-weight: 600 !important; padding-top: 28px !important; }
+.m-compare tbody tr.m-compare-group { border-top: 0; }
+.m-dash { color: var(--m-muted); }
+.m-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

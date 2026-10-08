@@ -63,7 +63,7 @@ export const clubs = pgTable(
     id: id(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
-    plan: text("plan").notNull().default("starter"),
+    plan: text("plan").notNull().default("essentials"),
     /** Joined through the Founding Club offer (50% off six months, price locked two years). */
     founding: boolean("founding").notNull().default(false),
     trialEndsOn: date("trial_ends_on"),

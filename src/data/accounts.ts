@@ -6,7 +6,6 @@ import { db, withClub } from "@/db/client";
 import * as s from "@/db/schema";
 import { hashPassword, passwordProblem, verifyPassword } from "@/auth/password";
 import { assertCan, type Actor } from "@/auth/permissions";
-import { PLAN_IDS } from "@/lib/plans";
 import { DISCIPLINES, DISCIPLINE_IDS, TAEKWONDO_PRESETS } from "@/lib/disciplines";
 
 export type FieldErrors = Partial<Record<string, string>>;
@@ -25,7 +24,7 @@ export const signupSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name.").max(120),
   email: z.string().trim().toLowerCase().email("Please enter a valid email address.").max(200),
   password: z.string(),
-  plan: z.enum(PLAN_IDS).catch("club"),
+  plan: z.enum(["essentials", "pro"]).catch("essentials"),
   founding: z.boolean(),
   terms: z.boolean().refine((v) => v, "Please agree to the terms to continue."),
 });

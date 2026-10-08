@@ -83,3 +83,17 @@ export async function setArt(actor: Actor, discipline: string, on: boolean): Pro
     return { ok: true as const, value: undefined };
   });
 }
+
+/** Switch between the self-serve plans. Association is set up with Junbi directly. */
+export async function setPlan(actor: Actor, plan: string): Promise<Result> {
+  assertCan(actor, "club.manage");
+  const parsed = z.enum(["essentials", "pro"]).safeParse(plan);
+  if (!parsed.success) return { ok: false, errors: { plan: "Choose Essentials or Pro." } };
+  await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [club] = await tx.select({ plan: s.clubs.plan }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
+    if (club?.plan === "association") return; // managed by Junbi
+    await tx.update(s.clubs).set({ plan: parsed.data }).where(eq(s.clubs.id, actor.clubId));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "club_plan", entityId: actor.clubId, before: { plan: club?.plan }, after: { plan: parsed.data } });
+  });
+  return { ok: true, value: undefined };
+}
