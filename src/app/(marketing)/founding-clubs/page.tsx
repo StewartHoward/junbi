@@ -7,7 +7,8 @@ export const metadata: Metadata = {
 };
 
 const PERKS = [
-  { title: "50% off for six months", text: "After your free 30-day trial, pay half price for your first six months." },
+  { title: "A 30-day free trial", text: "Double the usual trial, so there's time to move your students and families across before you pay." },
+  { title: "50% off for six months", text: "Once your trial ends, pay half price for your first six months." },
   { title: "Your move, done for you", text: "Send us your export from NEST, Martialytics, AllSorted or a spreadsheet. We bring your students and families across." },
   { title: "Price locked for two years", text: "Whatever happens to our prices, yours stays the same until 2028." },
 ];

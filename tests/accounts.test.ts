@@ -67,7 +67,7 @@ describe("passwords", () => {
 });
 
 describe("sign-up", () => {
-  it("creates the club with a 30-day trial and the person as owner", async () => {
+  it("creates the club with a trial and the person as owner", async () => {
     const rows = await adminSql`select c.name, c.founding, c.trial_ends_on, cs.role, u.password_hash
       from clubs c join club_staff cs on cs.club_id = c.id join users u on u.id = cs.user_id where c.id = ${a.clubId}`;
     expect(rows[0]).toMatchObject({ name: "Club A Taekwondo", founding: true, role: "owner" });
@@ -134,6 +134,17 @@ describe("club set-up", () => {
   it("requires at least one art", async () => {
     const r = await accounts.completeSetup(b, { disciplines: [], interest: ["judo"], siteName: "Preston", syllabus: "itf" });
     expect(!r.ok && r.errors.disciplines).toMatch(/at least one/);
+  });
+  it("gives Founding Clubs 30 days, others 14, and allows one 14-day extension", async () => {
+    const days = (d: string) => Math.round((Date.parse(`${d}T12:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T12:00:00Z`)) / 86_400_000);
+    expect(days((await club.getClubOverview(a)).club.trialEndsOn!)).toBe(30);
+    const r = await accounts.createClubAccount({ clubName: "Club D", name: "Dee Owner", email: "d@example.test", password: "a long enough phrase", plan: "essentials", founding: false, terms: true });
+    const d = owner(r.ok ? r.value.userId : "", r.ok ? r.value.clubId : "");
+    expect(days((await club.getClubOverview(d)).club.trialEndsOn!)).toBe(14);
+    const ext = await club.extendTrial(d);
+    expect(ext.ok && days(ext.value.trialEndsOn)).toBe(28);
+    expect((await club.extendTrial(d)).ok).toBe(false);
+    await expect(club.extendTrial({ ...d, role: "admin" })).rejects.toThrow(/Not allowed/);
   });
   it("lets the owner switch between Essentials and Pro, and nobody else", async () => {
     expect((await club.setPlan(a, "essentials")).ok).toBe(true);

@@ -5,7 +5,7 @@ import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
 import { DISCIPLINES } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
-import { setArtAction, setPlanAction } from "../actions";
+import { extendTrialAction, setArtAction, setPlanAction } from "../actions";
 import { AddSiteForm, ClubNameForm } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -58,6 +58,12 @@ export default async function SettingsPage() {
                 );
               })}
             </div>
+          )}
+          {o.club.trialEndsOn && !o.club.trialExtended && (
+            <form action={extendTrialAction} className="actions" style={{ marginTop: 16 }}>
+              <span className="muted" style={{ fontSize: 14 }}>Still moving your club across?</span>
+              <button className="btn secondary">Add 14 days to my trial</button>
+            </form>
           )}
           <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Your price follows your active students each month. <a href="/pricing">See pricing</a></p>
         </section>

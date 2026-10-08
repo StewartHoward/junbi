@@ -20,7 +20,7 @@ const FAQ = [
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, leads, paused and past students are free. Your price follows your active students each month, so you never have to pick a size." },
   { q: "Can you move us from our current system?", a: "Yes. We import students, families and grades from NEST, Martialytics, other systems or a spreadsheet. Founding Clubs get the whole move done for them, free." },
   { q: "Can we change plan later?", a: "Any time, up or down. We work out the difference to the day." },
-  { q: "When can we start?", a: "Today. Sign up, answer three quick questions and your dashboard is ready. It's free for 30 days and you don't need a card." },
+  { q: "When can we start?", a: "Today. Sign up, answer three quick questions and your dashboard is ready. It's free for 14 days, with everything in Pro, and you don't need a card. Need longer to move across? You can add another 14 days." },
 ];
 
 export default function PricingPage() {

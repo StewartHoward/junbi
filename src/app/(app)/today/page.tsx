@@ -6,6 +6,7 @@ import { classesOn, todayISO, CLUB_TZ } from "@/data/classes";
 import { clubArts, getClubOverview } from "@/data/club";
 import { ArtFilter } from "@/components/ArtFilter";
 import { disciplineName } from "@/lib/disciplines";
+import { extendTrialAction } from "../actions";
 
 export const metadata: Metadata = { title: "Today" };
 
@@ -41,10 +42,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       <ArtFilter arts={arts} current={filter} basePath="/today" />
 
       {trialDays !== null && trialDays >= 0 && can(actor, "club.manage") && (
-        <p className="banner" style={{ marginTop: 20 }}>
-          {trialDays === 0 ? "Your free trial ends today." : `${trialDays} ${trialDays === 1 ? "day" : "days"} left in your free trial.`}
-          {overview.club.founding ? " As a Founding Club you'll get 50% off for six months after that." : ""}
-        </p>
+        <div className="banner head" style={{ marginTop: 20 }}>
+          <span>
+            {trialDays === 0 ? "Your free trial ends today." : `${trialDays} ${trialDays === 1 ? "day" : "days"} left in your free trial.`}
+            {overview.club.founding ? " As a Founding Club you'll get 50% off for six months after that." : ""}
+          </span>
+          {!overview.club.trialExtended && trialDays <= 7 && (
+            <form action={extendTrialAction}>
+              <button className="btn secondary" style={{ minHeight: 36, background: "var(--surface-raised)" }}>Need more time? Add 14 days</button>
+            </form>
+          )}
+        </div>
       )}
 
       <div className="row" style={{ marginTop: 24 }}>

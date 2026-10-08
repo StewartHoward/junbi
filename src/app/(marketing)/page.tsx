@@ -49,7 +49,7 @@ export default function Home() {
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
-        <p className="m-fine">Free for 30 days. No card needed. Built in the UK, for UK taekwondo clubs.</p>
+        <p className="m-fine">Free for 14 days. No card needed. Built in the UK, for UK taekwondo clubs.</p>
 
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students ready to grade">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>yourclub.junbi.app</span></div>

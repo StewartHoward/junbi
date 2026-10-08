@@ -67,6 +67,8 @@ export const clubs = pgTable(
     /** Joined through the Founding Club offer (50% off six months, price locked two years). */
     founding: boolean("founding").notNull().default(false),
     trialEndsOn: date("trial_ends_on"),
+    /** A club can add one extra 14 days to its trial ("Need more time?"). */
+    trialExtended: boolean("trial_extended").notNull().default(false),
     /** Set when the owner finishes club set-up (arts, first site, belt syllabus). */
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: createdAt(),

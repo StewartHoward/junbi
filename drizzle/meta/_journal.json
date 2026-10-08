@@ -71,6 +71,13 @@
       "when": 1791466697747,
       "tag": "0009_essentials_pro_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791467612621,
+      "tag": "0010_trial_extension",
+      "breakpoints": true
     }
   ]
 }

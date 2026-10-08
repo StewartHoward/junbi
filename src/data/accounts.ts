@@ -17,7 +17,10 @@ function fieldErrors(error: z.ZodError): FieldErrors {
   return out;
 }
 
-const TRIAL_DAYS = 30;
+/** Free trial: 14 days, or 30 for Founding Clubs (we do their move for them). One 14-day extension is allowed. */
+export const TRIAL_DAYS = 14;
+export const FOUNDING_TRIAL_DAYS = 30;
+export const TRIAL_EXTENSION_DAYS = 14;
 
 export const signupSchema = z.object({
   clubName: z.string().trim().min(2, "Please enter your club's name.").max(120),
@@ -46,7 +49,7 @@ export async function createClubAccount(input: SignupInput): Promise<Result<{ us
 
   const passwordHash = await hashPassword(d.password);
   const clubId = randomUUID();
-  const trialEnds = new Date(Date.now() + TRIAL_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const trialEnds = new Date(Date.now() + (d.founding ? FOUNDING_TRIAL_DAYS : TRIAL_DAYS) * 86_400_000).toISOString().slice(0, 10);
 
   try {
     const userId = await withClub({ clubId }, async (tx) => {

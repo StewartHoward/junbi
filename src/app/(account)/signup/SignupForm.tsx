@@ -43,7 +43,7 @@ export function SignupForm({ plan, founding }: { plan: string; founding: boolean
             </option>
           ))}
         </select>
-        <p className="hint">Free for 30 days with everything in Pro. No card needed, and you can change plan any time.</p>
+        <p className="hint">{founding ? "Free for 30 days" : "Free for 14 days"} with everything in Pro. No card needed, and you can change plan any time.</p>
       </div>
       <div className="hp" aria-hidden="true">
         <label htmlFor="website">Leave this empty</label>

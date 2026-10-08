@@ -16,8 +16,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <h1>{isFounding ? "Be one of the first 100." : "Set up your club."}</h1>
       <p className="m-sub" style={{ fontSize: 19 }}>
         {isFounding
-          ? "50% off for six months once your trial ends, free migration, and your price locked for two years."
-          : "Free for 30 days. Takes about five minutes."}
+          ? "A 30-day free trial, then 50% off for six months, free migration, and your price locked for two years."
+          : "Free for 14 days. Takes about five minutes."}
       </p>
       <SignupForm plan={SELF_SERVE_PLANS.some((p) => p.id === plan) ? plan! : "essentials"} founding={isFounding} />
     </div>

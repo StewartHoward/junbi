@@ -1,0 +1,1 @@
+ALTER TABLE "clubs" ADD COLUMN "trial_extended" boolean DEFAULT false NOT NULL;
