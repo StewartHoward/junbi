@@ -1,12 +1,14 @@
 # Junbi: Developer Brief
 
+> Product principles, build order and live pricing are in `docs/principles.md`, which takes priority over this brief where they differ.
+
 Oct 7, 2026 · Stewart Howard
 
 ## Summary
 
 We need a quote to build **Junbi**, a multi-tenant SaaS for UK taekwondo clubs, in four phases over roughly 12 months. Phase 1 (student profiles, logins and roles, Direct Debit billing, classes and registers) must be live first, because Total Taekwondo (Southport and Preston) will run on it as the pilot.
 
-**What Junbi is:** club management software built only for taekwondo. Clubs pay a flat monthly subscription (£19 to £149). Junbi never handles club money: each club connects its own GoCardless and Stripe accounts.
+**What Junbi is:** club management software built only for taekwondo. Clubs pay a flat monthly subscription: Essentials from £19, Pro from £35, Association from £149 (see `docs/principles.md` for the live price table). Junbi never handles club money: each club connects its own GoCardless and Stripe accounts.
 
 **Five surfaces to build**
 
@@ -46,7 +48,7 @@ Permissions are enforced server-side on every request, scoped by club and by sit
 **Rules to build in**
 
 - Instructors and assistants see a neutral "Please see the office" flag instead of any payment detail.
-- Custom roles (Academy and Association plans) are built from the same permission list.
+- Custom roles (Pro and Association plans) are built from the same permission list.
 - Junbi platform staff can only enter a club's data through time-limited, logged support access granted by the club Owner.
 - Every change to a payment, grade, medical note or permission is written to an audit log (who, what, when, before and after).
 
@@ -62,7 +64,7 @@ Screens marked **(designed)** have approved designs in the canvases linked above
 | **Junbi Family** | Sign-up and Direct Debit set-up; **Home (designed)**; Timetable and booking; Belt progress; Payments; Messages; Forms and consents | 1 (mobile web), 3 (native apps) |
 | **Junbi Kiosk** | **Check-in grid (designed)**; Search; Trial check-in; Staff unlock | 2 |
 | **Instructor mobile** | **Register (designed)**; **Owner Today (designed)**; Student quick view | 1 (responsive web) |
-| **Marketing site** | **Home (designed)**; **Pricing (designed)**; Features; Sign-up and 14-day trial; Legal pages | 1 |
+| **Marketing site** | **Home (designed)**; **Pricing (designed)**; Features; Sign-up and free trial (14 days, 30 for Founding Clubs); Legal pages | 1 |
 | **Platform admin** | Clubs; Plans and subscriptions; Support access; Feature flags; Audit log | 1 |
 | **Association hub** | Member clubs; Licence register; Shared gradings; Head-office reports | 4 |
 
@@ -116,7 +118,7 @@ Build as a [GoCardless partner integration](https://docs.gocardless.com/docs/par
 
 ### Junbi subscription billing
 
-- Junbi's own Stripe Billing account handles the Starter, Club, Academy and Association plans: 14-day trial with no card, monthly or annual, upgrades and downgrades pro-rata, and plan limits on active students and sites.
+- Junbi's own Stripe Billing account handles the Essentials, Pro and Association plans: price set each month by active students, 14-day trial with no card (one 14-day extension; 30 days for Founding Clubs), monthly or annual, upgrades and downgrades pro-rata. Essentials is limited to one site.
 - Going over a plan's student limit should prompt the Owner to upgrade, never lock the club out.
 - Founding Club offer: 50% off for 6 months, price locked for 24 months (coupon and price-lock flag).
 

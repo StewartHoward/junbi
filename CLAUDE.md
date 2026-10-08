@@ -1,6 +1,6 @@
 # Junbi: notes for Claude
 
-Junbi is multi-tenant club management software for UK taekwondo schools. Read `docs/brief.md` for scope, roles, payments and phases, and `docs/tokens.json` for the design system. Approved designs are linked from the brief.
+Junbi is multi-tenant club management software for UK taekwondo schools. **Read `docs/principles.md` first**: it sets who Junbi is for, the build order and the rules every feature must follow, and it wins over the brief. Then read `docs/brief.md` for scope, roles, payments and phases, and `docs/tokens.json` for the design system. Approved designs are linked from the brief.
 
 ## Stack
 
