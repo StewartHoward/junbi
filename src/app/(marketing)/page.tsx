@@ -5,6 +5,7 @@ const BELT: Record<string, { bg: string; fg: string }> = {
   green: { bg: "#2e8b3d", fg: "#ffffff" },
   blue: { bg: "#1f4fbf", fg: "#ffffff" },
   red: { bg: "#c8102e", fg: "#ffffff" },
+  purple: { bg: "#6b3fa0", fg: "#ffffff" },
 };
 
 function Icon({ d }: { d: React.ReactNode }) {
@@ -16,19 +17,19 @@ function Icon({ d }: { d: React.ReactNode }) {
 }
 
 const FEATURES = [
-  { title: "Student profiles", text: "Belt, attendance, licence, medical notes and payments in one place. Families grouped into one household.", icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
-  { title: "Direct Debit", text: "BACS Direct Debit through your own GoCardless account. Missed payments retried automatically.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></> },
-  { title: "Gradings", text: "Syllabus by kup and dan, a ready-to-grade list, tablet scoring and certificates in one tap.", icon: <><path d="M3 12h18" /><path d="M10 12l-3 7M14 12l3 7" /><rect x="9" y="9" width="6" height="6" rx="1" /></> },
-  { title: "Kiosk check-in", text: "An iPad at the door. Students tap in, and your register fills itself.", icon: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 12l2 2 4-4" /></> },
-  { title: "Junbi Family app", text: "Parents book, pay and follow belt progress. No more WhatsApp groups.", icon: <><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></> },
-  { title: "Messages", text: "Email, text and push to a class, a grade, a site or everyone.", icon: <path d="M4 5h16v11H8l-4 4z" /> },
+  { title: "Students and families", text: "Belts, attendance, medical notes and contacts in one place. Brothers and sisters grouped into one family.", icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
+  { title: "Classes and timetable", text: "Set up each weekly class once. Junbi gives you a register for it every week, at every site.", icon: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
+  { title: "Registers in seconds", text: "Tap through the class on your phone. Done before the bow.", icon: <><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M10 12l2 2 3-4" /></> },
+  { title: "Direct Debit", text: "Collected through your own GoCardless account, straight to your bank. Missed payments retried for you.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></> },
+  { title: "Messages to parents", text: "Email and text a class, a site or everyone, with your club's name on it.", icon: <path d="M4 5h16v11H8l-4 4z" /> },
+  { title: "Every art, every belt", text: "Kup, kyu, dan, stripes or levels. Teach more than one art? Run them all from one login.", icon: <><path d="M3 12h18" /><path d="M10 12l-3 7M14 12l3 7" /><rect x="9" y="9" width="6" height="6" rx="1" /></> },
 ];
 
-const READY = [
-  { name: "Amelia R.", grade: "8th Kup", belt: "yellow", ready: true },
-  { name: "Oliver T.", grade: "6th Kup", belt: "green", ready: true },
-  { name: "Maya K.", grade: "4th Kup", belt: "blue", ready: false },
-  { name: "Noah P.", grade: "2nd Kup", belt: "red", ready: true },
+const REGISTER = [
+  { name: "Amelia R.", grade: "8th Kup", belt: "yellow", here: true },
+  { name: "Oliver T.", grade: "Green belt", belt: "green", here: true },
+  { name: "Maya K.", grade: "4th Kyu", belt: "purple", here: false },
+  { name: "Noah P.", grade: "Blue belt", belt: "blue", here: true },
 ];
 
 const PAYMENTS = [
@@ -38,24 +39,26 @@ const PAYMENTS = [
   { who: "Ella Hughes", amount: "£35.00", ok: true },
 ];
 
+const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu", "Krav Maga", "Muay Thai", "MMA"];
+
 export default function Home() {
   return (
     <>
       <section className="m-hero">
-        <p className="m-eyebrow">Taekwondo club management</p>
+        <p className="m-eyebrow">Martial arts club management</p>
         <h1 className="m-hero-title">Your club, ready.</h1>
-        <p className="m-sub">Members, payments and gradings, all set before the class bows in.</p>
+        <p className="m-sub">Classes, attendance, Direct Debit and messages to parents. One simple system, set up in an evening.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
-        <p className="m-fine">Free for 14 days. No card needed. Built in the UK, for UK taekwondo clubs.</p>
+        <p className="m-fine">Free for 14 days. No card needed. One flat price, 0% of your fees.</p>
 
-        <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students ready to grade">
-          <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>yourclub.junbi.app</span></div>
+        <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students checked in">
+          <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>junbi</span></div>
           <div className="m-window-body">
             <div className="m-window-side" aria-hidden="true">
-              <span className="on">Today</span><span>Students</span><span>Classes</span><span>Gradings</span><span>Payments</span><span>Messages</span><span>Shop</span><span>Reports</span>
+              <span className="on">Today</span><span>Students</span><span>Classes</span><span>Payments</span><span>Messages</span><span>Settings</span>
             </div>
             <div className="m-window-main">
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -65,12 +68,12 @@ export default function Home() {
               <div className="m-row" style={{ marginTop: 20 }}>
                 <div className="m-stat"><p className="k">Collected this month</p><p className="v">£8,940</p><p className="n" style={{ color: "#1a7f37" }}>✓ 97% of expected</p></div>
                 <div className="m-stat"><p className="k">Active students</p><p className="v">264</p><p className="n">2 sites</p></div>
-                <div className="m-stat"><p className="k">Ready to grade</p><p className="v" style={{ color: "#c8102e" }}>18</p><p className="n">Grading on 15 Nov</p></div>
+                <div className="m-stat"><p className="k">Checked in today</p><p className="v">58</p><p className="n">4 classes</p></div>
               </div>
               <div className="m-card m-rows" style={{ marginTop: 16 }}>
-                <div><strong>17:00 Tots</strong><span style={{ color: "#6e6e73" }}>Southport · 14 booked</span></div>
-                <div><strong>17:45 Juniors, kup grades</strong><span style={{ color: "#6e6e73" }}>Southport · 26 booked</span></div>
-                <div><strong>19:00 Adults and black belts</strong><span style={{ color: "#6e6e73" }}>Preston · 21 booked</span></div>
+                <div><strong>17:00 Little Dragons</strong><span style={{ color: "#6e6e73" }}>Taekwondo · 14 here</span></div>
+                <div><strong>18:00 Juniors</strong><span style={{ color: "#6e6e73" }}>Kickboxing · 22 here</span></div>
+                <div><strong>19:15 Adults</strong><span style={{ color: "#6e6e73" }}>Brazilian Jiu-Jitsu · 18 here</span></div>
               </div>
             </div>
           </div>
@@ -82,13 +85,13 @@ export default function Home() {
         <p className="m-sub" style={{ maxWidth: 620 }}>Some club software takes a cut of every membership. Junbi is one flat monthly price, however much your club grows.</p>
         <p className="m-zero">0%</p>
         <p style={{ margin: "8px 0 0", fontSize: 21, color: "#a1a1a6" }}>of your students&apos; fees. Ever.</p>
-        <p style={{ margin: "36px 0 0" }}><Link href="/pricing" className="m-link">Compare plans</Link></p>
+        <p style={{ margin: "36px 0 0" }}><Link href="/pricing" className="m-link">See pricing</Link></p>
       </section>
 
       <section id="features" className="m-section alt">
         <div className="m-wrap">
           <h2 className="m-h2 m-center">Everything your club runs on.</h2>
-          <p className="m-sub m-center">One calm system for instructors, families and students. Built only for taekwondo.</p>
+          <p className="m-sub m-center">The everyday jobs every club does, made simple. Nothing you&apos;ll never use.</p>
           <div className="m-tiles">
             {FEATURES.map((f) => (
               <div key={f.title} className="m-tile">
@@ -101,21 +104,21 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="gradings" className="m-section">
+      <section id="registers" className="m-section">
         <div className="m-wrap m-split">
           <div className="copy">
-            <p className="m-eyebrow">Junbi Grade</p>
-            <h2 className="m-h2">Gradings, handled.</h2>
-            <p className="m-sub" style={{ margin: "20px 0 0" }}>Junbi tracks classes and syllabus for every student, then tells you who is ready. Invite them, take the fee, score on a tablet and print certificates.</p>
+            <p className="m-eyebrow">Attendance</p>
+            <h2 className="m-h2">Registers in seconds.</h2>
+            <p className="m-sub" style={{ margin: "20px 0 0" }}>Open today&apos;s class on your phone and tap each student in. Junbi counts every class towards their next belt as you go.</p>
           </div>
           <div className="panel m-panel-alt">
-            <div className="m-panel-head"><h3>Ready to grade</h3><span className="m-sample">Sample data</span></div>
+            <div className="m-panel-head"><h3>Juniors · 18:00</h3><span className="m-sample">Sample data</span></div>
             <div className="m-card m-rows" style={{ marginTop: 16, boxShadow: "none" }}>
-              {READY.map((r) => (
+              {REGISTER.map((r) => (
                 <div key={r.name}>
                   <span style={{ flexGrow: 1 }}>{r.name}</span>
                   <span className="m-chip" style={{ background: BELT[r.belt].bg, color: BELT[r.belt].fg }}>{r.grade}</span>
-                  {r.ready ? <span className="m-ok">✓ Ready</span> : <span className="m-warn">2 classes to go</span>}
+                  {r.here ? <span className="m-ok">✓ Here</span> : <span className="m-warn">Not in yet</span>}
                 </div>
               ))}
             </div>
@@ -138,23 +141,34 @@ export default function Home() {
             </div>
           </div>
           <div className="copy">
-            <p className="m-eyebrow">Junbi Pay</p>
+            <p className="m-eyebrow">Direct Debit</p>
             <h2 className="m-h2">Paid on time. Every time.</h2>
-            <p className="m-sub" style={{ margin: "20px 0 0" }}>Direct Debit set up on a parent&apos;s phone in a minute. Family discounts, grading fees and kit on the same mandate. Money goes straight to your bank, never through us.</p>
+            <p className="m-sub" style={{ margin: "20px 0 0" }}>Parents set up Direct Debit on their phone in a minute. Family discounts on the same mandate. Money goes straight to your bank, never through us.</p>
           </div>
         </div>
       </section>
 
-      <section id="associations" className="m-section dark m-center">
-        <p className="m-eyebrow">Junbi Association</p>
-        <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>One home for every club in your association.</h2>
-        <p className="m-sub">A shared licence register, grading calendar and certificates, with a head-office view of every member club.</p>
-        <p style={{ margin: "32px 0 0" }}><Link href="/pricing" className="m-link">See Association plans</Link></p>
+      <section id="arts" className="m-section dark m-center">
+        <p className="m-eyebrow">Every art</p>
+        <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>Whatever you teach. One login.</h2>
+        <p className="m-sub">Pick the arts you teach and Junbi sets up the belts, classes and dashboard to match. Teach more than one? Run them all together.</p>
+        <div className="m-arts" aria-label="Martial arts Junbi supports">
+          {ARTS.map((a) => (
+            <span key={a}>{a}</span>
+          ))}
+        </div>
+      </section>
+
+      <section id="switching" className="m-section alt m-center">
+        <p className="m-eyebrow">Moving to Junbi</p>
+        <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>Switch without the hassle.</h2>
+        <p className="m-sub">Bring your students, families and belts across from your current system or a spreadsheet. Founding Clubs get the whole move done for them.</p>
+        <p style={{ margin: "32px 0 0" }}><Link href="/founding-clubs" className="m-link">Become a Founding Club</Link></p>
       </section>
 
       <section className="m-section m-center">
         <h2 className="m-h2 xl">Ready when you are.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>The first 100 Founding Clubs get 50% off for six months, free migration from your current system, and their price locked for two years.</p>
+        <p className="m-sub" style={{ maxWidth: 600 }}>The first 100 Founding Clubs get a 30-day trial, 50% off for six months, free migration from their current system, and their price locked for two years.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Junbi", template: "%s · Junbi" },
-  description: "Taekwondo club management.",
+  description: "Martial arts club management.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

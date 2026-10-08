@@ -190,11 +190,12 @@ export async function studentFormOptions(actor: Actor, opts: { householdId?: str
     const sites = (await tx.select({ id: s.sites.id, name: s.sites.name }).from(s.sites).orderBy(asc(s.sites.name))).filter(
       (x) => actor.sites === "all" || actor.sites.includes(x.id),
     );
+    // Belts in every art the club has switched on, grouped by art for the form.
     const grades = await tx
-      .select({ id: s.grades.id, name: s.grades.name })
+      .select({ id: s.grades.id, name: s.grades.name, discipline: s.grades.discipline })
       .from(s.grades)
-      .where(eq(s.grades.discipline, "taekwondo"))
-      .orderBy(asc(s.grades.sortOrder));
+      .innerJoin(s.clubDisciplines, and(eq(s.clubDisciplines.discipline, s.grades.discipline), eq(s.clubDisciplines.active, true)))
+      .orderBy(asc(s.clubDisciplines.createdAt), asc(s.grades.sortOrder));
 
     let household: { id: string; name: string } | null = null;
     if (opts.householdId && uuid.safeParse(opts.householdId).success) {
@@ -209,5 +210,28 @@ export async function studentFormOptions(actor: Actor, opts: { householdId?: str
       if (student && !canAtSite(actor, "students.edit", student.siteId)) student = null;
     }
     return { sites, grades, household, student };
+  });
+}
+
+/**
+ * Record a student's belt in any of the club's arts (a passing grading result), e.g. after a grading
+ * or when someone starts a second art. Rank is always derived from these results.
+ */
+export async function recordBelt(actor: Actor, studentId: string, input: { gradeId: string; gradedOn: string }): Promise<Result> {
+  assertCan(actor, "grading.record");
+  const parsed = z
+    .object({ gradeId: uuid, gradedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date.") })
+    .safeParse(input);
+  if (!parsed.success || !uuid.safeParse(studentId).success) return { ok: false, errors: { gradeId: "Choose a belt." } };
+  const d = parsed.data;
+  if (d.gradedOn > new Date().toISOString().slice(0, 10)) return { ok: false, errors: { gradedOn: "The date can't be in the future." } };
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select({ siteId: s.students.siteId }).from(s.students).where(eq(s.students.id, studentId));
+    if (!st || !canAtSite(actor, "grading.record", st.siteId)) throw new ForbiddenError("grading.record");
+    const [g] = await tx.select({ id: s.grades.id }).from(s.grades).where(eq(s.grades.id, d.gradeId));
+    if (!g) return { ok: false as const, errors: { gradeId: "Choose a belt." } };
+    await tx.insert(s.gradingResults).values({ clubId: actor.clubId, studentId, gradeId: g.id, gradedOn: d.gradedOn, outcome: "pass" });
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "grading_result", entityId: studentId, after: { gradeId: g.id, gradedOn: d.gradedOn } });
+    return { ok: true as const, value: undefined };
   });
 }

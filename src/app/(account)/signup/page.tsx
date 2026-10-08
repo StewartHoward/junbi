@@ -19,7 +19,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           ? "A 30-day free trial, then 50% off for six months, free migration, and your price locked for two years."
           : "Free for 14 days. Takes about five minutes."}
       </p>
-      <SignupForm plan={SELF_SERVE_PLANS.some((p) => p.id === plan) ? plan! : "essentials"} founding={isFounding} />
+      <SignupForm plan={SELF_SERVE_PLANS.some((p) => p.id === plan) ? plan! : "starter"} founding={isFounding} />
     </div>
   );
 }

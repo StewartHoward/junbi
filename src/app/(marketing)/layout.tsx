@@ -4,12 +4,12 @@ import "./marketing.css";
 import { NavLinks } from "./NavLinks";
 
 export const metadata: Metadata = {
-  title: { absolute: "Junbi · Taekwondo club management", template: "%s · Junbi" },
+  title: { absolute: "Junbi · Martial arts club management", template: "%s · Junbi" },
   description:
-    "Junbi is club management software built only for UK taekwondo schools. Student profiles, Direct Debit, gradings and a family app, for one flat monthly price. Your fees stay yours.",
+    "Junbi is simple club management software for UK martial arts clubs. Classes, attendance, Direct Debit and messages to parents, for one flat monthly price. Your fees stay yours.",
   openGraph: {
     title: "Junbi · Your club, ready.",
-    description: "Taekwondo club management. Members, payments and gradings, all set before the class bows in.",
+    description: "Martial arts club management. Classes, attendance, Direct Debit and messages, set up in an evening.",
     type: "website",
     locale: "en_GB",
   },
@@ -36,7 +36,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Link href="/founding-clubs">Founding Clubs</Link>
             <Link href="/login">Sign in</Link>
           </nav>
-          <span>© 2026 Junbi. Made for taekwondo in the UK.</span>
+          <span>© 2026 Junbi. Made in the UK for martial arts clubs.</span>
         </div>
       </footer>
     </div>

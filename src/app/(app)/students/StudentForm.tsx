@@ -4,8 +4,27 @@ import Link from "next/link";
 import { useActionState } from "react";
 import type { StudentFormState } from "./actions";
 import { FieldError, errProps } from "@/components/FormBits";
+import { disciplineName } from "@/lib/disciplines";
 
 type Option = { id: string; name: string };
+type GradeOption = Option & { discipline: string };
+
+/** Belts grouped by art. Clubs with one art get a plain list. */
+export function GradeOptions({ grades }: { grades: GradeOption[] }) {
+  const arts = [...new Set(grades.map((g) => g.discipline))];
+  if (arts.length <= 1) return <>{grades.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</>;
+  return (
+    <>
+      {arts.map((a) => (
+        <optgroup key={a} label={disciplineName(a)}>
+          {grades.filter((g) => g.discipline === a).map((g) => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 type Initial = Partial<Record<string, string | boolean | null>>;
 
 export function StudentForm({
@@ -20,7 +39,7 @@ export function StudentForm({
   mode: "new" | "edit";
   action: (prev: StudentFormState, f: FormData) => Promise<StudentFormState>;
   sites: Option[];
-  grades: Option[];
+  grades: GradeOption[];
   household?: Option | null;
   initial?: Initial;
   cancelHref: string;
@@ -75,9 +94,7 @@ export function StudentForm({
               <label htmlFor="startingGradeId">Current belt</label>
               <select id="startingGradeId" name="startingGradeId" defaultValue={v("startingGradeId")}>
                 <option value="">New starter, no belt yet</option>
-                {grades.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
+                <GradeOptions grades={grades} />
               </select>
             </div>
           )}

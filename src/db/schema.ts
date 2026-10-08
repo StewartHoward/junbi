@@ -31,7 +31,7 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 
 export const staffRole = pgEnum("staff_role", ["owner", "admin", "instructor", "assistant"]);
 export const studentStatus = pgEnum("student_status", ["trial", "active", "paused", "frozen", "cancelled"]);
-export const gradeKind = pgEnum("grade_kind", ["kup", "poom", "dan"]);
+export const gradeKind = pgEnum("grade_kind", ["kup", "poom", "dan", "kyu", "grade"]);
 export const gradingOutcome = pgEnum("grading_outcome", ["pass", "merit", "distinction", "fail"]);
 export const billingInterval = pgEnum("billing_interval", ["monthly", "termly", "annual"]);
 export const mandateStatus = pgEnum("mandate_status", [
@@ -63,7 +63,7 @@ export const clubs = pgTable(
     id: id(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
-    plan: text("plan").notNull().default("essentials"),
+    plan: text("plan").notNull().default("starter"),
     /** Joined through the Founding Club offer (50% off six months, price locked two years). */
     founding: boolean("founding").notNull().default(false),
     trialEndsOn: date("trial_ends_on"),
@@ -222,7 +222,7 @@ export const students = pgTable(
 
 /* ---------- Progress ---------- */
 
-/** The club's belt ladder, lowest sort_order first (10th Kup … 1st Kup, 1st Poom, 1st Dan …). */
+/** Each art's belt ladder, lowest sort_order first within a discipline (e.g. 10th Kup … 1st Dan, or White … Black). */
 export const grades = pgTable("grades", {
   id: id(),
   clubId: clubId(),

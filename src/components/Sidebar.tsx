@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/(account)/actions";
 
-const SOON = ["Gradings", "Payments", "Messages", "Reports"];
+const SOON = ["Payments", "Messages"];
 
 export function Sidebar({ clubName, userName, role, links }: { clubName: string; userName: string; role: string; links: Array<{ href: string; label: string }> }) {
   const path = usePathname();

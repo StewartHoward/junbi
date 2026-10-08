@@ -6,7 +6,8 @@ import { db, withClub } from "@/db/client";
 import * as s from "@/db/schema";
 import { hashPassword, passwordProblem, verifyPassword } from "@/auth/password";
 import { assertCan, type Actor } from "@/auth/permissions";
-import { DISCIPLINES, DISCIPLINE_IDS, TAEKWONDO_PRESETS } from "@/lib/disciplines";
+import { DISCIPLINE_IDS, findPreset } from "@/lib/disciplines";
+import { SELF_SERVE_IDS } from "@/lib/plans";
 
 export type FieldErrors = Partial<Record<string, string>>;
 export type Result<T = undefined> = { ok: true; value: T } | { ok: false; errors: FieldErrors };
@@ -27,7 +28,7 @@ export const signupSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name.").max(120),
   email: z.string().trim().toLowerCase().email("Please enter a valid email address.").max(200),
   password: z.string(),
-  plan: z.enum(["essentials", "pro"]).catch("essentials"),
+  plan: z.enum(SELF_SERVE_IDS).catch("starter"),
   founding: z.boolean(),
   terms: z.boolean().refine((v) => v, "Please agree to the terms to continue."),
 });
@@ -102,10 +103,10 @@ export async function checkLogin(emailRaw: string, password: string): Promise<Re
 
 export const setupSchema = z.object({
   disciplines: z.array(z.enum(DISCIPLINE_IDS)).default([]),
-  interest: z.array(z.enum(DISCIPLINE_IDS)).default([]),
   siteName: z.string().trim().min(2, "Give your first site a name, e.g. the town it's in.").max(80),
   siteAddress: z.string().trim().max(200).optional(),
-  syllabus: z.enum(["wt", "itf", "none"]).catch("wt"),
+  /** Chosen belt system per art, e.g. { taekwondo: "wt", judo: "senior_kyu", mma: "none" }. Missing means the art's default. */
+  syllabus: z.record(z.string(), z.string().max(40)).default({}),
 });
 
 export type SetupInput = z.input<typeof setupSchema>;
@@ -116,10 +117,8 @@ export async function completeSetup(actor: Actor, input: SetupInput): Promise<Re
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
   const d = parsed.data;
 
-  const available = new Set<string>(DISCIPLINES.filter((x) => x.available).map((x) => x.id));
-  const active = d.disciplines.filter((x) => available.has(x));
+  const active = [...new Set(d.disciplines)];
   if (!active.length) return { ok: false, errors: { disciplines: "Choose at least one art you teach." } };
-  const interest = d.interest.filter((x) => !available.has(x));
 
   await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const [club] = await tx.select({ onboardedAt: s.clubs.onboardedAt }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
@@ -127,19 +126,16 @@ export async function completeSetup(actor: Actor, input: SetupInput): Promise<Re
 
     await tx
       .insert(s.clubDisciplines)
-      .values([
-        ...active.map((discipline) => ({ clubId: actor.clubId, discipline, active: true })),
-        ...interest.map((discipline) => ({ clubId: actor.clubId, discipline, active: false })),
-      ])
+      // Staggered timestamps keep the arts in the order the owner picked them.
+      .values(active.map((discipline, i) => ({ clubId: actor.clubId, discipline, active: true, createdAt: new Date(Date.now() + i) })))
       .onConflictDoNothing();
 
     await tx.insert(s.sites).values({ clubId: actor.clubId, name: d.siteName, address: d.siteAddress || null });
 
-    if (active.includes("taekwondo") && d.syllabus !== "none") {
-      const preset = TAEKWONDO_PRESETS[d.syllabus];
-      await tx.insert(s.grades).values(
-        preset.grades.map((g, i) => ({ clubId: actor.clubId, discipline: "taekwondo", sortOrder: i, ...g })),
-      );
+    for (const discipline of active) {
+      const preset = findPreset(discipline, d.syllabus[discipline]);
+      if (!preset?.grades.length) continue; // no belts for this art (e.g. MMA, or "my own")
+      await tx.insert(s.grades).values(preset.grades.map((g, i) => ({ clubId: actor.clubId, discipline, sortOrder: i, ...g })));
     }
     await tx.update(s.clubs).set({ onboardedAt: new Date() }).where(eq(s.clubs.id, actor.clubId));
   });

@@ -39,11 +39,11 @@ export function SignupForm({ plan, founding }: { plan: string; founding: boolean
         <select id="plan" name="plan" defaultValue={v.plan || plan}>
           {SELF_SERVE_PLANS.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} · from {formatPounds(p.monthlyPence.s)} a month
+              {p.name} · {formatPounds(p.monthlyPence)} a month · {p.limits}
             </option>
           ))}
         </select>
-        <p className="hint">{founding ? "Free for 30 days" : "Free for 14 days"} with everything in Pro. No card needed, and you can change plan any time.</p>
+        <p className="hint">{founding ? "Free for 30 days" : "Free for 14 days"}, with every feature. No card needed, and you can change plan any time.</p>
       </div>
       <div className="hp" aria-hidden="true">
         <label htmlFor="website">Leave this empty</label>

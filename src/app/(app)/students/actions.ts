@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
-import { createStudent, updateStudent } from "@/data/student-edit";
+import { createStudent, recordBelt, updateStudent } from "@/data/student-edit";
 import type { FieldErrors } from "@/data/accounts";
 
 export type StudentFormState = { errors?: FieldErrors; values?: Record<string, string> };
@@ -56,4 +56,13 @@ export async function updateStudentAction(id: string, _prev: StudentFormState, f
   if (!r.ok) return { errors: r.errors, values: values(f) };
   revalidatePath(`/students/${id}`);
   redirect(`/students/${id}`);
+}
+
+export async function recordBeltAction(studentId: string, _prev: StudentFormState, f: FormData): Promise<StudentFormState> {
+  const actor = await requireActor();
+  const r = await recordBelt(actor, studentId, { gradeId: str(f, "gradeId"), gradedOn: str(f, "gradedOn") });
+  if (!r.ok) return { errors: r.errors, values: values(f) };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  return { values: {} };
 }

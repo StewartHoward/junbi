@@ -21,7 +21,7 @@ export default async function SetupPage() {
     <div className="m-auth" style={{ maxWidth: 760 }}>
       <p className="m-eyebrow">Welcome, {actor.userName.split(" ")[0]}</p>
       <h1>Let&apos;s set up {actor.clubName}.</h1>
-      <p className="m-sub" style={{ fontSize: 19 }}>Three quick questions and your dashboard is ready.</p>
+      <p className="m-sub" style={{ fontSize: 19 }}>A few quick questions and your dashboard is ready.</p>
       <SetupForm />
     </div>
   );

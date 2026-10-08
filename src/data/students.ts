@@ -4,11 +4,15 @@ import { withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
 import { assertCan, can, canAtSite, paymentNoticeFor, ForbiddenError, type Actor } from "@/auth/permissions";
 
-export type Grade = { id: string; name: string; beltColour: string; sortOrder: number; classesRequired: number };
+export type Grade = { id: string; name: string; beltColour: string; sortOrder: number; classesRequired: number; discipline: string };
+type Held = { grade: Grade; gradedOn: string };
 
-/** Current grade = latest passing grading result. Rank is derived, never typed in. */
-async function currentGrades(tx: Tx, studentIds: string[]) {
-  const out = new Map<string, { grade: Grade; gradedOn: string }>();
+/**
+ * Current belt in each art = latest passing grading result for that art. Rank is derived, never typed in.
+ * Returns studentId -> discipline -> belt.
+ */
+async function currentGradesByArt(tx: Tx, studentIds: string[]) {
+  const out = new Map<string, Map<string, Held>>();
   if (!studentIds.length) return out;
   const rows = await tx
     .select({
@@ -20,14 +24,31 @@ async function currentGrades(tx: Tx, studentIds: string[]) {
         beltColour: s.grades.beltColour,
         sortOrder: s.grades.sortOrder,
         classesRequired: s.grades.classesRequired,
+        discipline: s.grades.discipline,
       },
     })
     .from(s.gradingResults)
     .innerJoin(s.grades, eq(s.grades.id, s.gradingResults.gradeId))
     .where(and(inArray(s.gradingResults.studentId, studentIds), ne(s.gradingResults.outcome, "fail")))
     .orderBy(asc(s.gradingResults.gradedOn), asc(s.grades.sortOrder));
-  for (const r of rows) out.set(r.studentId, { grade: r.grade, gradedOn: r.gradedOn });
+  for (const r of rows) {
+    const byArt = out.get(r.studentId) ?? new Map<string, Held>();
+    byArt.set(r.grade.discipline, { grade: r.grade, gradedOn: r.gradedOn });
+    out.set(r.studentId, byArt);
+  }
   return out;
+}
+
+/** Club's active arts in set-up order, used to order belts consistently. */
+async function clubArtOrder(tx: Tx) {
+  const rows = await tx.select({ d: s.clubDisciplines.discipline }).from(s.clubDisciplines).where(eq(s.clubDisciplines.active, true)).orderBy(asc(s.clubDisciplines.createdAt));
+  return rows.map((r) => r.d);
+}
+
+function sortedBelts(byArt: Map<string, Held> | undefined, order: string[]): Held[] {
+  if (!byArt) return [];
+  const rank = (d: string) => (order.indexOf(d) === -1 ? 99 : order.indexOf(d));
+  return [...byArt.values()].sort((a, b) => rank(a.grade.discipline) - rank(b.grade.discipline));
 }
 
 /** Households with a payment that needs attention (failed, retrying, or a cancelled mandate). */
@@ -65,7 +86,8 @@ export type StudentListItem = {
   name: string;
   status: string;
   site: string;
-  grade: Grade | null;
+  /** One belt per art the student holds a grade in. Empty for new starters. */
+  grades: Grade[];
   paymentNotice: string | null;
 };
 
@@ -92,7 +114,8 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
       )
       .orderBy(asc(s.students.lastName), asc(s.students.firstName));
 
-    const grades = await currentGrades(tx, rows.map((r) => r.id));
+    const grades = await currentGradesByArt(tx, rows.map((r) => r.id));
+    const order = await clubArtOrder(tx);
     const issues = await householdPaymentIssues(tx, [...new Set(rows.map((r) => r.householdId))]);
 
     return rows.map((r) => {
@@ -102,7 +125,7 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
         name: `${r.firstName} ${r.lastName}`,
         status: r.status,
         site: r.site,
-        grade: grades.get(r.id)?.grade ?? null,
+        grades: sortedBelts(grades.get(r.id), order).map((h) => h.grade),
         paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(detail), detail: detail ?? "" }),
       };
     });
@@ -123,19 +146,43 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
     if (!canAtSite(actor, "students.view", row.site.id)) throw new ForbiddenError("students.view");
 
     const st = row.student;
-    const ladder = await tx.select().from(s.grades).orderBy(asc(s.grades.sortOrder));
-    const current = (await currentGrades(tx, [st.id])).get(st.id) ?? null;
-    const next = ladder.find((g) => g.sortOrder === (current?.grade.sortOrder ?? -1) + 1) ?? null;
+    const order = await clubArtOrder(tx);
+    const held = sortedBelts((await currentGradesByArt(tx, [st.id])).get(st.id), order);
 
-    const since = current?.gradedOn ?? st.joinedOn;
-    const [{ count: classesSince }] = await tx
-      .select({ count: sql<number>`count(*)::int` })
-      .from(s.attendance)
-      .innerJoin(s.sessions, eq(s.sessions.id, s.attendance.sessionId))
-      .where(and(eq(s.attendance.studentId, st.id), gt(s.sessions.startsAt, new Date(`${since}T23:59:59Z`))));
+    // One belt journey per art the student holds a grade in.
+    const belts = [];
+    for (const h of held) {
+      const ladder = await tx
+        .select({ id: s.grades.id, name: s.grades.name, beltColour: s.grades.beltColour, sortOrder: s.grades.sortOrder })
+        .from(s.grades)
+        .where(eq(s.grades.discipline, h.grade.discipline))
+        .orderBy(asc(s.grades.sortOrder));
+      const next = ladder.find((g) => g.sortOrder > h.grade.sortOrder) ?? null;
+      const [{ count: classesSince }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(s.attendance)
+        .innerJoin(s.sessions, eq(s.sessions.id, s.attendance.sessionId))
+        .innerJoin(s.classes, eq(s.classes.id, s.sessions.classId))
+        .where(and(eq(s.attendance.studentId, st.id), eq(s.classes.discipline, h.grade.discipline), gt(s.sessions.startsAt, new Date(`${h.gradedOn}T23:59:59Z`))));
+      belts.push({
+        discipline: h.grade.discipline,
+        current: h,
+        ladder,
+        next,
+        classesSince,
+        readyToGrade: Boolean(next && h.grade.classesRequired > 0 && classesSince >= h.grade.classesRequired),
+      });
+    }
+
+    // Grades the student could be given, for the "update belt" form: every grade in the club's active arts.
+    const gradeOptions = await tx
+      .select({ id: s.grades.id, name: s.grades.name, discipline: s.grades.discipline, sortOrder: s.grades.sortOrder })
+      .from(s.grades)
+      .innerJoin(s.clubDisciplines, and(eq(s.clubDisciplines.discipline, s.grades.discipline), eq(s.clubDisciplines.active, true)))
+      .orderBy(asc(s.grades.discipline), asc(s.grades.sortOrder));
 
     const history = await tx
-      .select({ id: s.gradingResults.id, gradedOn: s.gradingResults.gradedOn, outcome: s.gradingResults.outcome, examiner: s.gradingResults.examiner, grade: s.grades.name, beltColour: s.grades.beltColour })
+      .select({ id: s.gradingResults.id, gradedOn: s.gradingResults.gradedOn, outcome: s.gradingResults.outcome, examiner: s.gradingResults.examiner, grade: s.grades.name, beltColour: s.grades.beltColour, discipline: s.grades.discipline })
       .from(s.gradingResults)
       .innerJoin(s.grades, eq(s.grades.id, s.gradingResults.gradeId))
       .where(eq(s.gradingResults.studentId, st.id))
@@ -146,8 +193,8 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       .select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName })
       .from(s.students)
       .where(and(eq(s.students.householdId, st.householdId), ne(s.students.id, st.id)));
-    const siblingGrades = await currentGrades(tx, siblingRows.map((x) => x.id));
-    const siblings = siblingRows.map((x) => ({ ...x, grade: siblingGrades.get(x.id)?.grade ?? null }));
+    const siblingGrades = await currentGradesByArt(tx, siblingRows.map((x) => x.id));
+    const siblings = siblingRows.map((x) => ({ ...x, grade: sortedBelts(siblingGrades.get(x.id), order)[0]?.grade ?? null }));
 
     const [membership] = await tx
       .select({ plan: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval, startsOn: s.memberships.startsOn })
@@ -187,11 +234,8 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       joinedOn: st.joinedOn,
       licence: st.licenceNumber ? { number: st.licenceNumber, expiresOn: st.licenceExpiresOn } : null,
       medical: can(actor, "medical.view") ? { notes: st.medicalNotes, firstAidConsent: st.firstAidConsent } : null,
-      ladder: ladder.map((g) => ({ id: g.id, name: g.name, beltColour: g.beltColour, sortOrder: g.sortOrder })),
-      current,
-      next,
-      classesSince,
-      readyToGrade: Boolean(next && current && classesSince >= current.grade.classesRequired),
+      belts,
+      gradeOptions,
       history,
       guardians: guardians.map((g) => ({
         id: g.id,

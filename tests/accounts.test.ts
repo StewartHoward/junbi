@@ -27,7 +27,7 @@ type Actor = import("@/auth/permissions").Actor;
 const owner = (userId: string, clubId: string): Actor => ({ userId, clubId, role: "owner", sites: "all" });
 
 async function signUp(email: string, clubName: string) {
-  const r = await accounts.createClubAccount({ clubName, name: "Sam Owner", email, password: "a long enough phrase", plan: "pro", founding: true, terms: true });
+  const r = await accounts.createClubAccount({ clubName, name: "Sam Owner", email, password: "a long enough phrase", plan: "club", founding: true, terms: true });
   if (!r.ok) throw new Error(JSON.stringify(r.errors));
   return owner(r.value.userId, r.value.clubId);
 }
@@ -75,14 +75,14 @@ describe("sign-up", () => {
     expect(String(rows[0].password_hash)).toMatch(/^scrypt\$/);
   });
   it("refuses a second account with the same email, any capitalisation", async () => {
-    const r = await accounts.createClubAccount({ clubName: "Copy", name: "Xavier", email: "OWNER-A@example.test", password: "a long enough phrase", plan: "pro", founding: false, terms: true });
+    const r = await accounts.createClubAccount({ clubName: "Copy", name: "Xavier", email: "OWNER-A@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
     expect(r.ok).toBe(false);
     expect(!r.ok && r.errors.email).toMatch(/already an account/);
     const [{ n }] = await adminSql`select count(*)::int as n from clubs where name = 'Copy'`;
     expect(n).toBe(0);
   });
   it("needs the terms ticked and a decent password", async () => {
-    const r = await accounts.createClubAccount({ clubName: "Club C", name: "Y", email: "c@example.test", password: "short", plan: "pro", founding: false, terms: false });
+    const r = await accounts.createClubAccount({ clubName: "Club C", name: "Y", email: "c@example.test", password: "short", plan: "club", founding: false, terms: false });
     expect(r.ok).toBe(false);
     expect(!r.ok && (r.errors.terms || r.errors.password)).toBeTruthy();
   });
@@ -120,25 +120,26 @@ describe("the app role and sign-in data", () => {
 });
 
 describe("club set-up", () => {
-  it("sets up arts, first site and the WT belt ladder, ignoring coming-soon arts", async () => {
-    const r = await accounts.completeSetup(a, { disciplines: ["taekwondo", "judo"], interest: ["karate"], siteName: "Southport", siteAddress: "", syllabus: "wt" });
+  it("sets up several arts with their own belt systems, first site, in the order picked", async () => {
+    const r = await accounts.completeSetup(a, { disciplines: ["taekwondo", "kickboxing", "mma"], siteName: "Southport", siteAddress: "", syllabus: { taekwondo: "wt" } });
     expect(r.ok).toBe(true);
     const o = await club.getClubOverview(a);
-    expect(o.activeArts).toEqual(["taekwondo"]);
-    expect(o.interestArts).toEqual(["karate"]);
+    expect(o.activeArts).toEqual(["taekwondo", "kickboxing", "mma"]);
+    const counts = await adminSql`select discipline, count(*)::int as n from grades where club_id = ${a.clubId} group by discipline`;
+    expect(Object.fromEntries(counts.map((c) => [c.discipline, c.n]))).toEqual({ taekwondo: 14, kickboxing: 10 });
     expect(o.sites.map((s) => s.name)).toEqual(["Southport"]);
     expect(o.club.onboardedAt).not.toBeNull();
     const [{ n }] = await adminSql`select count(*)::int as n from grades where club_id = ${a.clubId} and discipline = 'taekwondo'`;
     expect(n).toBe(14);
   });
   it("requires at least one art", async () => {
-    const r = await accounts.completeSetup(b, { disciplines: [], interest: ["judo"], siteName: "Preston", syllabus: "itf" });
+    const r = await accounts.completeSetup(b, { disciplines: [], siteName: "Preston" });
     expect(!r.ok && r.errors.disciplines).toMatch(/at least one/);
   });
   it("gives Founding Clubs 30 days, others 14, and allows one 14-day extension", async () => {
     const days = (d: string) => Math.round((Date.parse(`${d}T12:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T12:00:00Z`)) / 86_400_000);
     expect(days((await club.getClubOverview(a)).club.trialEndsOn!)).toBe(30);
-    const r = await accounts.createClubAccount({ clubName: "Club D", name: "Dee Owner", email: "d@example.test", password: "a long enough phrase", plan: "essentials", founding: false, terms: true });
+    const r = await accounts.createClubAccount({ clubName: "Club D", name: "Dee Owner", email: "d@example.test", password: "a long enough phrase", plan: "starter", founding: false, terms: true });
     const d = owner(r.ok ? r.value.userId : "", r.ok ? r.value.clubId : "");
     expect(days((await club.getClubOverview(d)).club.trialEndsOn!)).toBe(14);
     const ext = await club.extendTrial(d);
@@ -146,12 +147,12 @@ describe("club set-up", () => {
     expect((await club.extendTrial(d)).ok).toBe(false);
     await expect(club.extendTrial({ ...d, role: "admin" })).rejects.toThrow(/Not allowed/);
   });
-  it("lets the owner switch between Essentials and Pro, and nobody else", async () => {
-    expect((await club.setPlan(a, "essentials")).ok).toBe(true);
-    expect((await club.getClubOverview(a)).club.plan).toBe("essentials");
+  it("lets the owner switch between Starter, Club and Academy, and nobody else", async () => {
+    expect((await club.setPlan(a, "starter")).ok).toBe(true);
+    expect((await club.getClubOverview(a)).club.plan).toBe("starter");
     expect((await club.setPlan(a, "association")).ok).toBe(false);
-    await expect(club.setPlan({ ...a, role: "admin" }, "pro")).rejects.toThrow(/Not allowed/);
-    await club.setPlan(a, "pro");
+    await expect(club.setPlan({ ...a, role: "admin" }, "club")).rejects.toThrow(/Not allowed/);
+    await club.setPlan(a, "club");
   });
   it("only lets the owner do it", async () => {
     await expect(accounts.completeSetup({ ...b, role: "instructor" }, { disciplines: ["taekwondo"], siteName: "X" })).rejects.toThrow(/Not allowed/);
@@ -173,7 +174,33 @@ describe("students, classes and registers", () => {
     studentId = r.ok ? r.value.id : "";
     const list = await students.listStudents(a);
     expect(list).toHaveLength(1);
-    expect(list[0].grade?.name).toBe("8th Kup");
+    expect(list[0].grades.map((g) => g.name)).toEqual(["8th Kup"]);
+  });
+
+  it("records a belt in a second art and shows both", async () => {
+    const opts = await studentsEdit.studentFormOptions(a);
+    const orange = opts.grades.find((g) => g.discipline === "kickboxing" && g.name === "Orange belt")!;
+    const today = new Date().toISOString().slice(0, 10);
+    expect((await studentsEdit.recordBelt(a, studentId, { gradeId: orange.id, gradedOn: today })).ok).toBe(true);
+    expect((await studentsEdit.recordBelt(a, studentId, { gradeId: orange.id, gradedOn: "2999-01-01" })).ok).toBe(false);
+    await expect(studentsEdit.recordBelt({ ...a, role: "assistant" }, studentId, { gradeId: orange.id, gradedOn: today })).rejects.toThrow(/Not allowed/);
+    const list = await students.listStudents(a);
+    expect(list[0].grades.map((g) => g.name)).toEqual(["8th Kup", "Orange belt"]);
+    const profile = await students.getStudentProfile(a, studentId);
+    expect(profile?.belts.map((b) => [b.discipline, b.current.grade.name, b.next?.name])).toEqual([
+      ["taekwondo", "8th Kup", "7th Kup"],
+      ["kickboxing", "Orange belt", "Green belt"],
+    ]);
+  });
+
+  it("turning an art on loads its belts, and turning it off keeps them", async () => {
+    expect((await club.setArt(a, "judo", true)).ok).toBe(true);
+    const [{ n }] = await adminSql`select count(*)::int as n from grades where club_id = ${a.clubId} and discipline = 'judo'`;
+    expect(n).toBe(9);
+    expect((await club.setArt(a, "judo", false)).ok).toBe(true);
+    expect((await club.getClubOverview(a)).activeArts).not.toContain("judo");
+    const [{ m }] = await adminSql`select count(*)::int as m from grades where club_id = ${a.clubId} and discipline = 'judo'`;
+    expect(m).toBe(9);
   });
 
   it("needs a contact for a brand new family", async () => {
@@ -205,7 +232,7 @@ describe("students, classes and registers", () => {
   });
 
   it("keeps clubs apart: club B can't see or touch club A's students or classes", async () => {
-    await accounts.completeSetup(b, { disciplines: ["taekwondo"], siteName: "Preston", syllabus: "itf" });
+    await accounts.completeSetup(b, { disciplines: ["taekwondo"], siteName: "Preston", syllabus: { taekwondo: "itf" } });
     expect(await students.listStudents(b)).toHaveLength(0);
     expect(await students.getStudentProfile(b, studentId)).toBeNull();
     await expect(classes.getRegister(b, classId, "2026-10-05")).rejects.toThrow(/Not allowed/);

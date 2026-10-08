@@ -4,7 +4,8 @@ import { z } from "zod";
 import { withClub } from "@/db/client";
 import * as s from "@/db/schema";
 import { assertCan, type Actor } from "@/auth/permissions";
-import { DISCIPLINES } from "@/lib/disciplines";
+import { DISCIPLINES, defaultPreset } from "@/lib/disciplines";
+import { SELF_SERVE_IDS } from "@/lib/plans";
 import { TRIAL_EXTENSION_DAYS, type Result } from "./accounts";
 
 export async function getClubOverview(actor: Actor) {
@@ -62,7 +63,10 @@ export async function addSite(actor: Actor, name: string, address: string): Prom
   return { ok: true, value: undefined };
 }
 
-/** Turn an art on, or register interest in one that's coming soon. Turning one off hides it but keeps history. */
+/**
+ * Turn an art on or off. Turning one on loads its default belt system if the club has no grades
+ * for it yet. Turning one off hides it but keeps every grade and grading result.
+ */
 export async function setArt(actor: Actor, discipline: string, on: boolean): Promise<Result> {
   assertCan(actor, "club.manage");
   const d = DISCIPLINES.find((x) => x.id === discipline);
@@ -73,22 +77,27 @@ export async function setArt(actor: Actor, discipline: string, on: boolean): Pro
       if (active.length <= 1 && active[0]?.discipline === discipline) {
         return { ok: false as const, errors: { form: "Your club needs at least one art." } };
       }
-      await tx.delete(s.clubDisciplines).where(and(eq(s.clubDisciplines.discipline, discipline)));
+      await tx.delete(s.clubDisciplines).where(eq(s.clubDisciplines.discipline, discipline));
       return { ok: true as const, value: undefined };
     }
     await tx
       .insert(s.clubDisciplines)
-      .values({ clubId: actor.clubId, discipline, active: d.available })
-      .onConflictDoUpdate({ target: [s.clubDisciplines.clubId, s.clubDisciplines.discipline], set: { active: d.available } });
+      .values({ clubId: actor.clubId, discipline, active: true })
+      .onConflictDoUpdate({ target: [s.clubDisciplines.clubId, s.clubDisciplines.discipline], set: { active: true } });
+    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(s.grades).where(eq(s.grades.discipline, discipline));
+    const preset = defaultPreset(discipline);
+    if (n === 0 && preset?.grades.length) {
+      await tx.insert(s.grades).values(preset.grades.map((g, i) => ({ clubId: actor.clubId, discipline, sortOrder: i, ...g })));
+    }
     return { ok: true as const, value: undefined };
   });
 }
 
-/** Switch between the self-serve plans. Association is set up with Junbi directly. */
+/** Switch between Starter, Club and Academy. Association is set up with Junbi directly. */
 export async function setPlan(actor: Actor, plan: string): Promise<Result> {
   assertCan(actor, "club.manage");
-  const parsed = z.enum(["essentials", "pro"]).safeParse(plan);
-  if (!parsed.success) return { ok: false, errors: { plan: "Choose Essentials or Pro." } };
+  const parsed = z.enum(SELF_SERVE_IDS).safeParse(plan);
+  if (!parsed.success) return { ok: false, errors: { plan: "Choose Starter, Club or Academy." } };
   await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const [club] = await tx.select({ plan: s.clubs.plan }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     if (club?.plan === "association") return; // managed by Junbi

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
-import { DISCIPLINES } from "@/lib/disciplines";
+import { DISCIPLINES, type Preset } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
 import { extendTrialAction, setArtAction, setPlanAction } from "../actions";
 import { AddSiteForm, ClubNameForm } from "./SettingsForms";
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
           <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
             You&apos;re on <strong style={{ color: "var(--ink)" }}>{plan?.name ?? o.club.plan}</strong>
             {o.club.founding ? " as a Founding Club" : ""}
-            {o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}, with everything in Pro.` : "."}
+            {o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.` : "."}
           </p>
           {o.club.plan !== "association" && (
             <div className="list" style={{ marginTop: 8 }}>
@@ -47,7 +47,7 @@ export default async function SettingsPage() {
                     <input type="hidden" name="plan" value={p.id} />
                     <span>
                       <strong>{p.name}</strong>
-                      <span className="muted" style={{ fontSize: 13 }}> · from {formatPounds(p.monthlyPence.s)} a month · {p.limits}</span>
+                      <span className="muted" style={{ fontSize: 13 }}> · {formatPounds(p.monthlyPence)} a month · {p.limits}</span>
                     </span>
                     {current ? (
                       <span className="pill ok">Current plan</span>
@@ -65,31 +65,26 @@ export default async function SettingsPage() {
               <button className="btn secondary">Add 14 days to my trial</button>
             </form>
           )}
-          <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Your price follows your active students each month. <a href="/pricing">See pricing</a></p>
+          <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Every plan has every feature. Pick the one that fits your club&apos;s size. <a href="/pricing">See pricing</a></p>
         </section>
       )}
 
       {owner && (
         <section className="card" style={{ marginTop: 20 }}>
           <h2 className="section-title">Arts you teach</h2>
-          <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Your dashboard, belts and classes follow these. Removing one hides it but keeps all history.</p>
+          <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Your dashboard, belts and classes follow these. Turning one on loads its belts; turning one off hides it but keeps all history.</p>
           <div className="list" style={{ marginTop: 8 }}>
             {DISCIPLINES.map((d) => {
               const on = o.activeArts.includes(d.id);
-              const interested = o.interestArts.includes(d.id);
               return (
                 <form key={d.id} action={setArtAction}>
                   <input type="hidden" name="discipline" value={d.id} />
-                  <input type="hidden" name="on" value={on || interested ? "0" : "1"} />
+                  <input type="hidden" name="on" value={on ? "0" : "1"} />
                   <span>
                     <strong>{d.name}</strong>
-                    {!d.available && <span className="muted" style={{ fontSize: 13 }}> · Coming soon</span>}
+                    <span className="muted" style={{ fontSize: 13 }}> · {d.presets.length ? `${(d.presets[0] as Preset).label}` : "No belts"}</span>
                   </span>
-                  {d.available ? (
-                    <button className={`btn ${on ? "secondary" : "primary"}`} aria-pressed={on}>{on ? "On · turn off" : "Turn on"}</button>
-                  ) : (
-                    <button className="btn secondary" aria-pressed={interested}>{interested ? "✓ We'll tell you" : "Tell me when ready"}</button>
-                  )}
+                  <button className={`btn ${on ? "secondary" : "primary"}`} aria-pressed={on}>{on ? "On · turn off" : "Turn on"}</button>
                 </form>
               );
             })}

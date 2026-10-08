@@ -38,13 +38,18 @@ export async function logoutAction() {
 export async function setupAction(_prev: FormState, f: FormData): Promise<FormState> {
   const actor = await requireActorForSetup();
   if (actor.onboarded) redirect("/today");
+  const disciplines = f.getAll("disciplines").map(String);
+  const syllabus: Record<string, string> = {};
+  for (const id of disciplines) {
+    const v = str(f, `syllabus_${id}`);
+    if (v) syllabus[id] = v;
+  }
   const r = await completeSetup(actor, {
-    disciplines: f.getAll("disciplines").map(String) as never,
-    interest: f.getAll("interest").map(String) as never,
+    disciplines: disciplines as never,
     siteName: str(f, "siteName"),
     siteAddress: str(f, "siteAddress"),
-    syllabus: str(f, "syllabus") as never,
+    syllabus,
   });
-  if (!r.ok) return { errors: r.errors, values: { siteName: str(f, "siteName"), siteAddress: str(f, "siteAddress") } };
+  if (!r.ok) return { errors: r.errors, values: { siteName: str(f, "siteName"), siteAddress: str(f, "siteAddress"), disciplines: disciplines.join(",") } };
   redirect("/today");
 }

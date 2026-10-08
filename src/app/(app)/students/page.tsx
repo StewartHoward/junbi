@@ -59,7 +59,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           <thead>
             <tr>
               <th scope="col">Name</th>
-              <th scope="col">Grade</th>
+              <th scope="col">Belt</th>
               <th scope="col">Site</th>
               <th scope="col">Status</th>
               <th scope="col">Flags</th>
@@ -73,7 +73,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     {s.name}
                   </Link>
                 </td>
-                <td><RankChip grade={s.grade} /></td>
+                <td><span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>{s.grades.length ? s.grades.map((g) => <RankChip key={g.id} grade={g} />) : <RankChip grade={null} />}</span></td>
                 <td>{s.site}</td>
                 <td><StatusPill status={s.status} /></td>
                 <td>{s.paymentNotice ? <span className="pill warn">{s.paymentNotice}</span> : null}</td>

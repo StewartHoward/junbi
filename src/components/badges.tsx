@@ -5,6 +5,12 @@ const BELT: Record<string, { bg: string; fg: string; outline?: boolean }> = {
   blue: { bg: "var(--belt-blue)", fg: "#ffffff" },
   red: { bg: "var(--belt-red)", fg: "#ffffff" },
   black: { bg: "var(--belt-black)", fg: "#ffffff", outline: true },
+  orange: { bg: "var(--belt-orange)", fg: "#1d1d1f" },
+  purple: { bg: "var(--belt-purple)", fg: "#ffffff" },
+  brown: { bg: "var(--belt-brown)", fg: "#ffffff" },
+  grey: { bg: "var(--belt-grey)", fg: "#ffffff" },
+  // Level-based systems (e.g. Krav Maga P1 to G5, Muay Thai Khan grades) have no belt colour.
+  none: { bg: "var(--surface-alt)", fg: "var(--ink)", outline: true },
 };
 
 export function RankChip({ grade }: { grade: { name: string; beltColour: string } | null }) {

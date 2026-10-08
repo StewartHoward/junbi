@@ -4,13 +4,17 @@ import type { Metadata } from "next";
 import { requireActor } from "@/auth/session";
 import { getStudentProfile } from "@/data/students";
 import { ForbiddenError, can } from "@/auth/permissions";
+import { disciplineName } from "@/lib/disciplines";
+import { todayISO } from "@/data/classes";
+import { recordBeltAction } from "../actions";
+import { UpdateBeltForm } from "./UpdateBeltForm";
 import { BeltSwatch, PaymentPill, RankChip, StatusPill } from "@/components/badges";
 
 export const metadata: Metadata = { title: "Student" };
 
 const TABS = [
   { key: "overview", label: "Overview" },
-  { key: "gradings", label: "Gradings" },
+  { key: "gradings", label: "Belt history" },
   { key: "payments", label: "Payments" },
 ] as const;
 
@@ -52,7 +56,7 @@ export default async function StudentProfilePage({
   const showPayments = Boolean(p.billing);
   const tabs = TABS.filter((t) => t.key !== "payments" || showPayments);
   const active = tabs.some((t) => t.key === tab) ? tab : "overview";
-  const currentOrder = p.current?.grade.sortOrder ?? -1;
+  const multiArt = new Set(p.gradeOptions.map((g) => g.discipline)).size > 1 || p.belts.length > 1;
   const years = age(p.dateOfBirth);
 
   return (
@@ -68,9 +72,9 @@ export default async function StudentProfilePage({
         <div style={{ flexGrow: 1, minWidth: 240 }}>
           <h1 className="page-title">{p.name}</h1>
           <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, fontSize: 13 }}>
-            <RankChip grade={p.current?.grade ?? null} />
+            {p.belts.length ? p.belts.map((b) => <RankChip key={b.discipline} grade={b.current.grade} />) : <RankChip grade={null} />}
             <StatusPill status={p.status} />
-            {p.readyToGrade && <span className="pill ready">Ready to grade</span>}
+            {p.belts.some((b) => b.readyToGrade) && <span className="pill ready">Ready to grade</span>}
             {p.paymentNotice && <span className="pill warn">{p.paymentNotice}</span>}
             <span className="muted">
               {years !== null ? `Age ${years} · ` : ""}
@@ -97,34 +101,47 @@ export default async function StudentProfilePage({
       {active === "overview" && (
         <div className="row" style={{ marginTop: 24 }}>
           <section className="card" style={{ flex: "2 1 520px" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-              <h2 className="section-title">Belt journey</h2>
-              {p.next && <span className="muted" style={{ fontSize: 13 }}>Next: {p.next.name}</span>}
-            </div>
-            <div style={{ marginTop: 20, display: "flex", gap: 6 }} aria-label={`Belt path, currently ${p.current?.grade.name ?? "new starter"}`}>
-              {p.ladder.map((g) => (
-                <BeltSwatch key={g.id} colour={g.beltColour} state={g.sortOrder < currentOrder ? "done" : g.sortOrder === currentOrder ? "current" : "todo"} />
-              ))}
-            </div>
-            <div className="muted" style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-              <span>{p.ladder[0]?.name}</span>
-              <span>{p.ladder.at(-1)?.name}</span>
-            </div>
-
-            <div className="row" style={{ marginTop: 24, gap: 16 }}>
-              <div style={{ flex: "1 1 180px", background: "var(--surface-alt)", borderRadius: "var(--radius-md)", padding: 16 }}>
-                <p className="muted" style={{ fontSize: 13 }}>Classes since last grading</p>
-                <p className="num" style={{ marginTop: 4, fontSize: 28, fontWeight: 600 }}>
-                  {p.classesSince}{" "}
-                  {p.current && <span className="muted" style={{ fontSize: 15, fontWeight: 400 }}>of {p.current.grade.classesRequired} needed</span>}
-                </p>
+            <h2 className="section-title">{p.belts.length > 1 ? "Belts" : "Belt journey"}</h2>
+            {p.belts.length === 0 && <p className="muted" style={{ marginTop: 8 }}>No belt yet. Record one below when they grade or if they already hold one.</p>}
+            {p.belts.map((b) => (
+              <div key={b.discipline} style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <h3 style={{ fontSize: 17, fontWeight: 600 }}>{multiArt ? disciplineName(b.discipline) : b.current.grade.name}</h3>
+                  <span className="muted" style={{ fontSize: 13 }}>
+                    {multiArt ? `${b.current.grade.name} · ` : ""}
+                    {b.next ? `Next: ${b.next.name}` : "Top grade"}
+                    {b.readyToGrade ? " · Ready to grade" : ""}
+                  </span>
+                </div>
+                <div style={{ marginTop: 12, display: "flex", gap: 6 }} aria-label={`${disciplineName(b.discipline)} belt path, currently ${b.current.grade.name}`}>
+                  {b.ladder.map((g) => (
+                    <BeltSwatch key={g.id} colour={g.beltColour} state={g.sortOrder < b.current.grade.sortOrder ? "done" : g.sortOrder === b.current.grade.sortOrder ? "current" : "todo"} />
+                  ))}
+                </div>
+                <div className="muted" style={{ marginTop: 8, display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                  <span>{b.ladder[0]?.name}</span>
+                  <span>{b.ladder.at(-1)?.name}</span>
+                </div>
+                <div className="row" style={{ marginTop: 16, gap: 16 }}>
+                  <div style={{ flex: "1 1 180px", background: "var(--surface-alt)", borderRadius: "var(--radius-md)", padding: 16 }}>
+                    <p className="muted" style={{ fontSize: 13 }}>Classes since last grading</p>
+                    <p className="num" style={{ marginTop: 4, fontSize: 28, fontWeight: 600 }}>
+                      {b.classesSince}{" "}
+                      {b.current.grade.classesRequired > 0 && <span className="muted" style={{ fontSize: 15, fontWeight: 400 }}>of {b.current.grade.classesRequired} needed</span>}
+                    </p>
+                  </div>
+                  <div style={{ flex: "1 1 180px", background: "var(--surface-alt)", borderRadius: "var(--radius-md)", padding: 16 }}>
+                    <p className="muted" style={{ fontSize: 13 }}>Last graded</p>
+                    <p style={{ marginTop: 4, fontSize: 28, fontWeight: 600 }}>{fmtDate(b.current.gradedOn)}</p>
+                  </div>
+                </div>
               </div>
-              <div style={{ flex: "1 1 180px", background: "var(--surface-alt)", borderRadius: "var(--radius-md)", padding: 16 }}>
-                <p className="muted" style={{ fontSize: 13 }}>Last graded</p>
-                <p style={{ marginTop: 4, fontSize: 28, fontWeight: 600 }}>{p.current ? fmtDate(p.current.gradedOn) : "Not yet"}</p>
+            ))}
+            {can(actor, "grading.record") && (
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--line-soft)" }}>
+                <UpdateBeltForm action={recordBeltAction.bind(null, p.id)} grades={p.gradeOptions} today={todayISO()} />
               </div>
-            </div>
-            <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>Syllabus tracking is coming soon.</p>
+            )}
           </section>
 
           <div style={{ flex: "1 1 300px", display: "flex", flexDirection: "column", gap: 20 }}>
@@ -200,7 +217,7 @@ export default async function StudentProfilePage({
                   <td>{h.examiner}</td>
                 </tr>
               ))}
-              {p.history.length === 0 && <tr><td colSpan={4} className="muted">No gradings yet.</td></tr>}
+              {p.history.length === 0 && <tr><td colSpan={4} className="muted">No belts recorded yet.</td></tr>}
             </tbody>
           </table>
         </section>

@@ -118,7 +118,7 @@ async function main() {
     "grading_results", "grades", "students", "guardians", "households", "staff_sites", "club_staff", "sites", "clubs", "users"];
   await client.unsafe(`TRUNCATE ${tables.map((t) => `"${t}"`).join(", ")} CASCADE`);
 
-  const [club] = await db.insert(s.clubs).values({ name: "Sample Taekwondo Club", slug: "sample", plan: "pro", onboardedAt: new Date() }).returning();
+  const [club] = await db.insert(s.clubs).values({ name: "Sample Taekwondo Club", slug: "sample", plan: "club", onboardedAt: new Date() }).returning();
   const clubId = club.id;
   await db.insert(s.clubDisciplines).values({ clubId, discipline: "taekwondo", active: true });
   const passwordHash = await hashPassword(LOCAL_PASSWORD);
