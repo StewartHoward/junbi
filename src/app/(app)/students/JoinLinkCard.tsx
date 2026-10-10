@@ -32,6 +32,18 @@ export function JoinLinkCard({ url, emailOn }: { url: string; emailOn: boolean }
         <button type="button" className="btn primary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
         <button type="button" className="btn secondary" onClick={share}>Share</button>
       </div>
+      <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/api/join-qr?format=svg" alt="QR code for your sign-up link" width={132} height={132} style={{ borderRadius: 12, border: "1px solid var(--line)", background: "#fff" }} />
+        <div style={{ flex: "1 1 240px" }}>
+          <p style={{ fontWeight: 600 }}>QR code</p>
+          <p className="muted" style={{ fontSize: 14, marginTop: 2 }}>Parents scan it with their phone camera. Put it on the wall, on a flyer or on screen at the front desk.</p>
+          <div className="actions" style={{ marginTop: 10, flexWrap: "wrap" }}>
+            <a className="btn secondary" href="/api/join-qr?format=png&download=1" download>Download QR</a>
+            <a className="btn secondary" href="/print/signup-poster" target="_blank" rel="noopener">Print a poster</a>
+          </div>
+        </div>
+      </div>
       <form action={action} className="actions form" style={{ marginTop: 12, flexWrap: "wrap", alignItems: "flex-start", flexDirection: "row", maxWidth: "none", gap: 10 }} noValidate key={state.sent ?? "form"}>
         <div style={{ flex: "1 1 280px" }}>
           <label htmlFor="join-email">Or email it to a parent</label>
