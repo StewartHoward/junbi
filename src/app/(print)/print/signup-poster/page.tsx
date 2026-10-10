@@ -4,6 +4,7 @@ import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { joinLink } from "@/data/join";
 import { qrSvg } from "@/lib/qr";
+import { takesPaymentsAtSignup } from "@/data/payments";
 import { PrintButton } from "./PrintButton";
 
 export const metadata: Metadata = { title: "Sign-up poster" };
@@ -13,6 +14,7 @@ export default async function SignupPoster() {
   if (!can(actor, "students.edit")) redirect("/students");
   const url = await joinLink(actor);
   const svg = await qrSvg(url);
+  const payments = await takesPaymentsAtSignup(actor);
   return (
     <>
       <style>{`
@@ -37,7 +39,7 @@ export default async function SignupPoster() {
       <main className="poster">
         <p className="club">{actor.clubName}</p>
         <h1>Scan to sign up.</h1>
-        <p className="sub">Register your child, or yourself, in about two minutes.</p>
+        <p className="sub">{payments ? "Register your child, or yourself, and set up your membership in a few minutes." : "Register your child, or yourself, in about two minutes."}</p>
         <div className="qr" role="img" aria-label="QR code for the sign-up form" dangerouslySetInnerHTML={{ __html: svg }} />
         <p className="steps">Open your phone camera and point it at the code.</p>
         <p className="foot">Club sign-up by junbi</p>

@@ -25,6 +25,7 @@ const flows = await import("@/data/email-flows");
 const importer = await import("@/data/student-import");
 const join = await import("@/data/join");
 const msgs = await import("@/data/messages");
+const pay = await import("@/data/payments");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -490,7 +491,7 @@ describe("family sign-up link", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
     const r = await join.submitJoin(await tokenOf(a), base());
     spy.mockRestore();
-    expect(r.ok && r.value).toEqual({ clubName: "Club A Taekwondo", names: ["Ruby", "Theo"] });
+    expect(r.ok && r.value).toMatchObject({ clubName: "Club A Taekwondo", names: ["Ruby", "Theo"], paymentUrl: null });
     const kids = await adminSql`select s.club_id, s.first_name, s.last_name, s.status, s.source, s.medical_notes, s.first_aid_consent, g.email from students s join guardians g on g.household_id = s.household_id where g.email = 'pat.jones@example.test' order by s.first_name`;
     expect(kids.map((k) => [k.first_name, k.last_name, k.status, k.source, k.club_id === a.clubId])).toEqual([
       ["Ruby", "Jones", "trial", "join_link", true],
@@ -629,5 +630,102 @@ describe("messages to parents", () => {
     expect(await msgs.getMessage(b, id)).toBeNull();
     expect(await msgs.listMessages(b)).toEqual([]);
     await expect(msgs.previewAudience(b, { kind: "class", classId })).rejects.toThrow(/Not allowed/);
+  });
+});
+
+describe("club payments and paying at sign-up", () => {
+  let p: Actor;
+  let site = "";
+  const quiet = () => vi.spyOn(console, "log").mockImplementation(() => {});
+
+  beforeAll(async () => {
+    process.env.PAYMENTS_FAKE = "1";
+    const r0 = await accounts.createClubAccount({ clubName: "Pay Club", name: "Pat Owner", email: "pay-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    p = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(p, { disciplines: ["judo"], siteName: "Dojo", siteAddress: "", syllabus: {} });
+    site = (await club.getClubOverview(p)).sites[0].id;
+  });
+
+  it("connects the club's own account, but only for the club that started it", async () => {
+    const url = new URL(pay.connectUrl(p, "gocardless", "http://localhost/cb"));
+    const state = url.searchParams.get("state");
+    expect((await pay.finishConnect(a, "gocardless", "fake-code", state, "http://localhost/cb")).ok).toBe(false);
+    expect((await pay.finishConnect(p, "stripe", "fake-code", state, "http://localhost/cb")).ok).toBe(false);
+    const r = await pay.finishConnect(p, "gocardless", "fake-code", state, "http://localhost/cb");
+    expect(r.ok).toBe(true);
+    const st = await pay.paymentSettings(p);
+    expect(st.account?.provider).toBe("gocardless");
+    const [row] = await adminSql`select account_id, access_token_enc from club_payment_accounts where club_id = ${p.clubId}`;
+    expect(row.access_token_enc).not.toContain("fake-token");
+    expect(await pay.clubForAccount("gocardless", row.account_id)).toBe(p.clubId);
+    expect(await pay.clubForAccount("stripe", row.account_id)).toBeNull();
+    expect(() => pay.connectUrl({ ...p, role: "admin" }, "stripe", "x")).toThrow(/Not allowed/);
+    await expect(appSql`select * from club_payment_accounts`).resolves.toEqual([]); // no club context, nothing visible
+  });
+
+  it("sets prices, with sensible checks", async () => {
+    expect((await pay.addPlan(p, { name: "K", amount: "abc", interval: "monthly" })).ok).toBe(false);
+    expect((await pay.addPlan(p, { name: "Kids monthly", amount: "£35", interval: "monthly" })).ok).toBe(true);
+    expect((await pay.addPlan(p, { name: "Adults yearly", amount: "300.50", interval: "annual" })).ok).toBe(true);
+    const plans = (await pay.paymentSettings(p)).plans;
+    expect(plans.map((x) => [x.name, x.amountPence, x.interval])).toEqual([["Kids monthly", 3500, "monthly"], ["Adults yearly", 30050, "annual"]]);
+    await expect(pay.addPlan({ ...p, role: "instructor" }, { name: "X", amount: "1", interval: "monthly" })).rejects.toThrow(/Not allowed/);
+    await expect(pay.paymentSettings({ ...p, role: "instructor" })).rejects.toThrow(/Not allowed/);
+  });
+
+  it("asks for a membership on the sign-up form, then hands over to Direct Debit", async () => {
+    const token = (await join.joinLink(p)).split("/join/")[1];
+    const form = await join.joinForm(token);
+    expect(form?.payment?.provider).toBe("gocardless");
+    const kids = form!.payment!.plans.find((x) => x.name === "Kids monthly")!.id;
+    const input = {
+      who: "children" as const, parentFirstName: "Gwen", parentLastName: "Hall", email: "gwen@example.test", phone: "07700 900333",
+      children: [{ firstName: "Ivy", dateOfBirth: "2016-01-01", siteId: site }, { firstName: "Jay", dateOfBirth: "2018-02-02", siteId: site, planId: kids }],
+      firstAidConsent: true, photoConsent: false, terms: true,
+    };
+    const missing = await join.submitJoin(token, input, { success: (id) => `http://x/done?setup=${id}`, cancel: "http://x/cancel" });
+    expect(!missing.ok && missing.errors["children.0.planId"]).toMatch(/membership/);
+    const spy = quiet();
+    const r = await join.submitJoin(token, { ...input, children: input.children.map((c) => ({ ...c, planId: kids })) }, { success: (id) => `http://x/done?setup=${id}`, cancel: "http://x/cancel" });
+    spy.mockRestore();
+    expect(r.ok && r.value.paymentUrl).toMatch(/^http:\/\/x\/done\?setup=[0-9a-f-]{36}&fake=1$/);
+    const setupId = r.ok ? new URL(r.value.paymentUrl!).searchParams.get("setup")! : "";
+    const setup = await pay.loadSetup(p.clubId, setupId);
+    expect(setup?.status).toBe("pending");
+    expect(setup?.items.map((i) => [i.firstName, i.plan?.amountPence])).toEqual([["Ivy", 3500], ["Jay", 3500]]);
+    expect((await join.joinSetupStatus(token, setupId))?.status).toBe("pending");
+
+    // The provider says it's done: memberships start, students become Active, mandate saved. Twice is harmless.
+    const subs = setup!.items.map((i) => ({ studentId: i.studentId, planId: i.planId, subscriptionId: `SB_${i.firstName}` }));
+    await pay.completeSetup(p.clubId, setupId, { customerId: "CU1", mandateId: "MD1", subscriptions: subs });
+    await pay.completeSetup(p.clubId, setupId, { customerId: "CU1", mandateId: "MD1", subscriptions: subs });
+    const ms = await adminSql`select m.status, m.provider_subscription_id, s.status as student from memberships m join students s on s.id = m.student_id where m.club_id = ${p.clubId} order by m.provider_subscription_id`;
+    expect(ms.map((x) => [x.status, x.provider_subscription_id, x.student])).toEqual([["active", "SB_Ivy", "active"], ["active", "SB_Jay", "active"]]);
+    const [md] = await adminSql`select status, provider, provider_mandate_id from mandates where club_id = ${p.clubId}`;
+    expect(md).toMatchObject({ status: "pending_submission", provider: "gocardless", provider_mandate_id: "MD1" });
+    expect((await join.joinSetupStatus(token, setupId))?.status).toBe("completed");
+  });
+
+  it("tracks the mandate, payments and cancellations from the provider", async () => {
+    await pay.updateMandate(p.clubId, { mandateId: "MD1" }, "active");
+    await pay.recordPayment(p.clubId, { providerPaymentId: "PM1", mandateId: "MD1", amountPence: 7000, chargeDate: "2026-11-01", status: "pending", description: "Membership" });
+    await pay.recordPayment(p.clubId, { providerPaymentId: "PM1", mandateId: "MD1", amountPence: 7000, chargeDate: "2026-11-01", status: "paid_out", description: "Membership" });
+    await pay.recordPayment(p.clubId, { providerPaymentId: "PM2", mandateId: "NOPE", amountPence: 1, chargeDate: "2026-11-01", status: "failed", description: "x" });
+    const st = await pay.paymentSettings(p);
+    expect(st.mandates).toEqual({ active: 1 });
+    expect(st.recent.map((x) => [x.amountPence, x.status, x.family])).toEqual([[7000, "paid_out", "Hall family"]]);
+    await pay.cancelMembership(p.clubId, "SB_Ivy");
+    const [c] = await adminSql`select status, ends_on from memberships where provider_subscription_id = 'SB_Ivy'`;
+    expect(c.status).toBe("cancelled");
+    expect(c.ends_on).not.toBeNull();
+  });
+
+  it("without a connected account or prices, the sign-up link works as before", async () => {
+    const token = (await join.joinLink(a)).split("/join/")[1];
+    expect((await join.joinForm(token))?.payment).toBeNull();
+    await pay.disconnectPayments(p);
+    const t2 = (await join.joinLink(p)).split("/join/")[1];
+    expect((await join.joinForm(t2))?.payment).toBeNull();
   });
 });

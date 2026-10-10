@@ -20,7 +20,7 @@ const FEATURES = [
   { title: "Students and families", text: "Belts, attendance, medical notes and contacts in one place. Brothers and sisters grouped into one family.", icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
   { title: "Classes and timetable", text: "Set up each weekly class once. Junbi gives you a register for it every week, at every site.", icon: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
   { title: "Registers in seconds", text: "Tap through the class on your phone. Done before the bow.", icon: <><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M10 12l2 2 3-4" /></> },
-  { title: "Direct Debit", text: "Collected through your own Stripe account, straight to your bank. Cards and Apple Pay too.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></> },
+  { title: "Direct Debit", text: "Collected through your own Stripe or GoCardless account, straight to your bank. Parents set it up when they sign up.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></> },
   { title: "Messages to parents", text: "Email a class, a site or everyone, with your club's name on it.", icon: <path d="M4 5h16v11H8l-4 4z" /> },
   { title: "Every art, every belt", text: "Kup, kyu, dan, stripes or levels. Teach more than one art? Run them all from one login.", icon: <><path d="M3 12h18" /><path d="M10 12l-3 7M14 12l3 7" /><rect x="9" y="9" width="6" height="6" rx="1" /></> },
 ];
@@ -143,7 +143,7 @@ export default function Home() {
           <div className="copy">
             <p className="m-eyebrow">Direct Debit</p>
             <h2 className="m-h2">Paid on time. Every time.</h2>
-            <p className="m-sub" style={{ margin: "20px 0 0" }}>Parents set up Direct Debit on their phone in a minute. Family discounts on the same mandate. Money goes straight to your bank, never through us.</p>
+            <p className="m-sub" style={{ margin: "20px 0 0" }}>Parents set up Direct Debit on their phone as they sign up, with one Direct Debit for the whole family. Use Stripe or GoCardless. Money goes straight to your bank, never through us.</p>
           </div>
         </div>
       </section>

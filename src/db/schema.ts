@@ -274,6 +274,41 @@ export const plans = pgTable("plans", {
   active: boolean("active").notNull().default(true),
 });
 
+/** The club's own Stripe or GoCardless account, connected to Junbi. One per club. */
+export const clubPaymentAccounts = pgTable("club_payment_accounts", {
+  clubId: uuid("club_id")
+    .primaryKey()
+    .references(() => clubs.id, { onDelete: "cascade" }),
+  /** "stripe" or "gocardless" */
+  provider: text("provider").notNull(),
+  /** Stripe account id (acct_…) or GoCardless organisation id (OR…). */
+  accountId: text("account_id").notNull(),
+  /** GoCardless only: the club's access token, encrypted (see src/lib/payments/crypto.ts). */
+  accessTokenEnc: text("access_token_enc"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A parent part-way through setting up Direct Debit from the sign-up link.
+ * Finished by the provider's webhook, which starts the memberships.
+ */
+export const paymentSetups = pgTable("payment_setups", {
+  id: id(),
+  clubId: clubId(),
+  householdId: uuid("household_id")
+    .notNull()
+    .references(() => households.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  /** Stripe Checkout Session id or GoCardless Billing Request id. */
+  providerRef: text("provider_ref"),
+  /** [{ studentId, planId }] */
+  items: jsonb("items").notNull(),
+  /** pending, completed, abandoned */
+  status: text("status").notNull().default("pending"),
+  createdAt: createdAt(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
 export const memberships = pgTable("memberships", {
   id: id(),
   clubId: clubId(),
@@ -285,6 +320,10 @@ export const memberships = pgTable("memberships", {
     .references(() => plans.id, { onDelete: "restrict" }),
   startsOn: date("starts_on").notNull(),
   endsOn: date("ends_on"),
+  /** Stripe subscription or GoCardless subscription paying for this membership. */
+  providerSubscriptionId: text("provider_subscription_id"),
+  /** pending (waiting for Direct Debit), active, cancelled */
+  status: text("status").notNull().default("active"),
   createdAt: createdAt(),
 });
 
@@ -296,6 +335,8 @@ export const mandates = pgTable("mandates", {
     .references(() => households.id, { onDelete: "cascade" }),
   provider: text("provider").notNull().default("stripe"),
   providerMandateId: text("provider_mandate_id"),
+  /** Stripe customer or GoCardless customer the mandate belongs to. */
+  providerCustomerId: text("provider_customer_id"),
   status: mandateStatus("status").notNull().default("pending_customer_approval"),
   createdAt: createdAt(),
 });
@@ -507,4 +548,6 @@ export const TENANT_TABLES = [
   "audit_log",
   "messages",
   "message_recipients",
+  "club_payment_accounts",
+  "payment_setups",
 ] as const;

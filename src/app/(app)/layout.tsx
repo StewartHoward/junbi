@@ -11,6 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(can(actor, "students.view") ? [{ href: "/students", label: "Students" }] : []),
     { href: "/classes", label: "Classes" },
     ...(can(actor, "messages.send") ? [{ href: "/messages", label: "Messages" }] : []),
+    ...(can(actor, "payments.view") ? [{ href: "/payments", label: "Payments" }] : []),
     ...(can(actor, "club.manage") || can(actor, "classes.manage") ? [{ href: "/settings", label: "Settings" }] : []),
   ];
   return (

@@ -7,6 +7,7 @@ import { RankChip, StatusPill } from "@/components/badges";
 import { joinLink } from "@/data/join";
 import { emailConfigured } from "@/lib/email";
 import { JoinLinkCard } from "./JoinLinkCard";
+import { takesPaymentsAtSignup } from "@/data/payments";
 
 export const metadata: Metadata = { title: "Students" };
 
@@ -26,7 +27,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const students = await listStudents(actor, { q });
 
   const canAdd = can(actor, "students.edit");
-  const link = canAdd ? <div id="join"><JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} /></div> : null;
+  const link = canAdd ? <div id="join"><JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} payments={await takesPaymentsAtSignup(actor)} /></div> : null;
 
   if (students.length === 0 && !q) {
     return (

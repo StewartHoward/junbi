@@ -5,7 +5,7 @@ import { sendJoinLinkAction } from "./actions";
 import { FieldError, errProps } from "@/components/FormBits";
 
 /** The club's family sign-up link: copy it to share anywhere, or email it to a parent. */
-export function JoinLinkCard({ url, emailOn }: { url: string; emailOn: boolean }) {
+export function JoinLinkCard({ url, emailOn, payments }: { url: string; emailOn: boolean; payments: boolean }) {
   const [copied, setCopied] = useState(false);
   const [state, action, pending] = useActionState(sendJoinLinkAction, {});
   const copy = async () => {
@@ -25,7 +25,7 @@ export function JoinLinkCard({ url, emailOn }: { url: string; emailOn: boolean }
     <section className="card" style={{ marginTop: 20 }}>
       <h2 className="section-title">Family sign-up link</h2>
       <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-        Send this to new families. They fill in their own details and their children&apos;s, and they appear here as Trial.
+        Send this to new families. They fill in their own details and their children&apos;s{payments ? ", choose a membership and set up their Direct Debit" : ""}, and they appear here straight away.{payments ? "" : " Add prices in Payments to take Direct Debit at the same time."}
       </p>
       <div className="actions form" style={{ marginTop: 12, flexWrap: "wrap", flexDirection: "row", maxWidth: "none", gap: 10 }}>
         <input readOnly value={url} aria-label="Sign-up link" onFocus={(e) => e.currentTarget.select()} style={{ flex: "1 1 280px", minWidth: 0 }} />

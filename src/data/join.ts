@@ -7,6 +7,7 @@ import { assertCan, can, type Actor } from "@/auth/permissions";
 import { disciplineName } from "@/lib/disciplines";
 import { appUrl, sendEmail, templates } from "@/lib/email";
 import type { FieldErrors, Result } from "./accounts";
+import { joinPaymentOptions, startJoinPayment } from "./payments";
 
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
@@ -53,7 +54,13 @@ async function lookup(token: unknown): Promise<{ clubId: string; clubName: strin
   return r ? { clubId: r.club_id, clubName: r.club_name } : null;
 }
 
-export type JoinForm = { clubName: string; sites: Array<{ id: string; name: string }>; arts: Array<{ id: string; name: string }> };
+export type JoinForm = {
+  clubName: string;
+  sites: Array<{ id: string; name: string }>;
+  arts: Array<{ id: string; name: string }>;
+  /** Set when the club takes Direct Debit at sign-up: the memberships to choose from. */
+  payment: { provider: "stripe" | "gocardless"; plans: Array<{ id: string; name: string; amountPence: number; interval: string }> } | null;
+};
 
 /** What the public sign-up page needs. Null when the link is wrong or has been reset. */
 export async function joinForm(token: unknown): Promise<JoinForm | null> {
@@ -64,7 +71,7 @@ export async function joinForm(token: unknown): Promise<JoinForm | null> {
     const arts = (
       await tx.select({ d: s.clubDisciplines.discipline }).from(s.clubDisciplines).where(eq(s.clubDisciplines.active, true)).orderBy(asc(s.clubDisciplines.createdAt))
     ).map((r) => ({ id: r.d, name: disciplineName(r.d) }));
-    return { clubName: club.clubName, sites, arts };
+    return { clubName: club.clubName, sites, arts, payment: await joinPaymentOptions(tx) };
   });
 }
 
@@ -90,6 +97,7 @@ export const joinSchema = z
     myDateOfBirth: z.string().optional(),
     mySiteId: z.string().optional(),
     myMedical: z.string().trim().max(2000).optional(),
+    myPlanId: z.string().optional(),
     children: z
       .array(
         z.object({
@@ -98,6 +106,7 @@ export const joinSchema = z
           dateOfBirth: dob,
           siteId: z.string(),
           medical: z.string().trim().max(2000).optional(),
+          planId: z.string().optional(),
         }),
       )
       .max(MAX_CHILDREN),
@@ -122,7 +131,11 @@ function joinErrors(e: z.ZodError): FieldErrors {
 }
 
 /** Saves a family sign-up. Students start as Trial so the club can see who's new. */
-export async function submitJoin(token: unknown, input: JoinInput): Promise<Result<{ clubName: string; names: string[] }>> {
+export async function submitJoin(
+  token: unknown,
+  input: JoinInput,
+  urls?: { success: (setupId: string) => string; cancel: string },
+): Promise<Result<{ clubName: string; names: string[]; paymentUrl: string | null; paymentError?: string }>> {
   const club = await lookup(token);
   if (!club) return { ok: false, errors: { form: "This sign-up link has changed. Ask the club for the new one." } };
   const parsed = joinSchema.safeParse(input);
@@ -134,9 +147,19 @@ export async function submitJoin(token: unknown, input: JoinInput): Promise<Resu
     const firstSite = [...sites][0];
     if (!firstSite) return { error: { form: "This club isn't taking sign-ups yet." } as FieldErrors };
 
+    // When the club takes Direct Debit at sign-up, everyone needs a membership.
+    const payment = await joinPaymentOptions(tx);
+    const planOk = (id?: string) => !!id && !!payment?.plans.some((p) => p.id === id);
+    if (payment) {
+      const errs: FieldErrors = {};
+      if (d.who === "me" && !planOk(d.myPlanId)) errs.myPlanId = "Choose a membership.";
+      if (d.who === "children") d.children.forEach((c, i) => { if (!planOk(c.planId)) errs[`children.${i}.planId`] = "Choose a membership."; });
+      if (Object.keys(errs).length) return { error: errs };
+    }
+
     const people =
       d.who === "me"
-        ? [{ firstName: d.parentFirstName, lastName: d.parentLastName, dateOfBirth: d.myDateOfBirth!, siteId: d.mySiteId ?? "", medical: d.myMedical }]
+        ? [{ firstName: d.parentFirstName, lastName: d.parentLastName, dateOfBirth: d.myDateOfBirth!, siteId: d.mySiteId ?? "", medical: d.myMedical, planId: d.myPlanId }]
         : d.children.map((c) => ({ ...c, lastName: c.lastName || d.parentLastName }));
 
     // Join an existing family when the club already has this parent's email.
@@ -160,19 +183,21 @@ export async function submitJoin(token: unknown, input: JoinInput): Promise<Resu
     }
 
     const already = await tx
-      .select({ firstName: s.students.firstName, lastName: s.students.lastName, dateOfBirth: s.students.dateOfBirth })
+      .select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName, dateOfBirth: s.students.dateOfBirth })
       .from(s.students)
       .where(eq(s.students.householdId, householdId));
     const key = (p: { firstName: string; lastName: string; dateOfBirth: string | null }) => `${p.firstName.toLowerCase()}|${p.lastName.toLowerCase()}|${p.dateOfBirth ?? ""}`;
-    const have = new Set(already.map(key));
+    const have = new Map(already.map((x) => [key(x), x.id]));
 
     const names: string[] = [];
+    const items: Array<{ studentId: string; planId: string }> = [];
     for (const p of people) {
-      if (have.has(key(p))) {
+      const known = have.get(key(p));
+      if (known) {
         names.push(p.firstName);
+        if (payment && p.planId) items.push({ studentId: known, planId: p.planId });
         continue;
       }
-      have.add(key(p));
       const [st] = await tx
         .insert(s.students)
         .values({
@@ -189,14 +214,16 @@ export async function submitJoin(token: unknown, input: JoinInput): Promise<Resu
           source: "join_link",
         })
         .returning({ id: s.students.id });
+      have.set(key(p), st.id);
       await tx.insert(s.auditLog).values({ clubId: club.clubId, action: "create", entity: "student", entityId: st.id, after: { via: "join_link" } });
       names.push(p.firstName);
+      if (payment && p.planId) items.push({ studentId: st.id, planId: p.planId });
     }
 
     const notify = (await tx.execute(
       sql`select u.email from club_staff cs join users u on u.id = cs.user_id where cs.role in ('owner', 'admin')`,
     )) as unknown as Array<{ email: string }>;
-    return { names, notify: notify.map((n) => n.email) };
+    return { names, items, householdId, notify: notify.map((n) => n.email) };
   });
   if ("error" in out) return { ok: false, errors: out.error! };
 
@@ -209,7 +236,24 @@ export async function submitJoin(token: unknown, input: JoinInput): Promise<Resu
     sendEmail({ to: d.email, ...confirm, template: "join-confirm", clubId: club.clubId }),
     ...out.notify.map((to) => sendEmail({ to, ...alert, template: "new-signup", clubId: club.clubId })),
   ]);
-  return { ok: true, value: { clubName: club.clubName, names: out.names } };
+
+  // Hand over to Stripe or GoCardless to set up the Direct Debit.
+  let paymentUrl: string | null = null;
+  let paymentError: string | undefined;
+  if (out.items.length && urls) {
+    const r = await startJoinPayment(club.clubId, {
+      householdId: out.householdId,
+      email: d.email,
+      firstName: d.parentFirstName,
+      lastName: d.parentLastName,
+      items: out.items,
+      successUrl: urls.success,
+      cancelUrl: urls.cancel,
+    });
+    if (r.ok) paymentUrl = r.value.url;
+    else paymentError = r.errors.form;
+  }
+  return { ok: true, value: { clubName: club.clubName, names: out.names, paymentUrl, paymentError } };
 }
 
 /** Students who signed up through the link in the last 14 days, newest first, for the Today page. */
@@ -225,4 +269,13 @@ export async function recentSignups(actor: Actor) {
       .limit(20);
     return rows.filter((r) => actor.sites === "all" || actor.sites.includes(r.siteId)).slice(0, 8);
   });
+}
+
+/** For the page parents land on after Stripe or GoCardless. */
+export async function joinSetupStatus(token: unknown, setupId: string) {
+  const club = await lookup(token);
+  if (!club) return null;
+  const { setupStatus } = await import("./payments");
+  const st = await setupStatus(club.clubId, setupId);
+  return st ? { clubName: club.clubName, ...st } : null;
 }

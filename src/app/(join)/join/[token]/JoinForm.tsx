@@ -5,6 +5,23 @@ import { joinAction, type JoinState } from "./actions";
 import { FieldError, errProps } from "@/components/FormBits";
 
 type Site = { id: string; name: string };
+type Plan = { id: string; name: string; amountPence: number; interval: string };
+type Payment = { provider: "stripe" | "gocardless"; plans: Plan[] } | null;
+
+const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : "a month"}`;
+
+function PlanPicker({ name, plans, value, error, onChange }: { name: string; plans: Plan[]; value?: string; error?: string; onChange: (id: string) => void }) {
+  return (
+    <div>
+      <label htmlFor={name}>Membership</label>
+      <select id={name} name={name} defaultValue={value ?? ""} aria-invalid={error ? true : undefined} onChange={(e) => onChange(e.target.value)}>
+        <option value="" disabled>Choose one</option>
+        {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · {price(p)}</option>)}
+      </select>
+      <FieldError id={`${name}-err`} msg={error} />
+    </div>
+  );
+}
 const MAX = 6;
 
 function SitePicker({ name, sites, value }: { name: string; sites: Site[]; value?: string }) {
@@ -19,12 +36,18 @@ function SitePicker({ name, sites, value }: { name: string; sites: Site[]; value
   );
 }
 
-export function JoinFormView({ token, sites }: { token: string; sites: Site[] }) {
+export function JoinFormView({ token, sites, payment }: { token: string; sites: Site[]; payment: Payment }) {
   const [state, action, pending] = useActionState<JoinState, FormData>(joinAction.bind(null, token), {});
   const v = state.values ?? {};
   const e = state.errors;
   const [who, setWho] = useState<"children" | "me">(v.who === "me" ? "me" : "children");
   const [count, setCount] = useState(Math.max(1, Number(v.childCount) || 1));
+  const [chosen, setChosen] = useState<Record<string, string>>({});
+  const pick = (key: string) => (id: string) => setChosen((c) => ({ ...c, [key]: id }));
+  const keys = who === "me" ? ["myPlanId"] : Array.from({ length: count }, (_, i) => `c${i}_planId`);
+  const picked = payment ? keys.map((k) => payment.plans.find((p) => p.id === (chosen[k] ?? v[k]))).filter(Boolean) as Plan[] : [];
+  const monthly = picked.filter((p) => p.interval !== "annual").reduce((n, p) => n + p.amountPence, 0);
+  const yearly = picked.filter((p) => p.interval === "annual").reduce((n, p) => n + p.amountPence, 0);
 
   if (state.done) {
     const n = state.done.names;
@@ -35,6 +58,7 @@ export function JoinFormView({ token, sites }: { token: string; sites: Site[] })
           {n.length ? `${n.join(" and ")} ${n.length === 1 ? "is" : "are"} registered with ${state.done.clubName}. ` : ""}
           The club will be in touch about classes. We&apos;ve emailed you a copy.
         </p>
+        {state.done.paymentError && <p className="m-sub" style={{ fontSize: 17, marginTop: 12 }}>{state.done.paymentError}</p>}
       </div>
     );
   }
@@ -83,6 +107,7 @@ export function JoinFormView({ token, sites }: { token: string; sites: Site[] })
               <FieldError id="myDateOfBirth-err" msg={e?.myDateOfBirth} />
             </div>
             <SitePicker name="mySiteId" sites={sites} value={v.mySiteId} />
+            {payment && <PlanPicker name="myPlanId" plans={payment.plans} value={v.myPlanId} error={e?.myPlanId} onChange={pick("myPlanId")} />}
             <div>
               <label htmlFor="myMedical">Anything the instructors should know? (optional)</label>
               <textarea id="myMedical" name="myMedical" defaultValue={v.myMedical} placeholder="Medical conditions, allergies, injuries" />
@@ -116,6 +141,7 @@ export function JoinFormView({ token, sites }: { token: string; sites: Site[] })
                   <FieldError id={`c${i}_dateOfBirth-err`} msg={e?.[k("dateOfBirth")]} />
                 </div>
                 <SitePicker name={`c${i}_siteId`} sites={sites} value={v[`c${i}_siteId`]} />
+                {payment && <PlanPicker name={`c${i}_planId`} plans={payment.plans} value={v[`c${i}_planId`]} error={e?.[k("planId")]} onChange={pick(`c${i}_planId`)} />}
                 <div>
                   <label htmlFor={`c${i}_medical`}>Anything the instructors should know? (optional)</label>
                   <textarea id={`c${i}_medical`} name={`c${i}_medical`} defaultValue={v[`c${i}_medical`]} placeholder="Medical conditions, allergies, additional needs" />
@@ -160,8 +186,16 @@ export function JoinFormView({ token, sites }: { token: string; sites: Site[] })
         <label htmlFor="website">Leave this empty</label>
         <input id="website" name="website" tabIndex={-1} autoComplete="off" />
       </div>
+      {payment && (
+        <p className="m-fine" style={{ margin: 0 }}>
+          {picked.length
+            ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}. `
+            : ""}
+          Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.
+        </p>
+      )}
       <button type="submit" className="m-btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? "Signing up…" : "Sign up"}
+        {pending ? "Signing up…" : payment ? "Continue to Direct Debit" : "Sign up"}
       </button>
     </form>
   );

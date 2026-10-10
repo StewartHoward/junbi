@@ -23,7 +23,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
       <p className="m-eyebrow">{f.clubName}</p>
       <h1>Sign up.</h1>
       <p className="m-sub" style={{ fontSize: 19 }}>Takes about two minutes. Everything you tell us goes straight to the club.</p>
-      <JoinFormView token={token} sites={f.sites} />
+      <JoinFormView token={token} sites={f.sites} payment={f.payment} />
     </div>
   );
 }

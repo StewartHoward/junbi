@@ -9,7 +9,7 @@ Most club systems are over-complicated and too expensive. Junbi wins by being th
 Back to basics. Junbi does four jobs:
 1. **Class management:** students and families, sites, a weekly timetable.
 2. **Attendance:** tap-to-mark registers on a phone.
-3. **Direct Debit collection:** through each club's own Stripe account (Bacs Direct Debit, plus cards and Apple Pay). Stripe is the only payment provider: Stripe Connect for clubs collecting from parents, Stripe Billing for clubs paying Junbi.
+3. **Direct Debit collection:** each club chooses **Stripe or GoCardless** and connects its own account (Stripe Connect with Standard accounts, or GoCardless partner OAuth). Parents choose a membership and set up Bacs Direct Debit as part of the sign-up link or QR code. Money goes straight to the club; Junbi takes 0%. Clubs paying Junbi itself goes through Stripe Billing.
 4. **Communication:** email to a class, a site or everyone. (Text messages are held back for the future.)
 
 Plus **belts for every art**: each student's current belt in each art they train, recorded by staff. No gradings module, scoring or certificates yet.
@@ -37,7 +37,7 @@ Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai a
 ## Build order
 1. Email (password reset, staff invites, trial reminders)
 2. Student import, with families and belts matched (done: CSV import at /students/import)
-3. Stripe Direct Debit (Stripe Connect, Bacs Direct Debit)
+3. Direct Debit through each club's own Stripe or GoCardless, taken at sign-up (built; needs Junbi's platform accounts to switch on)
 4. Messages to parents by email (done: /messages)
 5. Paying for Junbi at the end of the trial
 

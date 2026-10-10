@@ -17,6 +17,7 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 - **Student import:** upload a CSV from a spreadsheet or another system. Columns are matched automatically (and can be changed), families are grouped by email or phone and joined to existing families, belts are matched to the club's belt systems, and duplicates are skipped. Nothing saves until the owner checks the preview.
 - **Family sign-up link:** each club has a secret link (Students page) to copy, share or email to parents. Parents add their own details and one or more children (or themselves), medical notes and permissions; students land as Trial, flagged as new on Today and Students, and the owner and admins get an email. Owners can make a new link in Settings.
 - **Messages to parents:** email everyone, one site, or the families of a class (students who attended in the last 8 weeks). One email per address, sent through Resend's batch API from "Club name" with the staff member as reply-to. Each message keeps a list of who it went to and whether it sent. Instructors can only message their own sites.
+- **Payments:** each club connects its own Stripe or GoCardless account (Payments page) and sets membership prices. The sign-up link and QR code then ask parents to pick a membership per child and hand them to the provider to set up Bacs Direct Debit. Webhooks save the mandate, start memberships, make students Active and track payments.
 - **Marketing site:** homepage, pricing and Founding Clubs, all leading to sign-up.
 
 ## Email
@@ -79,3 +80,19 @@ insert into promo_codes (code, percent_off, months, expires_at) values ('HALF3',
 ```
 
 Codes are case-insensitive. A club enters one at sign-up (`/signup?code=YOURCODE` fills it in) or in Settings.
+
+## Payments setup (Junbi's platform accounts)
+
+Nothing here is needed until you switch payments on. Add these in Netlify, then redeploy.
+
+**Stripe** (Connect, Standard accounts)
+- `STRIPE_SECRET_KEY`: the platform's secret key (sk_test_… while testing)
+- `STRIPE_CONNECT_CLIENT_ID`: Connect settings, OAuth client id (ca_…). Redirect URI: `https://<site>/api/payments/callback/stripe`
+- `STRIPE_WEBHOOK_SECRET`: a **Connect** webhook endpoint at `https://<site>/api/payments/webhook/stripe` with events `checkout.session.completed`, `mandate.updated`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`
+
+**GoCardless** (partner app)
+- `GOCARDLESS_CLIENT_ID`, `GOCARDLESS_CLIENT_SECRET`: from the partner app. Redirect URI: `https://<site>/api/payments/callback/gocardless`
+- `GOCARDLESS_WEBHOOK_SECRET`: webhook endpoint at `https://<site>/api/payments/webhook/gocardless`
+- `GOCARDLESS_ENV`: `sandbox` while testing, `live` after approval
+
+Optional: `PAYMENTS_SECRET` to encrypt GoCardless tokens with your own key (otherwise one is derived from `DATABASE_URL`).

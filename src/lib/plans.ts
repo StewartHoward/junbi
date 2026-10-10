@@ -8,7 +8,7 @@ export const CORE_FEATURES = [
   "Student profiles and families",
   "Belts for every art you teach",
   "Timetable and tap-to-mark registers",
-  "Direct Debit and cards through your own Stripe",
+  "Direct Debit through your own Stripe or GoCardless",
   "Email messages to parents",
   "Unlimited staff logins",
 ] as const;

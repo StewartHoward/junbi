@@ -1,9 +1,11 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { MAX_CHILDREN, submitJoin } from "@/data/join";
+import { appUrl } from "@/lib/email";
 import type { FieldErrors } from "@/data/accounts";
 
-export type JoinState = { errors?: FieldErrors; values?: Record<string, string>; done?: { clubName: string; names: string[] } };
+export type JoinState = { errors?: FieldErrors; values?: Record<string, string>; done?: { clubName: string; names: string[]; paymentError?: string } };
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "");
 
@@ -18,7 +20,9 @@ export async function joinAction(token: string, _prev: JoinState, f: FormData): 
     dateOfBirth: str(f, `c${i}_dateOfBirth`),
     siteId: str(f, `c${i}_siteId`),
     medical: str(f, `c${i}_medical`),
+    planId: str(f, `c${i}_planId`),
   }));
+  const base = await appUrl();
   const r = await submitJoin(token, {
     who: str(f, "who") === "me" ? "me" : "children",
     parentFirstName: str(f, "parentFirstName"),
@@ -28,11 +32,16 @@ export async function joinAction(token: string, _prev: JoinState, f: FormData): 
     myDateOfBirth: str(f, "myDateOfBirth"),
     mySiteId: str(f, "mySiteId"),
     myMedical: str(f, "myMedical"),
+    myPlanId: str(f, "myPlanId"),
     children,
     firstAidConsent: f.get("firstAidConsent") === "on",
     photoConsent: f.get("photoConsent") === "on",
     terms: f.get("terms") === "on",
+  }, {
+    success: (setupId) => `${base}/join/${token}/done?setup=${setupId}`,
+    cancel: `${base}/join/${token}/done?cancelled=1`,
   });
   if (!r.ok) return { errors: r.errors, values };
-  return { done: r.value };
+  if (r.value.paymentUrl) redirect(r.value.paymentUrl);
+  return { done: { clubName: r.value.clubName, names: r.value.names, paymentError: r.value.paymentError } };
 }
