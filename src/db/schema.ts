@@ -440,7 +440,7 @@ export const messages = pgTable("messages", {
   id: id(),
   clubId: clubId(),
   senderUserId: uuid("sender_user_id").references(() => users.id, { onDelete: "set null" }),
-  /** "email" now; "sms" later. */
+  /** Always "email" for now. */
   channel: text("channel").notNull().default("email"),
   /** Who it went to, e.g. { kind: "site", siteId } or { kind: "class", classId }. */
   audience: jsonb("audience").notNull(),

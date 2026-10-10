@@ -10,7 +10,7 @@ Back to basics. Junbi does four jobs:
 1. **Class management:** students and families, sites, a weekly timetable.
 2. **Attendance:** tap-to-mark registers on a phone.
 3. **Direct Debit collection:** through each club's own Stripe account (Bacs Direct Debit, plus cards and Apple Pay). Stripe is the only payment provider: Stripe Connect for clubs collecting from parents, Stripe Billing for clubs paying Junbi.
-4. **Communication:** email and text to a class, a site or everyone.
+4. **Communication:** email to a class, a site or everyone. (Text messages are held back for the future.)
 
 Plus **belts for every art**: each student's current belt in each art they train, recorded by staff. No gradings module, scoring or certificates yet.
 
@@ -38,11 +38,11 @@ Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai a
 1. Email (password reset, staff invites, trial reminders)
 2. Student import, with families and belts matched (done: CSV import at /students/import)
 3. Stripe Direct Debit (Stripe Connect, Bacs Direct Debit)
-4. Messages to parents (email done: /messages; text to follow, needs a text provider)
+4. Messages to parents by email (done: /messages)
 5. Paying for Junbi at the end of the trial
 
 ## Hold back until clubs ask
-Gradings (scoring, certificates, events), family app, kiosk, bookings, shop, association hub, competitions, accounting sync. Keep the data model ready for them, but don't build the screens yet.
+Text messages (SMS), gradings (scoring, certificates, events), family app, kiosk, bookings, shop, association hub, competitions, accounting sync. Keep the data model ready for them, but don't build the screens yet.
 
 ## Risks to design around
 - **Moving Direct Debit mandates is the biggest switching barrier,** so make import painless.

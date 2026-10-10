@@ -42,7 +42,7 @@ export default function PricingPage() {
           </div>
         </div>
         <p className="m-fine m-center" style={{ maxWidth: 820, margin: "28px auto 0", lineHeight: 1.5 }}>
-          Prices exclude VAT. Payment fees are charged by Stripe directly, never by Junbi. UK Direct Debit is 1% per payment, capped at £4. Text messages are charged at cost.
+          Prices exclude VAT. Payment fees are charged by Stripe directly, never by Junbi. UK Direct Debit is 1% per payment, capped at £4.
         </p>
       </section>
 

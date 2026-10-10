@@ -16,7 +16,7 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 - **Roles and permissions** (owner, admin, instructor, assistant) with site scoping.
 - **Student import:** upload a CSV from a spreadsheet or another system. Columns are matched automatically (and can be changed), families are grouped by email or phone and joined to existing families, belts are matched to the club's belt systems, and duplicates are skipped. Nothing saves until the owner checks the preview.
 - **Family sign-up link:** each club has a secret link (Students page) to copy, share or email to parents. Parents add their own details and one or more children (or themselves), medical notes and permissions; students land as Trial, flagged as new on Today and Students, and the owner and admins get an email. Owners can make a new link in Settings.
-- **Messages to parents:** email everyone, one site, or the families of a class (students who attended in the last 8 weeks). One email per address, sent through Resend's batch API from "Club name" with the staff member as reply-to. Each message keeps a list of who it went to and whether it sent. Instructors can only message their own sites. Text messages are not built yet.
+- **Messages to parents:** email everyone, one site, or the families of a class (students who attended in the last 8 weeks). One email per address, sent through Resend's batch API from "Club name" with the staff member as reply-to. Each message keeps a list of who it went to and whether it sent. Instructors can only message their own sites.
 - **Marketing site:** homepage, pricing and Founding Clubs, all leading to sign-up.
 
 ## Email
