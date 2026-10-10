@@ -4,6 +4,9 @@ import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { listStudents } from "@/data/students";
 import { RankChip, StatusPill } from "@/components/badges";
+import { joinLink } from "@/data/join";
+import { emailConfigured } from "@/lib/email";
+import { JoinLinkCard } from "./JoinLinkCard";
 
 export const metadata: Metadata = { title: "Students" };
 
@@ -23,6 +26,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const students = await listStudents(actor, { q });
 
   const canAdd = can(actor, "students.edit");
+  const link = canAdd ? <div id="join"><JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} /></div> : null;
 
   if (students.length === 0 && !q) {
     return (
@@ -38,6 +42,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             </div>
           )}
         </div>
+        {link}
       </>
     );
   }
@@ -52,6 +57,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           {canAdd && <Link className="btn primary" href="/students/new">Add student</Link>}
         </div>
       </div>
+
+      {link}
 
       <form role="search" style={{ marginTop: 20 }}>
         <label htmlFor="q" className="muted" style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
@@ -78,6 +85,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   <Link href={`/students/${s.id}`} style={{ fontWeight: 600, color: "var(--ink)" }}>
                     {s.name}
                   </Link>
+                  {s.isNewSignup && <span className="pill ready" style={{ marginLeft: 8 }}>New sign-up</span>}
                 </td>
                 <td><span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>{s.grades.length ? s.grades.map((g) => <RankChip key={g.id} grade={g} />) : <RankChip grade={null} />}</span></td>
                 <td>{s.site}</td>

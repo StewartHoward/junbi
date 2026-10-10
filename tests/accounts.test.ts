@@ -23,6 +23,7 @@ const classes = await import("@/data/classes");
 const club = await import("@/data/club");
 const flows = await import("@/data/email-flows");
 const importer = await import("@/data/student-import");
+const join = await import("@/data/join");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -453,5 +454,91 @@ describe("student import", () => {
   it("asks which column is the name when it can't tell", async () => {
     const r = await importer.previewImport(a, "Foo,Bar\n1,2", null, { siteId: "", discipline: "" });
     expect(!r.ok && r.errors.mapping).toMatch(/name/);
+  });
+});
+
+describe("family sign-up link", () => {
+  const tokenOf = async (actor: Actor) => (await join.joinLink(actor)).split("/join/")[1];
+  const base = (over: Partial<import("@/data/join").JoinInput> = {}): import("@/data/join").JoinInput => ({
+    who: "children",
+    parentFirstName: "Pat",
+    parentLastName: "Jones",
+    email: "pat.jones@example.test",
+    phone: "07700 900222",
+    children: [
+      { firstName: "Ruby", lastName: "", dateOfBirth: "2016-05-01", siteId: "" },
+      { firstName: "Theo", lastName: "Smith", dateOfBirth: "2018-11-20", siteId: "", medical: "Nut allergy" },
+    ],
+    firstAidConsent: true,
+    photoConsent: false,
+    terms: true,
+    ...over,
+  });
+
+  it("only works for set-up clubs, and shows the club's sites", async () => {
+    const t = await tokenOf(a);
+    expect(t).toMatch(/^[a-f0-9]{64}$/);
+    const f = await join.joinForm(t);
+    expect(f?.clubName).toBe("Club A Taekwondo");
+    expect(f?.sites.map((x) => x.name)).toEqual(["Southport"]);
+    expect(await join.joinForm("0".repeat(64))).toBeNull();
+    expect(await join.joinForm("../../etc")).toBeNull();
+  });
+
+  it("signs up a family with two children as Trial, in the right club only", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const r = await join.submitJoin(await tokenOf(a), base());
+    spy.mockRestore();
+    expect(r.ok && r.value).toEqual({ clubName: "Club A Taekwondo", names: ["Ruby", "Theo"] });
+    const kids = await adminSql`select s.club_id, s.first_name, s.last_name, s.status, s.source, s.medical_notes, s.first_aid_consent, g.email from students s join guardians g on g.household_id = s.household_id where g.email = 'pat.jones@example.test' order by s.first_name`;
+    expect(kids.map((k) => [k.first_name, k.last_name, k.status, k.source, k.club_id === a.clubId])).toEqual([
+      ["Ruby", "Jones", "trial", "join_link", true],
+      ["Theo", "Smith", "trial", "join_link", true],
+    ]);
+    expect(kids[1].medical_notes).toBe("Nut allergy");
+    const recent = await join.recentSignups(a);
+    expect(recent.map((x) => x.firstName).sort()).toEqual(["Ruby", "Theo"]);
+    expect(await join.recentSignups(b)).toEqual([]);
+    const list = await students.listStudents(a, { q: "Ruby" });
+    expect(list[0].isNewSignup).toBe(true);
+  });
+
+  it("adds a sibling to the same family next time, without doubling up", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const r = await join.submitJoin(await tokenOf(a), base({ children: [{ firstName: "Ruby", dateOfBirth: "2016-05-01", siteId: "" }, { firstName: "Zac", dateOfBirth: "2020-01-02", siteId: "" }] }));
+    spy.mockRestore();
+    expect(r.ok).toBe(true);
+    const [{ households, kids }] = await adminSql`select count(distinct s.household_id)::int as households, count(*)::int as kids from students s join guardians g on g.household_id = s.household_id where g.email = 'pat.jones@example.test'`;
+    expect([households, kids]).toEqual([1, 3]);
+  });
+
+  it("lets an adult sign themselves up", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const r = await join.submitJoin(await tokenOf(a), base({ who: "me", email: "adult@example.test", children: [], myDateOfBirth: "1990-02-03" }));
+    spy.mockRestore();
+    expect(r.ok && r.value.names).toEqual(["Pat"]);
+    const [g] = await adminSql`select relationship from guardians where email = 'adult@example.test'`;
+    expect(g.relationship).toBe("self");
+  });
+
+  it("checks the form and refuses a reset link", async () => {
+    const t = await tokenOf(a);
+    const bad = await join.submitJoin(t, base({ email: "nope", terms: false, children: [{ firstName: "", dateOfBirth: "2099-01-01", siteId: "" }] }));
+    expect(!bad.ok && bad.errors).toMatchObject({ email: expect.any(String), terms: expect.any(String), "children.0.firstName": expect.any(String), "children.0.dateOfBirth": expect.any(String) });
+    await expect(join.resetJoinLink({ ...a, role: "admin" })).rejects.toThrow(/Not allowed/);
+    await join.resetJoinLink(a);
+    expect(await tokenOf(a)).not.toBe(t);
+    const old = await join.submitJoin(t, base());
+    expect(!old.ok && old.errors.form).toMatch(/link has changed/);
+  });
+
+  it("lets staff email the link, and not assistants", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    expect((await join.sendJoinLink(a, "new.parent@example.test")).ok).toBe(true);
+    spy.mockRestore();
+    expect((await join.sendJoinLink(a, "bad")).ok).toBe(false);
+    await expect(join.sendJoinLink({ ...a, role: "assistant" }, "x@example.test")).rejects.toThrow(/Not allowed/);
+    const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'join-invite' and to_email = 'new.parent@example.test'`;
+    expect(n).toBe(1);
   });
 });

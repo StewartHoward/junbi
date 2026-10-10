@@ -122,3 +122,13 @@ export async function importStudentsAction(prev: ImportState, f: FormData): Prom
   if (!p.ok) return { ...base, errors: p.errors };
   return { ...base, preview: p.value };
 }
+
+/* ---------- Family sign-up link ---------- */
+
+export async function sendJoinLinkAction(_prev: StudentFormState & { sent?: string }, f: FormData): Promise<StudentFormState & { sent?: string }> {
+  const { sendJoinLink } = await import("@/data/join");
+  const actor = await requireActor();
+  const r = await sendJoinLink(actor, str(f, "email"));
+  if (!r.ok) return { errors: r.errors, values: { email: str(f, "email") } };
+  return { sent: r.value.email };
+}

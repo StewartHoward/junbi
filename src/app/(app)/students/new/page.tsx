@@ -21,6 +21,11 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
         <Link href="/students">Students</Link> › Add student
       </p>
       <h1 className="page-title" style={{ marginTop: 12 }}>{opts.household ? "Add a sibling" : "Add a student"}</h1>
+      {!opts.household && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          Rather the family filled it in? <Link href="/students#join">Send them your sign-up link</Link>.
+        </p>
+      )}
       <div className="card" style={{ marginTop: 24 }}>
         {opts.sites.length === 0 ? (
           <p>Add a site in <Link href="/settings">Settings</Link> first.</p>

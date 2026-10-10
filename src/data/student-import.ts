@@ -299,6 +299,7 @@ export async function runImport(
             dateOfBirth: r.dateOfBirth,
             status: r.status,
             medicalNotes: r.medical,
+            source: "import",
           })),
         )
         .returning({ id: s.students.id });

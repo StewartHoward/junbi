@@ -117,6 +117,7 @@ function build(subject: string, title: string, paragraphs: string[], button?: { 
   return { subject, html: layout(title, paragraphs, button, footnote), text: plain(title, paragraphs, button, footnote) };
 }
 
+const list = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
 const first = (name: string) => name.trim().split(/\s+/)[0] || "there";
 
 export const templates = {
@@ -150,6 +151,34 @@ export const templates = {
       ],
       { label: "Accept invitation", url },
       "This invitation lasts for 7 days.",
+    ),
+  joinInvite: (clubName: string, inviterName: string | null, url: string) =>
+    build(
+      `Sign up to ${clubName}`,
+      `Join ${clubName}.`,
+      [
+        `${inviterName ? `${inviterName} from ${clubName}` : clubName} has sent you a link to sign up.`,
+        "It takes about two minutes: your details, who's training, and any medical notes the instructors should know about.",
+      ],
+      { label: "Sign up", url },
+      "If you weren't expecting this, you can ignore it.",
+    ),
+  joinConfirm: (parentName: string, clubName: string, names: string[]) =>
+    build(
+      `You're signed up to ${clubName}`,
+      "Thanks, you're signed up.",
+      [
+        `Hi ${first(parentName)},`,
+        `${list(names)} ${names.length === 1 ? "is" : "are"} now registered with ${clubName}. The club will be in touch about classes.`,
+        "If anything changes, like medical details or contact numbers, just let the club know.",
+      ],
+    ),
+  newSignup: (clubName: string, parentName: string, names: string[], url: string) =>
+    build(
+      `New sign-up: ${list(names)}`,
+      `New sign-up for ${clubName}.`,
+      [`${parentName} has signed up ${list(names)} using your sign-up link.`, "They're on your student list as Trial."],
+      { label: "See them in Junbi", url },
     ),
   trialReminder: (name: string, clubName: string, daysLeft: number, endsOn: string, url: string) =>
     build(

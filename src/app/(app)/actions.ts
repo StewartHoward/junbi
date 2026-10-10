@@ -7,6 +7,7 @@ import { archiveClass, createClass, setAttendance, validDate } from "@/data/clas
 import { addSite, applyPromoCode, renameClub, setArt, setPlan } from "@/data/club";
 import type { FieldErrors } from "@/data/accounts";
 import { cancelInvite, inviteStaff, removeStaff } from "@/data/email-flows";
+import { resetJoinLink } from "@/data/join";
 
 export type ActionState = { errors?: FieldErrors; values?: Record<string, string>; saved?: boolean };
 
@@ -101,5 +102,12 @@ export async function cancelInviteAction(f: FormData) {
 export async function removeStaffAction(f: FormData) {
   const actor = await requireActor();
   await removeStaff(actor, str(f, "staffId"));
+  revalidatePath("/settings");
+}
+
+export async function resetJoinLinkAction() {
+  const actor = await requireActor();
+  await resetJoinLink(actor);
+  revalidatePath("/students");
   revalidatePath("/settings");
 }

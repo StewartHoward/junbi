@@ -76,11 +76,15 @@ export const clubs = pgTable(
     discountPercent: integer("discount_percent"),
     /** How many paid months the discount lasts. Null with a discount means for good. */
     discountMonths: integer("discount_months"),
+    /** Secret part of the club's family sign-up link (/join/<token>). The owner can reset it. */
+    joinToken: text("join_token")
+      .notNull()
+      .default(sql`replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')`),
     /** Set when the owner finishes club set-up (arts, first site, belt syllabus). */
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("clubs_slug_key").on(t.slug)],
+  (t) => [uniqueIndex("clubs_slug_key").on(t.slug), uniqueIndex("clubs_join_token_key").on(t.joinToken)],
 );
 
 /**
@@ -222,6 +226,8 @@ export const students = pgTable(
     photoConsent: boolean("photo_consent").notNull().default(false),
     licenceNumber: text("licence_number"),
     licenceExpiresOn: date("licence_expires_on"),
+    /** How they joined: "staff" (added by hand), "import" (spreadsheet) or "join_link" (family sign-up link). */
+    source: text("source").notNull().default("staff"),
     createdAt: createdAt(),
   },
   (t) => [index("students_club_site_idx").on(t.clubId, t.siteId)],

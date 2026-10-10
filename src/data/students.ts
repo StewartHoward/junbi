@@ -86,6 +86,8 @@ export type StudentListItem = {
   name: string;
   status: string;
   site: string;
+  /** Signed up through the family sign-up link in the last 14 days. */
+  isNewSignup: boolean;
   /** One belt per art the student holds a grade in. Empty for new starters. */
   grades: Grade[];
   paymentNotice: string | null;
@@ -103,6 +105,8 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
         status: s.students.status,
         householdId: s.students.householdId,
         site: s.sites.name,
+        source: s.students.source,
+        createdAt: s.students.createdAt,
       })
       .from(s.students)
       .innerJoin(s.sites, eq(s.sites.id, s.students.siteId))
@@ -125,6 +129,7 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
         name: `${r.firstName} ${r.lastName}`,
         status: r.status,
         site: r.site,
+        isNewSignup: r.source === "join_link" && Date.now() - r.createdAt.getTime() < 14 * 86_400_000,
         grades: sortedBelts(grades.get(r.id), order).map((h) => h.grade),
         paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(detail), detail: detail ?? "" }),
       };

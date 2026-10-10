@@ -5,7 +5,7 @@ import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
 import { DISCIPLINES, type Preset } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
-import { cancelInviteAction, removeStaffAction, setArtAction, setPlanAction } from "../actions";
+import { cancelInviteAction, removeStaffAction, resetJoinLinkAction, setArtAction, setPlanAction } from "../actions";
 import { AddSiteForm, ClubNameForm, InviteStaffForm, PromoCodeForm } from "./SettingsForms";
 import { describeDiscount } from "@/data/accounts";
 import { listPendingInvites } from "@/data/email-flows";
@@ -74,6 +74,18 @@ export default async function SettingsPage() {
             </div>
           )}
           <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Every plan has every feature. Pick the one that fits your club&apos;s size. <a href="/pricing">See pricing</a></p>
+        </section>
+      )}
+
+      {owner && (
+        <section className="card" style={{ marginTop: 20 }}>
+          <h2 className="section-title">Family sign-up link</h2>
+          <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
+            Your link is on the <a href="/students#join">Students</a> page. If it&apos;s been shared somewhere it shouldn&apos;t be, make a new one. The old link stops working straight away.
+          </p>
+          <form action={resetJoinLinkAction} className="actions" style={{ marginTop: 12 }}>
+            <button className="btn secondary">Make a new link</button>
+          </form>
         </section>
       )}
 

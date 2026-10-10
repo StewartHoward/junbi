@@ -6,6 +6,7 @@ import { classesOn, todayISO, CLUB_TZ } from "@/data/classes";
 import { clubArts, getClubOverview } from "@/data/club";
 import { ArtFilter } from "@/components/ArtFilter";
 import { disciplineName } from "@/lib/disciplines";
+import { recentSignups } from "@/data/join";
 
 export const metadata: Metadata = { title: "Today" };
 
@@ -20,7 +21,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const arts = await clubArts(actor);
   const filter = art && arts.includes(art) ? art : undefined;
   const date = todayISO();
-  const [classes, overview] = await Promise.all([classesOn(actor, date, { discipline: filter }), getClubOverview(actor)]);
+  const [classes, overview, signups] = await Promise.all([classesOn(actor, date, { discipline: filter }), getClubOverview(actor), recentSignups(actor)]);
   const checkedIn = classes.reduce((n, c) => n + c.present, 0);
   const trialDays = overview.club.trialEndsOn
     ? Math.round((Date.parse(`${overview.club.trialEndsOn}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000)
@@ -95,6 +96,28 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           </div>
         )}
       </section>
+
+      {signups.length > 0 && (
+        <section className="card" style={{ marginTop: 24 }}>
+          <div className="head">
+            <h2 className="section-title">New sign-ups</h2>
+            <Link href="/students">All students</Link>
+          </div>
+          <div className="list" style={{ marginTop: 8 }}>
+            {signups.map((s) => (
+              <div key={s.id}>
+                <div>
+                  <Link href={`/students/${s.id}`} style={{ fontWeight: 600, color: "var(--ink)" }}>{s.firstName} {s.lastName}</Link>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {s.site} · {s.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: CLUB_TZ })}
+                  </div>
+                </div>
+                <span className="pill ready">Trial</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {gettingStarted.some((g) => g.show && !g.done) && (
         <section className="card" style={{ marginTop: 24 }}>
