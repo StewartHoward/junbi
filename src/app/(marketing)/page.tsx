@@ -52,7 +52,7 @@ export default function Home() {
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
-        <p className="m-fine">Free for 14 days. No card needed. One flat price, 0% of your fees.</p>
+        <p className="m-fine">Free for 7 days. No card needed. One flat price, 0% of your fees.</p>
 
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students checked in">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>junbi</span></div>
@@ -168,7 +168,7 @@ export default function Home() {
 
       <section className="m-section m-center">
         <h2 className="m-h2 xl">Ready when you are.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>The first 100 Founding Clubs get a 30-day trial, 50% off for six months, free migration from their current system, and their price locked for two years.</p>
+        <p className="m-sub" style={{ maxWidth: 600 }}>The first 10 Founding Clubs get 50% off for six months, free migration from their current system, and their price locked for two years.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>

@@ -158,9 +158,7 @@ export const templates = {
       [
         `Hi ${first(name)},`,
         `Your free trial for ${clubName} ends on ${new Date(`${endsOn}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}.`,
-        daysLeft === 7
-          ? "Still moving your club across? You can add another 14 days, once, from Settings."
-          : "Nothing you've added will be lost. Reply to this email if you'd like a hand getting set up.",
+        "Nothing you've added will be lost. Reply to this email if you'd like a hand getting set up.",
       ],
       { label: "Open Junbi", url: `${url}/settings` },
     ),

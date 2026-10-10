@@ -68,8 +68,14 @@ export const clubs = pgTable(
     /** Joined through the Founding Club offer (50% off six months, price locked two years). */
     founding: boolean("founding").notNull().default(false),
     trialEndsOn: date("trial_ends_on"),
-    /** A club can add one extra 14 days to its trial ("Need more time?"). */
+    /** Legacy: trial extensions were removed when the trial became 7 days. */
     trialExtended: boolean("trial_extended").notNull().default(false),
+    /** Code used at sign-up or in Settings, e.g. a free account for a tester. */
+    promoCode: text("promo_code"),
+    /** Percentage off Junbi's price from the code. 100 means free. */
+    discountPercent: integer("discount_percent"),
+    /** How many paid months the discount lasts. Null with a discount means for good. */
+    discountMonths: integer("discount_months"),
     /** Set when the owner finishes club set-up (arts, first site, belt syllabus). */
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -421,6 +427,22 @@ export const emailLog = pgTable(
 );
 
 /** Tables protected by row-level security on club_id. Kept here so tests can check every one. */
+/**
+ * Discount codes for Junbi's own price. Not tenant data: reached only through
+ * the promo_check and promo_redeem functions.
+ */
+export const promoCodes = pgTable("promo_codes", {
+  code: text("code").primaryKey(),
+  percentOff: integer("percent_off").notNull(),
+  /** Paid months the discount lasts. Null means for good. */
+  months: integer("months"),
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  note: text("note"),
+  createdAt: createdAt(),
+});
+
 export const TENANT_TABLES = [
   "club_disciplines",
   "staff_invites",

@@ -5,8 +5,9 @@ import { can } from "@/auth/permissions";
 import { getClubOverview } from "@/data/club";
 import { DISCIPLINES, type Preset } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
-import { cancelInviteAction, extendTrialAction, removeStaffAction, setArtAction, setPlanAction } from "../actions";
-import { AddSiteForm, ClubNameForm, InviteStaffForm } from "./SettingsForms";
+import { cancelInviteAction, removeStaffAction, setArtAction, setPlanAction } from "../actions";
+import { AddSiteForm, ClubNameForm, InviteStaffForm, PromoCodeForm } from "./SettingsForms";
+import { describeDiscount } from "@/data/accounts";
 import { listPendingInvites } from "@/data/email-flows";
 import { emailConfigured } from "@/lib/email";
 
@@ -18,6 +19,8 @@ export default async function SettingsPage() {
   if (!owner && !can(actor, "classes.manage")) redirect("/today");
   const [o, invites] = await Promise.all([getClubOverview(actor), listPendingInvites(actor)]);
   const plan = PLANS.find((p) => p.id === o.club.plan);
+  const discount = describeDiscount(o.club.discountPercent, o.club.discountMonths);
+  const freeForGood = (o.club.discountPercent ?? 0) >= 100 && o.club.discountMonths == null;
 
   return (
     <>
@@ -38,7 +41,7 @@ export default async function SettingsPage() {
           <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
             You&apos;re on <strong style={{ color: "var(--ink)" }}>{plan?.name ?? o.club.plan}</strong>
             {o.club.founding ? " as a Founding Club" : ""}
-            {o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.` : "."}
+            {freeForGood ? ". Your account is free, so there's nothing to pay." : o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.` : "."}
           </p>
           {o.club.plan !== "association" && (
             <div className="list" style={{ marginTop: 8 }}>
@@ -61,11 +64,14 @@ export default async function SettingsPage() {
               })}
             </div>
           )}
-          {o.club.trialEndsOn && !o.club.trialExtended && (
-            <form action={extendTrialAction} className="actions" style={{ marginTop: 16 }}>
-              <span className="muted" style={{ fontSize: 14 }}>Still moving your club across?</span>
-              <button className="btn secondary">Add 14 days to my trial</button>
-            </form>
+          {o.club.promoCode ? (
+            <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
+              Code <strong style={{ color: "var(--ink)" }}>{o.club.promoCode}</strong> applied{discount ? `: ${discount}` : ""}.
+            </p>
+          ) : (
+            <div style={{ marginTop: 16 }}>
+              <PromoCodeForm />
+            </div>
           )}
           <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Every plan has every feature. Pick the one that fits your club&apos;s size. <a href="/pricing">See pricing</a></p>
         </section>

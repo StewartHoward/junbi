@@ -20,7 +20,7 @@ const FAQ = [
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, paused and past students are free." },
   { q: "Can you move us from our current system?", a: "Yes. We bring students, families and belts across from your current system or a spreadsheet. Founding Clubs get the whole move done for them, free." },
   { q: "Can we change plan later?", a: "Any time, up or down." },
-  { q: "When can we start?", a: "Today. Sign up, answer a few quick questions and your dashboard is ready. It's free for 14 days and you don't need a card. Need longer to move across? You can add another 14 days." },
+  { q: "When can we start?", a: "Today. Sign up, answer a few quick questions and your dashboard is ready. It's free for 7 days and you don't need a card." },
 ];
 
 export default function PricingPage() {
@@ -93,7 +93,7 @@ export default function PricingPage() {
 
       <section className="m-section dark m-center">
         <h2 className="m-h2 xl">Become a Founding Club.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>A 30-day free trial, then 50% off for six months, free migration, and your price locked for two years. Open to the first 100 clubs.</p>
+        <p className="m-sub" style={{ maxWidth: 600 }}>50% off for six months after your free trial, free migration, and your price locked for two years. Open to the first 10 clubs only.</p>
         <div className="m-actions">
           <Link href="/signup?founding=1" className="m-btn on-dark">Claim your place</Link>
         </div>

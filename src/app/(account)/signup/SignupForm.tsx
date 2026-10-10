@@ -6,7 +6,7 @@ import { signupAction, type FormState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
 import { SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
 
-export function SignupForm({ plan, founding }: { plan: string; founding: boolean }) {
+export function SignupForm({ plan, founding, code }: { plan: string; founding: boolean; code: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(signupAction, {});
   const e = state.errors;
   const v = state.values ?? {};
@@ -43,7 +43,12 @@ export function SignupForm({ plan, founding }: { plan: string; founding: boolean
             </option>
           ))}
         </select>
-        <p className="hint">{founding ? "Free for 30 days" : "Free for 14 days"}, with every feature. No card needed, and you can change plan any time.</p>
+        <p className="hint">Free for 7 days, with every feature. No card needed, and you can change plan any time.</p>
+      </div>
+      <div>
+        <label htmlFor="promoCode">Code (optional)</label>
+        <input id="promoCode" name="promoCode" autoComplete="off" autoCapitalize="characters" defaultValue={v.promoCode ?? code} {...errProps("promoCode", e)} />
+        <FieldError id="promoCode-err" msg={e?.promoCode} />
       </div>
       <div className="hp" aria-hidden="true">
         <label htmlFor="website">Leave this empty</label>

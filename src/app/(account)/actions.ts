@@ -17,7 +17,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "");
 
 export async function signupAction(_prev: FormState, f: FormData): Promise<FormState> {
   if (str(f, "website")) redirect("/"); // honeypot
-  const values = { clubName: str(f, "clubName"), name: str(f, "name"), email: str(f, "email"), plan: str(f, "plan"), terms: str(f, "terms") };
+  const values = { clubName: str(f, "clubName"), name: str(f, "name"), email: str(f, "email"), plan: str(f, "plan"), promoCode: str(f, "promoCode"), terms: str(f, "terms") };
   const r = await createClubAccount({
     ...values,
     password: str(f, "password"),

@@ -6,7 +6,7 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 
 ## What works now
 
-- **Club sign-up and sign-in.** A club owner signs up (14-day free trial with one 14-day extension, or 30 days for Founding Clubs), then signs in with email and password. Passwords are hashed with scrypt, sessions are random tokens stored only as hashes, and repeated wrong passwords lock the email for 15 minutes.
+- **Club sign-up and sign-in.** A club owner signs up (7-day free trial, with an optional discount code; Founding Clubs capped at 10), then signs in with email and password. Passwords are hashed with scrypt, sessions are random tokens stored only as hashes, and repeated wrong passwords lock the email for 15 minutes.
 - **Club set-up with "choose your art".** Pick any of Taekwondo, Karate, Kickboxing, Judo, BJJ, Krav Maga, Muay Thai and MMA, add the first site, and choose a belt system for each art. Students hold a belt in each art they train.
 - **Today:** greeting, trial status, today's classes with check-in counts, and a getting-started list.
 - **Students:** search, add (with a family contact and starting belt), add a sibling to the same family, edit, and the full profile.
@@ -18,7 +18,7 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 
 ## Email
 
-Password reset, staff invitations, a welcome email and trial reminders (7, 3 and 1 days before the trial ends) send through [Resend](https://resend.com). Set `RESEND_API_KEY` and `EMAIL_FROM` (e.g. `Junbi <hello@junbi.co.uk>`) in Netlify. Without a key, emails are printed to the server log instead, so local development works. Trial reminders run daily from `netlify/functions/trial-reminders.mts`.
+Password reset, staff invitations, a welcome email and trial reminders (3 days and 1 day before the trial ends) send through [Resend](https://resend.com). Set `RESEND_API_KEY` and `EMAIL_FROM` (e.g. `Junbi <hello@junbi.co.uk>`) in Netlify. Without a key, emails are printed to the server log instead, so local development works. Trial reminders run daily from `netlify/functions/trial-reminders.mts`.
 
 ## Not built yet
 
@@ -63,3 +63,16 @@ npm run typecheck
 Always go through `withClub()` in `src/db/client.ts`. It opens a transaction and sets `app.club_id`, which the row-level security policies read. Check permissions with `assertCan()` from `src/auth/permissions.ts` before reading or writing anything.
 
 New tables that belong to a club must have a `club_id` column, be added to `TENANT_TABLES` in `src/db/schema.ts`, and get a policy in a migration. The tenant isolation test fails if one is missed.
+
+## Discount codes
+
+Codes live in the `promo_codes` table and are created by Junbi, not by clubs. Run this in the database as the owner:
+
+```sql
+-- Free for good, one club only
+insert into promo_codes (code, percent_off, months, max_uses, note) values ('YOURCODE', 100, null, 1, 'Who it is for');
+-- 50% off for 3 paid months, any number of clubs, until a date
+insert into promo_codes (code, percent_off, months, expires_at) values ('HALF3', 50, 3, '2027-01-01');
+```
+
+Codes are case-insensitive. A club enters one at sign-up (`/signup?code=YOURCODE` fills it in) or in Settings.

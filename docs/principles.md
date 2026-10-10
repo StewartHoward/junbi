@@ -55,7 +55,9 @@ Gradings (scoring, certificates, events), family app, kiosk, bookings, shop, ass
 - **Academy** £69 a month: unlimited students, up to 3 sites.
 - **Association** from £149 a month: 5 clubs, then £15 per club. Set up with us.
 - Every feature on every plan. Annual billing gets two months free. Prices exclude VAT.
-- **Trial:** 14 days, plus one 14-day extension. Founding Clubs get 30 days, then 50% off for six months and their price locked for two years.
+- **Trial:** 7 days for every club, no extensions.
+- **Founding Clubs:** capped at 10. Same 7-day trial, then 50% off for six months, free migration and their price locked for two years.
+- **Discount codes:** a code at sign-up (or later in Settings) takes a percentage off Junbi's price, for a set number of months or for good. A 100% code for good makes the club free with no trial end. Codes are created by Junbi in the database, not by clubs.
 - The single source for plan data is `src/lib/plans.ts`.
 
 ## Website rules

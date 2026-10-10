@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
 import { archiveClass, createClass, setAttendance, validDate } from "@/data/classes";
-import { addSite, extendTrial, renameClub, setArt, setPlan } from "@/data/club";
+import { addSite, applyPromoCode, renameClub, setArt, setPlan } from "@/data/club";
 import type { FieldErrors } from "@/data/accounts";
 import { cancelInvite, inviteStaff, removeStaff } from "@/data/email-flows";
 
@@ -72,10 +72,12 @@ export async function setPlanAction(f: FormData) {
   revalidatePath("/settings");
 }
 
-export async function extendTrialAction() {
+export async function applyPromoCodeAction(_prev: ActionState, f: FormData): Promise<ActionState> {
   const actor = await requireActor();
-  await extendTrial(actor);
+  const r = await applyPromoCode(actor, str(f, "promoCode"));
+  if (!r.ok) return { errors: r.errors, values: { promoCode: str(f, "promoCode") } };
   revalidatePath("/", "layout");
+  return { saved: true };
 }
 
 export async function inviteStaffAction(_prev: ActionState, f: FormData): Promise<ActionState> {

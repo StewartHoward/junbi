@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addSiteAction, inviteStaffAction, renameClubAction, type ActionState } from "../actions";
+import { addSiteAction, applyPromoCodeAction, inviteStaffAction, renameClubAction, type ActionState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
 
 export function ClubNameForm({ name }: { name: string }) {
@@ -83,6 +83,22 @@ export function InviteStaffForm({ sites, canInviteAdmin }: { sites: Array<{ id: 
       )}
       <div className="actions">
         <button className="btn primary" disabled={pending}>{pending ? "Sending…" : "Send invitation"}</button>
+      </div>
+    </form>
+  );
+}
+
+export function PromoCodeForm() {
+  const [state, action, pending] = useActionState<ActionState, FormData>(applyPromoCodeAction, {});
+  return (
+    <form action={action} className="form" noValidate>
+      <div>
+        <label htmlFor="promoCode">Have a code?</label>
+        <input id="promoCode" name="promoCode" autoComplete="off" autoCapitalize="characters" defaultValue={state.values?.promoCode} {...errProps("promoCode", state.errors)} />
+        <FieldError id="promoCode-err" msg={state.errors?.promoCode} />
+      </div>
+      <div className="actions">
+        <button className="btn secondary" disabled={pending}>{pending ? "Applying…" : "Apply code"}</button>
       </div>
     </form>
   );

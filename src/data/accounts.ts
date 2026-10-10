@@ -18,10 +18,10 @@ function fieldErrors(error: z.ZodError): FieldErrors {
   return out;
 }
 
-/** Free trial: 14 days, or 30 for Founding Clubs (we do their move for them). One 14-day extension is allowed. */
-export const TRIAL_DAYS = 14;
-export const FOUNDING_TRIAL_DAYS = 30;
-export const TRIAL_EXTENSION_DAYS = 14;
+/** Free trial: 7 days for every club, Founding Clubs included. No extensions. */
+export const TRIAL_DAYS = 7;
+/** Founding Clubs are capped (see founding_places_left() in the database). */
+export const FOUNDING_PLACES = 10;
 
 export const signupSchema = z.object({
   clubName: z.string().trim().min(2, "Please enter your club's name.").max(120),
@@ -30,6 +30,7 @@ export const signupSchema = z.object({
   password: z.string(),
   plan: z.enum(SELF_SERVE_IDS).catch("starter"),
   founding: z.boolean(),
+  promoCode: z.string().trim().max(40).optional().default(""),
   terms: z.boolean().refine((v) => v, "Please agree to the terms to continue."),
 });
 
@@ -50,7 +51,11 @@ export async function createClubAccount(input: SignupInput): Promise<Result<{ us
 
   const passwordHash = await hashPassword(d.password);
   const clubId = randomUUID();
-  const trialEnds = new Date(Date.now() + (d.founding ? FOUNDING_TRIAL_DAYS : TRIAL_DAYS) * 86_400_000).toISOString().slice(0, 10);
+  const trialEnds = new Date(Date.now() + TRIAL_DAYS * 86_400_000).toISOString().slice(0, 10);
+
+  if (d.promoCode && !(await checkPromoCode(d.promoCode))) {
+    return { ok: false, errors: { promoCode: "That code isn't valid or has expired." } };
+  }
 
   try {
     const userId = await withClub({ clubId }, async (tx) => {
@@ -59,8 +64,16 @@ export async function createClubAccount(input: SignupInput): Promise<Result<{ us
       )) as unknown as Array<{ id: string | null }>;
       const id = rows[0]?.id;
       if (!id) throw new EmailTakenError();
+      if (d.founding) {
+        const [f] = (await tx.execute(sql`select founding_places_left() as n`)) as unknown as Array<{ n: number }>;
+        if (!f || Number(f.n) <= 0) throw new FoundingFullError();
+      }
       await tx.insert(s.clubs).values({ id: clubId, name: d.clubName, slug: slugify(d.clubName), plan: d.plan, founding: d.founding, trialEndsOn: trialEnds });
       await tx.insert(s.clubStaff).values({ clubId, userId: id, role: "owner", allSites: true });
+      if (d.promoCode) {
+        const [r] = (await tx.execute(sql`select promo_redeem(${d.promoCode}, ${clubId}::uuid) as pct`)) as unknown as Array<{ pct: number | null }>;
+        if (r?.pct == null) throw new PromoGoneError();
+      }
       return id;
     });
     return { ok: true, value: { userId, clubId } };
@@ -68,11 +81,39 @@ export async function createClubAccount(input: SignupInput): Promise<Result<{ us
     if (err instanceof EmailTakenError) {
       return { ok: false, errors: { email: "There's already an account with this email. Sign in instead." } };
     }
+    if (err instanceof FoundingFullError) {
+      return { ok: false, errors: { form: "Sorry, all 10 Founding Club places have gone. You can still start a normal free trial." } };
+    }
+    if (err instanceof PromoGoneError) {
+      return { ok: false, errors: { promoCode: "That code isn't valid or has expired." } };
+    }
     throw err;
   }
 }
 
 class EmailTakenError extends Error {}
+class FoundingFullError extends Error {}
+class PromoGoneError extends Error {}
+
+/** A code's discount, or null if it doesn't exist, has expired or is used up. */
+export async function checkPromoCode(code: string): Promise<{ code: string; percentOff: number; months: number | null } | null> {
+  const c = code.trim();
+  if (!c || c.length > 40) return null;
+  const [r] = (await db().execute(sql`select * from promo_check(${c})`)) as unknown as Array<{ code: string; percent_off: number; months: number | null }>;
+  return r ? { code: r.code, percentOff: Number(r.percent_off), months: r.months == null ? null : Number(r.months) } : null;
+}
+
+export async function foundingPlacesLeft(): Promise<number> {
+  const [r] = (await db().execute(sql`select founding_places_left() as n`)) as unknown as Array<{ n: number }>;
+  return Number(r?.n ?? 0);
+}
+
+/** Describes a discount in plain words, e.g. "Free", "50% off for 6 months". */
+export function describeDiscount(percent: number | null | undefined, months: number | null | undefined): string | null {
+  if (!percent) return null;
+  if (percent >= 100) return months ? `Free for ${months} ${months === 1 ? "month" : "months"}` : "Free";
+  return months ? `${percent}% off for ${months} ${months === 1 ? "month" : "months"}` : `${percent}% off`;
+}
 
 const MAX_FAILURES = 8;
 

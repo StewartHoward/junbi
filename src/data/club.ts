@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 import { assertCan, type Actor } from "@/auth/permissions";
 import { DISCIPLINES, defaultPreset } from "@/lib/disciplines";
 import { SELF_SERVE_IDS } from "@/lib/plans";
-import { TRIAL_EXTENSION_DAYS, type Result } from "./accounts";
+import { type Result } from "./accounts";
 
 export async function getClubOverview(actor: Actor) {
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
@@ -109,20 +109,18 @@ export async function setPlan(actor: Actor, plan: string): Promise<Result> {
   return { ok: true, value: undefined };
 }
 
-/** "Need more time?": adds 14 days to the free trial, once, for clubs still on trial. */
-export async function extendTrial(actor: Actor): Promise<Result<{ trialEndsOn: string }>> {
+/** Applies a discount code to a club that doesn't have one yet. */
+export async function applyPromoCode(actor: Actor, code: string): Promise<Result<{ percentOff: number }>> {
   assertCan(actor, "club.manage");
+  const c = code.trim();
+  if (!c) return { ok: false, errors: { promoCode: "Enter your code." } };
+  if (c.length > 40) return { ok: false, errors: { promoCode: "That code isn't valid or has expired." } };
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
-    const [club] = await tx.select({ trialEndsOn: s.clubs.trialEndsOn, trialExtended: s.clubs.trialExtended }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
-    if (!club?.trialEndsOn) return { ok: false as const, errors: { form: "Your club isn't on a free trial." } };
-    if (club.trialExtended) return { ok: false as const, errors: { form: "Your trial has already been extended once. Get in touch if you need longer." } };
-    const today = new Date().toISOString().slice(0, 10);
-    const from = club.trialEndsOn > today ? club.trialEndsOn : today;
-    const d = new Date(`${from}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + TRIAL_EXTENSION_DAYS);
-    const trialEndsOn = d.toISOString().slice(0, 10);
-    await tx.update(s.clubs).set({ trialEndsOn, trialExtended: true }).where(eq(s.clubs.id, actor.clubId));
-    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "club_trial", entityId: actor.clubId, before: { trialEndsOn: club.trialEndsOn }, after: { trialEndsOn } });
-    return { ok: true as const, value: { trialEndsOn } };
+    const [club] = await tx.select({ promoCode: s.clubs.promoCode }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
+    if (club?.promoCode) return { ok: false as const, errors: { promoCode: "Your club already has a code applied." } };
+    const [r] = (await tx.execute(sql`select promo_redeem(${c}, ${actor.clubId}::uuid) as pct`)) as unknown as Array<{ pct: number | null }>;
+    if (r?.pct == null) return { ok: false as const, errors: { promoCode: "That code isn't valid or has expired." } };
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "club_promo", entityId: actor.clubId, after: { code: c.toUpperCase() } });
+    return { ok: true as const, value: { percentOff: Number(r.pct) } };
   });
 }

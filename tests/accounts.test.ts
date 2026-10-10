@@ -137,16 +137,12 @@ describe("club set-up", () => {
     const r = await accounts.completeSetup(b, { disciplines: [], siteName: "Preston" });
     expect(!r.ok && r.errors.disciplines).toMatch(/at least one/);
   });
-  it("gives Founding Clubs 30 days, others 14, and allows one 14-day extension", async () => {
+  it("gives every club a 7-day trial, Founding Clubs included", async () => {
     const days = (d: string) => Math.round((Date.parse(`${d}T12:00:00Z`) - Date.parse(`${new Date().toISOString().slice(0, 10)}T12:00:00Z`)) / 86_400_000);
-    expect(days((await club.getClubOverview(a)).club.trialEndsOn!)).toBe(30);
+    expect(days((await club.getClubOverview(a)).club.trialEndsOn!)).toBe(7);
     const r = await accounts.createClubAccount({ clubName: "Club D", name: "Dee Owner", email: "d@example.test", password: "a long enough phrase", plan: "starter", founding: false, terms: true });
     const d = owner(r.ok ? r.value.userId : "", r.ok ? r.value.clubId : "");
-    expect(days((await club.getClubOverview(d)).club.trialEndsOn!)).toBe(14);
-    const ext = await club.extendTrial(d);
-    expect(ext.ok && days(ext.value.trialEndsOn)).toBe(28);
-    expect((await club.extendTrial(d)).ok).toBe(false);
-    await expect(club.extendTrial({ ...d, role: "admin" })).rejects.toThrow(/Not allowed/);
+    expect(days((await club.getClubOverview(d)).club.trialEndsOn!)).toBe(7);
   });
   it("lets the owner switch between Starter, Club and Academy, and nobody else", async () => {
     expect((await club.setPlan(a, "starter")).ok).toBe(true);
@@ -330,8 +326,8 @@ describe("staff invites", () => {
 });
 
 describe("trial reminders", () => {
-  it("emails owners 7, 3 and 1 days before the trial ends, once each", async () => {
-    await adminSql`update clubs set trial_ends_on = (now() at time zone 'Europe/London')::date + 7 where id = ${a.clubId}`;
+  it("emails owners 3 and 1 days before the trial ends, once each", async () => {
+    await adminSql`update clubs set trial_ends_on = (now() at time zone 'Europe/London')::date + 3 where id = ${a.clubId}`;
     await adminSql`update clubs set trial_ends_on = (now() at time zone 'Europe/London')::date + 5 where id <> ${a.clubId}`;
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
     const first = await flows.sendTrialReminders();
@@ -339,7 +335,68 @@ describe("trial reminders", () => {
     spy.mockRestore();
     expect(first).toEqual({ due: 1, sent: 1 });
     expect(second).toEqual({ due: 1, sent: 0 });
-    const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'trial-7' and club_id = ${a.clubId}`;
+    const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'trial-3' and club_id = ${a.clubId}`;
     expect(n).toBe(1);
+  });
+});
+
+describe("discount codes", () => {
+  const signUpWith = (email: string, promoCode: string) =>
+    accounts.createClubAccount({ clubName: "Code Club", name: "Cody Owner", email, password: "a long enough phrase", plan: "club", founding: false, promoCode, terms: true });
+
+  beforeAll(async () => {
+    await adminSql`insert into promo_codes (code, percent_off, months, max_uses) values ('FREEFORME', 100, null, 1), ('HALF3', 50, 3, null)`;
+  });
+
+  it("a free code at sign-up makes the club free with no trial end, and is single use", async () => {
+    expect(await accounts.checkPromoCode("freeforme ")).toEqual({ code: "FREEFORME", percentOff: 100, months: null });
+    const r = await signUpWith("free@example.test", "freeforme");
+    expect(r.ok).toBe(true);
+    const o = await club.getClubOverview(owner(r.ok ? r.value.userId : "", r.ok ? r.value.clubId : ""));
+    expect(o.club).toMatchObject({ promoCode: "FREEFORME", discountPercent: 100, discountMonths: null, trialEndsOn: null });
+    const again = await signUpWith("free2@example.test", "FREEFORME");
+    expect(!again.ok && again.errors.promoCode).toMatch(/isn't valid/);
+    const [{ n }] = await adminSql`select count(*)::int as n from users where email = 'free2@example.test'`;
+    expect(n).toBe(0);
+  });
+
+  it("an unknown code stops sign-up with a clear message", async () => {
+    const r = await signUpWith("nope@example.test", "MADEUP");
+    expect(!r.ok && r.errors.promoCode).toMatch(/isn't valid/);
+  });
+
+  it("the owner can add a code later in Settings, once, and keeps the trial for a part discount", async () => {
+    expect((await club.applyPromoCode(b, "nonsense")).ok).toBe(false);
+    await expect(club.applyPromoCode({ ...b, role: "admin" }, "HALF3")).rejects.toThrow(/Not allowed/);
+    expect((await club.applyPromoCode(b, "half3")).ok).toBe(true);
+    const o = await club.getClubOverview(b);
+    expect(o.club).toMatchObject({ promoCode: "HALF3", discountPercent: 50, discountMonths: 3 });
+    expect(o.club.trialEndsOn).not.toBeNull();
+    const again = await club.applyPromoCode(b, "HALF3");
+    expect(!again.ok && again.errors.promoCode).toMatch(/already/);
+    expect(accounts.describeDiscount(50, 3)).toBe("50% off for 3 months");
+    expect(accounts.describeDiscount(100, null)).toBe("Free");
+  });
+
+  it("can't be read, changed or redeemed for another club by the app directly", async () => {
+    await expect(appSql`select * from promo_codes`).rejects.toThrow(/permission denied/);
+    await expect(appSql`update promo_codes set uses = 0`).rejects.toThrow(/permission denied/);
+    const [{ pct }] = await appSql`select promo_redeem('HALF3', ${a.clubId}::uuid) as pct`;
+    expect(pct).toBeNull();
+  });
+});
+
+describe("Founding Clubs", () => {
+  it("stops at 10", async () => {
+    await adminSql`update clubs set founding = true`;
+    const [{ n }] = await adminSql`select count(*)::int as n from clubs where founding`;
+    const left = await accounts.foundingPlacesLeft();
+    expect(left).toBe(Math.max(0, 10 - n));
+    await adminSql`insert into clubs (name, slug, founding) select 'Filler ' || g, 'filler-' || g, true from generate_series(1, ${left}) g`;
+    expect(await accounts.foundingPlacesLeft()).toBe(0);
+    const r = await accounts.createClubAccount({ clubName: "Late Club", name: "Late Owner", email: "late@example.test", password: "a long enough phrase", plan: "club", founding: true, terms: true });
+    expect(!r.ok && r.errors.form).toMatch(/all 10 Founding Club places/);
+    const [{ u }] = await adminSql`select count(*)::int as u from users where email = 'late@example.test'`;
+    expect(u).toBe(0);
   });
 });
