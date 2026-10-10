@@ -22,6 +22,7 @@ const students = await import("@/data/students");
 const classes = await import("@/data/classes");
 const club = await import("@/data/club");
 const flows = await import("@/data/email-flows");
+const importer = await import("@/data/student-import");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -398,5 +399,59 @@ describe("Founding Clubs", () => {
     expect(!r.ok && r.errors.form).toMatch(/all 10 Founding Club places/);
     const [{ u }] = await adminSql`select count(*)::int as u from users where email = 'late@example.test'`;
     expect(u).toBe(0);
+  });
+});
+
+describe("student import", () => {
+  const csv = [
+    "First name,Surname,DOB,Grade,Art,Location,Status,Parent name,Email,Mobile,Medical",
+    "Ella,Brown,14/03/2015,8th Keup,Taekwondo,Southport,Active,Kim Brown,kim@example.test,07700 900111,",
+    "Finn,Brown,02/09/2017,10th kup,TKD,southport,Active,Kim Brown,KIM@example.test,07700 900111,Asthma",
+    "Gail,Stone,21/06/1988,Blue,Kickboxing,Nowhere,Left,,gail@example.test,,",
+    "Harry,Nope,01/01/2010,Purple,Taekwondo,,,,,,",
+    ",NoFirst,,,,,,,,,",
+    "Ella,Brown,14/03/2015,8th Keup,Taekwondo,Southport,Active,Kim Brown,kim@example.test,,",
+  ].join("\n");
+
+  it("previews without saving, matching families, belts, sites and duplicates", async () => {
+    const before = await adminSql`select count(*)::int as n from students where club_id = ${a.clubId}`;
+    const p = await importer.previewImport(a, csv, null, { siteId: "", discipline: "taekwondo" });
+    expect(p.ok).toBe(true);
+    if (!p.ok) return;
+    const after = await adminSql`select count(*)::int as n from students where club_id = ${a.clubId}`;
+    expect(after[0].n).toBe(before[0].n);
+    const byName = Object.fromEntries(p.value.rows.map((r) => [`${r.firstName} ${r.lastName}`, r]));
+    expect(byName["Ella Brown"].gradeName).toBe("8th Kup");
+    expect(byName["Finn Brown"].gradeName).toBe("10th Kup");
+    expect(byName["Finn Brown"].familyKey).toBe(byName["Ella Brown"].familyKey);
+    expect(byName["Gail Stone"]).toMatchObject({ discipline: "kickboxing", gradeName: "Blue belt", status: "cancelled" });
+    expect(byName["Gail Stone"].contact.relationship).toBe("self");
+    expect(byName["Gail Stone"].warnings.join()).toMatch(/No site called "Nowhere"/);
+    expect(byName["Harry Nope"].gradeId).toBeNull();
+    expect(p.value.rows.filter((r) => r.skip).map((r) => r.skip).sort()).toEqual(["No student name", "Same student twice in the file"]);
+    expect(p.value.summary).toMatchObject({ total: 6, toImport: 4, skipped: 2, withBelt: 3 });
+  });
+
+  it("imports in one go, then skips the same people next time", async () => {
+    const r = await importer.runImport(a, csv, null, { siteId: "", discipline: "taekwondo" });
+    expect(r.ok && r.value).toEqual({ students: 4, families: 3, belts: 3 });
+    const [{ n }] = await adminSql`select count(*)::int as n from students s join guardians g on g.household_id = s.household_id where s.club_id = ${a.clubId} and g.email = 'kim@example.test'`;
+    expect(n).toBe(2);
+    const again = await importer.previewImport(a, csv, null, { siteId: "", discipline: "taekwondo" });
+    expect(again.ok && again.value.summary.toImport).toBe(0);
+    expect((await importer.runImport(a, csv, null, { siteId: "", discipline: "taekwondo" })).ok).toBe(false);
+  });
+
+  it("puts a new child into an existing family by email, and respects permissions", async () => {
+    const r = await importer.runImport(a, "Name,Parent email\nIvy Brown,kim@example.test", null, { siteId: "", discipline: "taekwondo" });
+    expect(r.ok && r.value).toEqual({ students: 1, families: 0, belts: 0 });
+    await expect(importer.previewImport({ ...a, role: "assistant" }, csv, null, { siteId: "", discipline: "" })).rejects.toThrow(/Not allowed/);
+    const [{ n }] = await adminSql`select count(*)::int as n from students where club_id = ${b.clubId} and first_name = 'Ivy'`;
+    expect(n).toBe(0);
+  });
+
+  it("asks which column is the name when it can't tell", async () => {
+    const r = await importer.previewImport(a, "Foo,Bar\n1,2", null, { siteId: "", discipline: "" });
+    expect(!r.ok && r.errors.mapping).toMatch(/name/);
   });
 });

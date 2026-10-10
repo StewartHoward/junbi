@@ -31,7 +31,12 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         <div className="card empty" style={{ marginTop: 24 }}>
           <h2>Add your first student.</h2>
           <p>Each student gets a profile with their belt, family contacts, medical notes and attendance.</p>
-          {canAdd && <Link className="btn primary" href="/students/new">Add a student</Link>}
+          {canAdd && (
+            <div className="actions" style={{ justifyContent: "center" }}>
+              <Link className="btn primary" href="/students/new">Add a student</Link>
+              <Link className="btn secondary" href="/students/import">Import from a spreadsheet</Link>
+            </div>
+          )}
         </div>
       </>
     );
@@ -43,6 +48,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         <h1 className="page-title">Students</h1>
         <div className="actions">
           <span className="muted num">{students.length} shown</span>
+          {canAdd && <Link className="btn secondary" href="/students/import">Import</Link>}
           {canAdd && <Link className="btn primary" href="/students/new">Add student</Link>}
         </div>
       </div>

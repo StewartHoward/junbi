@@ -28,7 +28,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const nice = new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   const gettingStarted = [
-    { done: overview.activeStudents > 0, label: "Add your students", href: "/students/new", show: can(actor, "students.edit") },
+    { done: overview.activeStudents > 0, label: "Add or import your students", href: "/students", show: can(actor, "students.edit") },
     { done: overview.classCount > 0, label: "Build your timetable", href: "/classes/new", show: can(actor, "classes.manage") },
   ];
 

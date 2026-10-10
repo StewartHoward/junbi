@@ -36,7 +36,7 @@ Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai a
 
 ## Build order
 1. Email (password reset, staff invites, trial reminders)
-2. Student import, with families and belts matched
+2. Student import, with families and belts matched (done: CSV import at /students/import)
 3. Stripe Direct Debit (Stripe Connect, Bacs Direct Debit)
 4. Messages to parents (email and text)
 5. Paying for Junbi at the end of the trial

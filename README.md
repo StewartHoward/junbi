@@ -14,6 +14,7 @@ This repository holds the Junbi admin web app. The full plan is in [`docs/brief.
 - **Settings:** club name, arts, sites and staff list.
 - **Tenant isolation in the database.** Every club table is protected by Postgres row-level security on `club_id`, and the app connects as a role that cannot bypass it. Sign-in data is only reachable through narrow database functions. Tests prove both.
 - **Roles and permissions** (owner, admin, instructor, assistant) with site scoping.
+- **Student import:** upload a CSV from a spreadsheet or another system. Columns are matched automatically (and can be changed), families are grouped by email or phone and joined to existing families, belts are matched to the club's belt systems, and duplicates are skipped. Nothing saves until the owner checks the preview.
 - **Marketing site:** homepage, pricing and Founding Clubs, all leading to sign-up.
 
 ## Email
