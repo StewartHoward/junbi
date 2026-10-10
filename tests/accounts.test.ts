@@ -24,6 +24,7 @@ const club = await import("@/data/club");
 const flows = await import("@/data/email-flows");
 const importer = await import("@/data/student-import");
 const join = await import("@/data/join");
+const msgs = await import("@/data/messages");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -540,5 +541,93 @@ describe("family sign-up link", () => {
     await expect(join.sendJoinLink({ ...a, role: "assistant" }, "x@example.test")).rejects.toThrow(/Not allowed/);
     const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'join-invite' and to_email = 'new.parent@example.test'`;
     expect(n).toBe(1);
+  });
+});
+
+describe("messages to parents", () => {
+  let m: Actor;
+  let north = "";
+  let south = "";
+  let classId = "";
+  const quiet = () => vi.spyOn(console, "log").mockImplementation(() => {});
+
+  beforeAll(async () => {
+    const r0 = await accounts.createClubAccount({ clubName: "Message Club", name: "Mo Owner", email: "msg-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    m = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(m, { disciplines: ["karate"], siteName: "North", siteAddress: "", syllabus: {} });
+    await club.addSite(m, "South", "");
+    const o = await club.getClubOverview(m);
+    north = o.sites.find((x) => x.name === "North")!.id;
+    south = o.sites.find((x) => x.name === "South")!.id;
+    const add = async (first: string, siteId: string, guardian: { first: string; email: string | null }, householdId?: string) => {
+      const r = await studentsEdit.createStudent(m, {
+        firstName: first, lastName: "Test", siteId, status: "active", firstAidConsent: true, photoConsent: false,
+        ...(householdId ? { householdId } : { guardianFirstName: guardian.first, guardianLastName: "Test", guardianEmail: guardian.email ?? "", relationship: "parent" }),
+      });
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      return r.value.id;
+    };
+    const amy = await add("Amy", north, { first: "Ann", email: "ann@example.test" });
+    const [{ household_id }] = await adminSql`select household_id from students where id = ${amy}`;
+    await add("Ben", north, { first: "Ann", email: null }, household_id); // sibling, same family
+    await add("Cal", north, { first: "Cara", email: null }); // family with no email
+    const dee = await add("Dee", south, { first: "Dan", email: "DAN@example.test" });
+    // A class at North, with Amy there last week.
+    const lastWeek = new Date(Date.now() - 7 * 86_400_000);
+    const weekday = ((lastWeek.getUTCDay() + 6) % 7) + 1;
+    const c = await classes.createClass(m, { name: "Little Ninjas", siteId: north, discipline: "karate", weekday: String(weekday), startsAt: "17:00", durationMinutes: "45", capacity: "" });
+    classId = c.ok ? c.value.id : "";
+    await classes.setAttendance(m, classId, lastWeek.toISOString().slice(0, 10), amy, true);
+    void dee;
+  });
+
+  it("counts families, one email per address, and says who has no email", async () => {
+    const all = await msgs.previewAudience(m, { kind: "all" });
+    expect(all.ok && all.value).toMatchObject({ label: "Everyone", students: 4, families: 3, emails: 2, familiesWithoutEmail: 1 });
+    const s = await msgs.previewAudience(m, { kind: "site", siteId: south });
+    expect(s.ok && s.value).toMatchObject({ label: "Everyone at South", emails: 1 });
+    const c = await msgs.previewAudience(m, { kind: "class", classId });
+    expect(c.ok && c.value).toMatchObject({ students: 1, emails: 1 });
+    expect(c.ok && c.value.label).toMatch(/^Little Ninjas · /);
+  });
+
+  it("sends, records each recipient, and shows it in the history", async () => {
+    const spy = quiet();
+    const r = await msgs.sendMessage(m, { audience: { kind: "all" }, subject: "No class Monday", body: "Hi all,\n\nThe hall is closed on Monday.\n\nSee you Wednesday." });
+    spy.mockRestore();
+    expect(r.ok && r.value).toMatchObject({ sent: 2, failed: 0 });
+    const id = r.ok ? r.value.id : "";
+    const detail = await msgs.getMessage(m, id);
+    expect(detail?.recipients.map((x) => [x.email, x.status]).sort()).toEqual([["ann@example.test", "logged"], ["dan@example.test", "logged"]]);
+    expect(detail).toMatchObject({ subject: "No class Monday", audienceLabel: "Everyone", recipientCount: 2, sentCount: 2 });
+    expect((await msgs.listMessages(m)).map((x) => x.subject)).toEqual(["No class Monday"]);
+  });
+
+  it("checks the message and refuses an empty audience", async () => {
+    const bad = await msgs.sendMessage(m, { audience: { kind: "nope" }, subject: "", body: "" });
+    expect(!bad.ok && bad.errors).toMatchObject({ audience: expect.any(String), subject: expect.any(String), body: expect.any(String) });
+    const o = await club.getClubOverview(m);
+    await club.addSite(m, "Empty Hall", "");
+    const empty = (await club.getClubOverview(m)).sites.find((x) => x.name === "Empty Hall")!.id;
+    const r = await msgs.sendMessage(m, { audience: { kind: "site", siteId: empty }, subject: "Hi", body: "Hi" });
+    expect(!r.ok && r.errors.audience).toMatch(/nobody/);
+    void o;
+  });
+
+  it("keeps instructors to their own sites and messages, and assistants out", async () => {
+    const coach: Actor = { ...m, userId: a.userId, role: "instructor", sites: [north] };
+    const p = await msgs.previewAudience(coach, { kind: "all" });
+    expect(p.ok && p.value).toMatchObject({ label: "Everyone at North", emails: 1 });
+    await expect(msgs.previewAudience(coach, { kind: "site", siteId: south })).rejects.toThrow(/Not allowed/);
+    expect(await msgs.listMessages(coach)).toEqual([]);
+    await expect(msgs.listMessages({ ...m, role: "assistant" })).rejects.toThrow(/Not allowed/);
+  });
+
+  it("keeps clubs apart", async () => {
+    const [{ id }] = await adminSql`select id from messages where club_id = ${m.clubId} limit 1`;
+    expect(await msgs.getMessage(b, id)).toBeNull();
+    expect(await msgs.listMessages(b)).toEqual([]);
+    await expect(msgs.previewAudience(b, { kind: "class", classId })).rejects.toThrow(/Not allowed/);
   });
 });

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireActor } from "@/auth/session";
-import { ForbiddenError } from "@/auth/permissions";
+import { ForbiddenError, can } from "@/auth/permissions";
 import { addDays, getRegister, validDate } from "@/data/classes";
 import { toggleAttendanceAction } from "../../../actions";
 
@@ -31,6 +31,11 @@ export default async function RegisterPage({ params, searchParams }: { params: P
           <p className="muted" style={{ marginTop: 4 }}>
             {nice} · <span className="num">{cls.startsAt.slice(0, 5)}</span> · {cls.site}
           </p>
+          {can(actor, "messages.send") && (
+            <p style={{ marginTop: 6, fontSize: 14 }}>
+              <Link href={`/messages/new?class=${cls.id}`}>Message this class&apos;s families</Link>
+            </p>
+          )}
         </div>
         <nav className="actions" aria-label="Change week">
           <Link className="btn ghost" href={`/classes/${cls.id}/register?date=${addDays(date, -7)}`}>‹ Last week</Link>

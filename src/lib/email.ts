@@ -74,6 +74,64 @@ export async function sendEmail(e: Email): Promise<SendResult> {
   return result;
 }
 
+export type BatchEmail = { to: string; subject: string; html: string; text: string; fromName?: string; replyTo?: string };
+export type BatchResult = { status: "sent" | "logged" | "failed"; providerId?: string; error?: string };
+
+/** "Junbi <hello@junbi.co.uk>" with a different display name, e.g. the club's. */
+function fromWithName(name?: string) {
+  const from = process.env.EMAIL_FROM || "Junbi <hello@junbi.co.uk>";
+  if (!name) return from;
+  const address = from.match(/<([^>]+)>/)?.[1] ?? from;
+  const clean = name.replace(/["<>\r\n]/g, "").trim().slice(0, 80) || "Junbi";
+  return `"${clean}" <${address}>`;
+}
+
+/**
+ * Sends many emails through Resend's batch endpoint, 100 per request. Results come back in the same order.
+ * Without RESEND_API_KEY each email is written to the log instead.
+ */
+export async function sendBatch(emails: BatchEmail[]): Promise<BatchResult[]> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    for (const e of emails) console.log(`[email not sent: RESEND_API_KEY not set] to=${e.to} subject="${e.subject}"`);
+    return emails.map(() => ({ status: "logged" as const }));
+  }
+  const out: BatchResult[] = [];
+  for (let i = 0; i < emails.length; i += 100) {
+    const chunk = emails.slice(i, i + 100);
+    try {
+      const res = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify(
+          chunk.map((e) => ({
+            from: fromWithName(e.fromName),
+            to: [e.to],
+            subject: e.subject,
+            html: e.html,
+            text: e.text,
+            ...(e.replyTo ? { reply_to: e.replyTo } : {}),
+          })),
+        ),
+      });
+      const body = (await res.json().catch(() => ({}))) as { data?: Array<{ id: string }>; message?: string };
+      if (res.ok && Array.isArray(body.data)) {
+        chunk.forEach((_, j) => out.push(body.data![j] ? { status: "sent", providerId: body.data![j].id } : { status: "failed", error: "No id returned" }));
+      } else {
+        const error = body.message ?? `HTTP ${res.status}`;
+        console.error(`Batch email failed: ${error}`);
+        chunk.forEach(() => out.push({ status: "failed", error }));
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      chunk.forEach(() => out.push({ status: "failed", error }));
+    }
+    // Resend allows a couple of requests a second.
+    if (i + 100 < emails.length) await new Promise((r) => setTimeout(r, 600));
+  }
+  return out;
+}
+
 /** The site's own address, for links in emails. */
 export async function appUrl(): Promise<string> {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
@@ -106,6 +164,22 @@ function layout(title: string, paragraphs: string[], button?: { label: string; u
 ${ps}${btn}${foot}
 </td></tr></table>
 <p style="margin:20px 0 0;font-size:12px;color:#86868b">Junbi · Simple club management for martial arts</p>
+</td></tr></table></body></html>`;
+}
+
+/** Like layout(), but the club's name leads and line breaks inside a paragraph are kept. */
+function clubLayout(clubName: string, title: string, paragraphs: string[], footnote: string) {
+  const ps = paragraphs.map((p) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1d1d1f">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+  return `<!doctype html><html lang="en-GB"><body style="margin:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;padding:36px 32px">
+<tr><td>
+<p style="margin:0 0 24px;font-size:15px;font-weight:600;color:#6e6e73">${esc(clubName)}</p>
+<h1 style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:600;letter-spacing:-0.02em;color:#1d1d1f">${esc(title)}</h1>
+${ps}
+<p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#6e6e73">${esc(footnote)}</p>
+</td></tr></table>
+<p style="margin:20px 0 0;font-size:12px;color:#86868b">Sent with Junbi</p>
 </td></tr></table></body></html>`;
 }
 
@@ -180,6 +254,13 @@ export const templates = {
       [`${parentName} has signed up ${list(names)} using your sign-up link.`, "They're on your student list as Trial."],
       { label: "See them in Junbi", url },
     ),
+  /** A message from a club to its families. Body paragraphs are split on blank lines. */
+  clubMessage: (clubName: string, senderName: string | null, subject: string, body: string) => {
+    const paragraphs = body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    const title = subject;
+    const foot = `Sent by ${senderName ? `${senderName} at ` : ""}${clubName}. Reply to this email to get in touch with the club.`;
+    return { subject: `${subject}`, html: clubLayout(clubName, title, paragraphs, foot), text: [clubName, "", title, "", ...paragraphs, "", foot].join("\n") };
+  },
   trialReminder: (name: string, clubName: string, daysLeft: number, endsOn: string, url: string) =>
     build(
       daysLeft === 1 ? "Your Junbi trial ends tomorrow" : `${daysLeft} days left in your Junbi trial`,

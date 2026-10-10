@@ -433,6 +433,43 @@ export const emailLog = pgTable(
 );
 
 /** Tables protected by row-level security on club_id. Kept here so tests can check every one. */
+/* ---------- Messages to parents ---------- */
+
+/** One message sent by staff to a group of families. */
+export const messages = pgTable("messages", {
+  id: id(),
+  clubId: clubId(),
+  senderUserId: uuid("sender_user_id").references(() => users.id, { onDelete: "set null" }),
+  /** "email" now; "sms" later. */
+  channel: text("channel").notNull().default("email"),
+  /** Who it went to, e.g. { kind: "site", siteId } or { kind: "class", classId }. */
+  audience: jsonb("audience").notNull(),
+  /** Plain-words version for the history list, e.g. "Southport · everyone". */
+  audienceLabel: text("audience_label").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  createdAt: createdAt(),
+});
+
+/** Each family contact a message went to, with how it went. */
+export const messageRecipients = pgTable("message_recipients", {
+  id: id(),
+  clubId: clubId(),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  guardianId: uuid("guardian_id").references(() => guardians.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  email: text("email"),
+  /** queued, sent, logged (no email provider set up), failed */
+  status: text("status").notNull().default("queued"),
+  providerId: text("provider_id"),
+  error: text("error"),
+});
+
 /**
  * Discount codes for Junbi's own price. Not tenant data: reached only through
  * the promo_check and promo_redeem functions.
@@ -468,4 +505,6 @@ export const TENANT_TABLES = [
   "class_sessions",
   "attendance",
   "audit_log",
+  "messages",
+  "message_recipients",
 ] as const;
