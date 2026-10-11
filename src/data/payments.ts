@@ -56,6 +56,39 @@ export async function paymentSettings(actor: Actor) {
   });
 }
 
+/**
+ * Money at a glance for the dashboard: what's come in this month, what the club expects each month from active
+ * memberships, what's outstanding (failed or retrying payments in the last 90 days) and members with no Direct Debit.
+ */
+export async function moneySummary(actor: Actor) {
+  assertCan(actor, "payments.view");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [r] = (await tx.execute(sql`
+      with month as (select date_trunc('month', (now() at time zone 'Europe/London'))::date as start)
+      select
+        (select coalesce(sum(amount_pence), 0)::int from payments, month where status in ('confirmed', 'paid_out') and charge_date >= month.start) as collected,
+        (select coalesce(sum(amount_pence), 0)::int from payments, month where status in ('pending', 'submitted') and charge_date >= month.start) as on_the_way,
+        (select coalesce(sum(case p.interval when 'monthly' then p.amount_pence when 'annual' then p.amount_pence / 12.0 else p.amount_pence * 3 / 12.0 end), 0)::int
+           from memberships m join plans p on p.id = m.plan_id join students s on s.id = m.student_id
+           where m.status = 'active' and (m.ends_on is null or m.ends_on >= current_date) and s.status = 'active') as expected,
+        (select coalesce(sum(amount_pence), 0)::int from payments where status in ('failed', 'retrying', 'charged_back') and charge_date >= current_date - 90) as outstanding,
+        (select count(distinct household_id)::int from payments where status in ('failed', 'retrying', 'charged_back') and charge_date >= current_date - 90) as outstanding_families,
+        (select count(*)::int from students s
+           where s.status = 'active'
+             and exists (select 1 from memberships m where m.student_id = s.id and m.status = 'active')
+             and not exists (select 1 from mandates d where d.household_id = s.household_id and d.status in ('active', 'submitted', 'pending_submission'))) as no_direct_debit
+    `)) as unknown as Array<{ collected: number; on_the_way: number; expected: number; outstanding: number; outstanding_families: number; no_direct_debit: number }>;
+    return {
+      collectedPence: r.collected,
+      onTheWayPence: r.on_the_way,
+      expectedMonthlyPence: r.expected,
+      outstandingPence: r.outstanding,
+      outstandingFamilies: r.outstanding_families,
+      noDirectDebit: r.no_direct_debit,
+    };
+  });
+}
+
 /** Where to send the owner to connect their account. */
 export function connectUrl(actor: Actor, id: string, redirectUri: string): string {
   assertCan(actor, "club.manage");

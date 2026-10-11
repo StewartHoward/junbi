@@ -8,6 +8,8 @@ import { ArtFilter } from "@/components/ArtFilter";
 import { disciplineName } from "@/lib/disciplines";
 import { recentSignups } from "@/data/join";
 import { upcomingTrials } from "@/data/leads";
+import { moneySummary } from "@/data/payments";
+import { formatPence } from "@/data/students";
 
 export const metadata: Metadata = { title: "Today" };
 
@@ -22,7 +24,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const arts = await clubArts(actor);
   const filter = art && arts.includes(art) ? art : undefined;
   const date = todayISO();
-  const [classes, overview, signups, trials] = await Promise.all([classesOn(actor, date, { discipline: filter }), getClubOverview(actor), recentSignups(actor), can(actor, "students.view") ? upcomingTrials(actor) : []]);
+  const [classes, overview, signups, trials, money] = await Promise.all([
+    classesOn(actor, date, { discipline: filter }),
+    getClubOverview(actor),
+    recentSignups(actor),
+    can(actor, "students.view") ? upcomingTrials(actor) : [],
+    can(actor, "payments.view") ? moneySummary(actor) : null,
+  ]);
+  const monthName = new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { month: "long" });
   const checkedIn = classes.reduce((n, c) => n + c.present, 0);
   const trialDays = overview.club.trialEndsOn
     ? Math.round((Date.parse(`${overview.club.trialEndsOn}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000)
@@ -65,6 +74,35 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           <div className="value">{checkedIn}</div>
         </div>
       </div>
+
+      {money && (
+        <div className="row" style={{ marginTop: 16 }}>
+          <Link href="/payments" className="card stat" style={{ color: "inherit", textDecoration: "none" }}>
+            <div className="label">Collected in {monthName}</div>
+            <div className="value">{formatPence(money.collectedPence)}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {money.onTheWayPence > 0 ? `${formatPence(money.onTheWayPence)} on the way` : money.expectedMonthlyPence > 0 ? `of about ${formatPence(money.expectedMonthlyPence)} a month` : "No payments yet"}
+            </div>
+          </Link>
+          <Link href="/payments" className="card stat" style={{ color: "inherit", textDecoration: "none" }}>
+            <div className="label">Monthly income</div>
+            <div className="value">{formatPence(money.expectedMonthlyPence)}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>From active memberships</div>
+          </Link>
+          <Link href="/payments" className="card stat" style={{ color: "inherit", textDecoration: "none" }}>
+            <div className="label">Outstanding</div>
+            <div className="value" style={{ color: money.outstandingPence > 0 ? "var(--warning-ink, #b25000)" : undefined }}>{formatPence(money.outstandingPence)}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {money.outstandingFamilies > 0 ? `${money.outstandingFamilies} ${money.outstandingFamilies === 1 ? "family" : "families"} with failed payments` : "Nothing overdue"}
+            </div>
+          </Link>
+          <Link href="/students?filter=no-dd" className="card stat" style={{ color: "inherit", textDecoration: "none" }}>
+            <div className="label">No Direct Debit</div>
+            <div className="value">{money.noDirectDebit}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Members not paying by Direct Debit</div>
+          </Link>
+        </div>
+      )}
 
       <section className="card" style={{ marginTop: 24 }}>
         <div className="head">

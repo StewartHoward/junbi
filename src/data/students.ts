@@ -93,10 +93,16 @@ export type StudentListItem = {
   paymentNotice: string | null;
 };
 
-export async function listStudents(actor: Actor, opts: { q?: string } = {}): Promise<StudentListItem[]> {
+export const STUDENT_FILTERS = ["payment-problems", "no-dd", "new"] as const;
+export type StudentListOptions = { q?: string; status?: string; siteId?: string; filter?: string };
+
+export async function listStudents(actor: Actor, opts: StudentListOptions = {}): Promise<StudentListItem[]> {
   assertCan(actor, "students.view");
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const q = opts.q?.trim();
+    const status = (s.studentStatus.enumValues as readonly string[]).includes(opts.status ?? "") ? (opts.status as (typeof s.studentStatus.enumValues)[number]) : undefined;
+    const siteId = opts.siteId && /^[0-9a-f-]{36}$/i.test(opts.siteId) ? opts.siteId : undefined;
+    const money = opts.filter === "payment-problems" || opts.filter === "no-dd" ? can(actor, "payments.view") : true;
     const rows = await tx
       .select({
         id: s.students.id,
@@ -114,6 +120,14 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
         and(
           siteFilter(actor),
           q ? or(ilike(s.students.firstName, `%${q}%`), ilike(s.students.lastName, `%${q}%`)) : undefined,
+          status ? eq(s.students.status, status) : undefined,
+          siteId ? eq(s.students.siteId, siteId) : undefined,
+          opts.filter === "new" ? sql`${s.students.createdAt} > now() - interval '30 days'` : undefined,
+          opts.filter === "no-dd" && money
+            ? sql`${s.students.status} = 'active'
+                and exists (select 1 from memberships m where m.student_id = ${s.students.id} and m.status = 'active')
+                and not exists (select 1 from mandates d where d.household_id = ${s.students.householdId} and d.status in ('active', 'submitted', 'pending_submission'))`
+            : undefined,
         ),
       )
       .orderBy(asc(s.students.lastName), asc(s.students.firstName));
@@ -122,7 +136,8 @@ export async function listStudents(actor: Actor, opts: { q?: string } = {}): Pro
     const order = await clubArtOrder(tx);
     const issues = await householdPaymentIssues(tx, [...new Set(rows.map((r) => r.householdId))]);
 
-    return rows.map((r) => {
+    const shown = opts.filter === "payment-problems" ? (money ? rows.filter((r) => issues.has(r.householdId)) : []) : rows;
+    return shown.map((r) => {
       const detail = issues.get(r.householdId);
       return {
         id: r.id,

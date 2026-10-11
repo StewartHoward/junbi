@@ -734,6 +734,18 @@ describe("club payments and paying at sign-up", () => {
     expect(c.ends_on).not.toBeNull();
   });
 
+  it("dashboard money summary and student filters", async () => {
+    const m = await pay.moneySummary(p);
+    expect(m.expectedMonthlyPence).toBe(3500); // Jay on Kids monthly £35 (Ivy was cancelled above)
+    expect(m.outstandingPence).toBe(0);
+    await expect(pay.moneySummary({ ...p, role: "instructor" })).rejects.toThrow(/Not allowed/);
+    const all = await students.listStudents(p);
+    expect((await students.listStudents(p, { status: "active" })).length).toBe(all.filter((x) => x.status === "active").length);
+    expect(await students.listStudents(p, { filter: "payment-problems" })).toEqual([]);
+    expect((await students.listStudents(p, { filter: "no-dd" })).map((x) => x.name)).toEqual([]);
+    expect((await students.listStudents(p, { siteId: site })).length).toBe(all.length);
+  });
+
   it("staff add a membership: emails the Direct Debit link to a family that isn't paying yet", async () => {
     const kids = (await pay.listPlans(p)).plans.find((x) => x.name === "Kids monthly")!.id;
     const made = await studentsEdit.createStudent(p, { firstName: "Max", lastName: "Reed", siteId: site, status: "trial", firstAidConsent: true, photoConsent: true, relationship: "parent", guardianFirstName: "Rita", guardianLastName: "Reed", guardianEmail: "rita@example.test", guardianPhone: "07700 900444" });
