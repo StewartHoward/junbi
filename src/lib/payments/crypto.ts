@@ -22,13 +22,13 @@ export function decrypt(blob: string): string {
 }
 
 /** Signed, short-lived "state" for the connect round trip, so a callback can't be forged. */
-export function signState(data: { clubId: string; provider: string }, ttlSeconds = 1800): string {
+export function signState(data: { clubId: string; provider: string; accountId?: string }, ttlSeconds = 1800): string {
   const body = Buffer.from(JSON.stringify({ ...data, exp: Math.floor(Date.now() / 1000) + ttlSeconds })).toString("base64url");
   const sig = createHmac("sha256", key()).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
 
-export function verifyState(state: string | null | undefined): { clubId: string; provider: string } | null {
+export function verifyState(state: string | null | undefined): { clubId: string; provider: string; accountId?: string } | null {
   if (!state || state.length > 1000) return null;
   const [body, sig] = state.split(".");
   if (!body || !sig) return null;
@@ -37,8 +37,8 @@ export function verifyState(state: string | null | undefined): { clubId: string;
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const d = JSON.parse(Buffer.from(body, "base64url").toString()) as { clubId: string; provider: string; exp: number };
-    return d.exp > Date.now() / 1000 ? { clubId: d.clubId, provider: d.provider } : null;
+    const d = JSON.parse(Buffer.from(body, "base64url").toString()) as { clubId: string; provider: string; accountId?: string; exp: number };
+    return d.exp > Date.now() / 1000 ? { clubId: d.clubId, provider: d.provider, ...(d.accountId ? { accountId: d.accountId } : {}) } : null;
   } catch {
     return null;
   }

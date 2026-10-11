@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
-import { connectUrl } from "@/data/payments";
+import { startConnect } from "@/data/payments";
 import { appUrl } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ provide
   if (!actor || !can(actor, "club.manage")) return NextResponse.redirect(`${base}/login`);
   const { provider } = await params;
   try {
-    return NextResponse.redirect(connectUrl(actor, provider, `${base}/api/payments/callback/${provider}`));
-  } catch {
+    return NextResponse.redirect(await startConnect(actor, provider, base));
+  } catch (err) {
+    console.error("Connecting payments failed", err);
     return NextResponse.redirect(`${base}/payments?error=unavailable`);
   }
 }

@@ -87,7 +87,7 @@ Nothing here is needed until you switch payments on. Add these in Netlify, then 
 
 **Stripe** (Connect, Standard accounts)
 - `STRIPE_SECRET_KEY`: the platform's secret key (sk_test_… while testing)
-- `STRIPE_CONNECT_CLIENT_ID`: Connect settings, OAuth client id (ca_…). Redirect URI: `https://<site>/api/payments/callback/stripe`
+- `STRIPE_CONNECT_CLIENT_ID`: no longer needed. Clubs now sign up for their own Stripe account through Junbi (Stripe-hosted sign-up), so there is no OAuth step.
 - `STRIPE_WEBHOOK_SECRET`: a **Connect** webhook endpoint at `https://<site>/api/payments/webhook/stripe` with events `checkout.session.completed`, `mandate.updated`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`
 
 **GoCardless** (partner app)

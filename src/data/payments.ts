@@ -55,17 +55,45 @@ export function connectUrl(actor: Actor, id: string, redirectUri: string): strin
   return p.connectUrl(signState({ clubId: actor.clubId, provider: p.id }), redirectUri);
 }
 
+/**
+ * Where to send the owner to connect: Stripe's hosted sign-up (Junbi makes the club's account) or,
+ * for GoCardless, its OAuth page.
+ */
+export async function startConnect(actor: Actor & { clubName: string }, id: string, base: string): Promise<string> {
+  assertCan(actor, "club.manage");
+  const p = provider(providerId.parse(id));
+  if (!p.available()) throw new Error(`${p.name} isn't available on Junbi yet.`);
+  const callback = `${base}/api/payments/callback/${p.id}`;
+  if (!p.onboard) return p.connectUrl(signState({ clubId: actor.clubId, provider: p.id }), callback);
+  const [me] = (await db().execute(sql`select email from users where id = ${actor.userId}::uuid`)) as unknown as Array<{ email: string }>;
+  return p.onboard({
+    clubId: actor.clubId,
+    clubName: actor.clubName,
+    email: me?.email ?? "",
+    returnUrl: (accountId) => `${callback}?state=${encodeURIComponent(signState({ clubId: actor.clubId, provider: p.id, accountId }, 3 * 3600))}`,
+    refreshUrl: `${base}/api/payments/connect/${p.id}`,
+  });
+}
+
 /** Back from the provider: swap the code for the club's account and save it. */
 export async function finishConnect(actor: Actor, id: string, code: string | null, state: string | null, redirectUri: string): Promise<Result<{ provider: ProviderId }>> {
   assertCan(actor, "club.manage");
   const pid = providerId.safeParse(id);
   const st = verifyState(state);
-  if (!pid.success || !st || st.clubId !== actor.clubId || st.provider !== pid.data || !code) {
+  const p = pid.success ? provider(pid.data) : null;
+  const hosted = Boolean(p?.finishOnboard && st?.accountId);
+  if (!pid.success || !p || !st || st.clubId !== actor.clubId || st.provider !== pid.data || (!code && !hosted)) {
     return { ok: false, errors: { form: "That didn't work. Please try connecting again." } };
   }
   let acc: { accountId: string; accessToken?: string };
   try {
-    acc = await provider(pid.data).completeConnect(code, redirectUri);
+    if (hosted) {
+      const r = await p.finishOnboard!(st.accountId!);
+      if (!r.submitted) return { ok: false, errors: { form: "Stripe sign-up isn't finished yet. Click Connect Stripe to carry on where you left off." } };
+      acc = { accountId: r.accountId };
+    } else {
+      acc = await p.completeConnect(code!, redirectUri);
+    }
   } catch (err) {
     return { ok: false, errors: { form: err instanceof Error ? err.message : "That didn't work. Please try again." } };
   }

@@ -3,10 +3,12 @@ import { safeEqual } from "./crypto";
 import type { ConnectedAccount, PaymentProvider, StartSetupInput } from "./types";
 
 /*
- * Stripe Connect with Standard accounts: each club has its own Stripe account and connects it to Junbi
- * through OAuth. Charges, customers and Bacs Direct Debit mandates live on the club's account,
- * so Junbi never holds money and mandates stay with the club if Junbi's platform account changes.
- * Env: STRIPE_SECRET_KEY (platform), STRIPE_CONNECT_CLIENT_ID (ca_…), STRIPE_WEBHOOK_SECRET (whsec_…, Connect endpoint).
+ * Stripe Connect: each club has its own full Stripe account (with its own Stripe Dashboard, paying its own
+ * Stripe fees). Junbi creates it and the owner fills in their details on Stripe's hosted sign-up; anyone
+ * already on Stripe can reuse their saved details. Charges, customers and Bacs Direct Debit mandates live
+ * on the club's account, so Junbi never holds money.
+ * Env: STRIPE_SECRET_KEY (platform), STRIPE_WEBHOOK_SECRET (whsec_…, Connect endpoint).
+ * STRIPE_CONNECT_CLIENT_ID is no longer needed (it was for the old OAuth connect).
  */
 
 const API = "https://api.stripe.com/v1";
@@ -61,7 +63,45 @@ export function verifyStripeSignature(payload: string, header: string | null, se
 export const stripeProvider: PaymentProvider = {
   id: "stripe",
   name: "Stripe",
-  available: () => Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_CONNECT_CLIENT_ID),
+  available: () => Boolean(process.env.STRIPE_SECRET_KEY),
+  async onboard(input) {
+    // Reuse the club's unfinished account if they started before, so abandoned sign-ups don't pile up.
+    const list = await stripeApi<{ data: Array<{ id: string; metadata?: Record<string, string> }> }>("GET", "/accounts", { limit: 100 });
+    let accountId = list.data.find((a) => a.metadata?.junbi_club_id === input.clubId)?.id;
+    if (!accountId) {
+      const acct = await stripeApi<{ id: string }>(
+        "POST",
+        "/accounts",
+        {
+          country: "GB",
+          email: input.email,
+          business_profile: { name: input.clubName.slice(0, 100), mcc: "7941", product_description: "Martial arts club memberships" },
+          controller: {
+            stripe_dashboard: { type: "full" },
+            fees: { payer: "account" },
+            losses: { payments: "stripe" },
+            requirement_collection: "stripe",
+          },
+          capabilities: { bacs_debit_payments: { requested: true }, card_payments: { requested: true } },
+          metadata: { junbi_club_id: input.clubId },
+        },
+        undefined,
+        `acct-${input.clubId}`,
+      );
+      accountId = acct.id;
+    }
+    const link = await stripeApi<{ url: string }>("POST", "/account_links", {
+      account: accountId,
+      type: "account_onboarding",
+      refresh_url: input.refreshUrl,
+      return_url: input.returnUrl(accountId),
+    });
+    return link.url;
+  },
+  async finishOnboard(accountId) {
+    const a = await stripeApi<{ id: string; details_submitted?: boolean; charges_enabled?: boolean }>("GET", `/accounts/${accountId}`, null);
+    return { accountId: a.id, submitted: Boolean(a.details_submitted), chargesEnabled: Boolean(a.charges_enabled) };
+  },
   connectUrl(state, redirectUri) {
     const q = new URLSearchParams({ response_type: "code", client_id: process.env.STRIPE_CONNECT_CLIENT_ID ?? "", scope: "read_write", state, redirect_uri: redirectUri });
     return `https://connect.stripe.com/oauth/authorize?${q}`;

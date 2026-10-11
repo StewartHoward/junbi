@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Payments" };
 
 const NAMES = { stripe: "Stripe", gocardless: "GoCardless" } as const;
 const OPTIONS = [
-  { id: "stripe", name: "Stripe", text: "Direct Debit, with cards and Apple Pay on the same account. Good if you already use Stripe or sell anything else online." },
+  { id: "stripe", name: "Stripe", text: "Direct Debit, with cards and Apple Pay on the same account. Set up in about ten minutes; if you already use Stripe, sign in and your details fill in for you." },
   { id: "gocardless", name: "GoCardless", text: "Direct Debit specialists. Good if you already collect through GoCardless, as your existing account connects in one click." },
 ] as const;
 
