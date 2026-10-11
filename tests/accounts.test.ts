@@ -908,7 +908,7 @@ describe("leads", () => {
     spy.mockRestore();
     expect(r.ok).toBe(true);
     const [zoe] = await adminSql`select id from students where club_id = ${l.clubId} and first_name = 'Zoe'`;
-    let prof = await students.getStudentProfile(l, zoe.id);
+    let prof = (await students.getStudentProfile(l, zoe.id))!;
     expect(prof.contact).toMatchObject({ addressLine1: "1 Hall St", town: "Southport", postcode: "PR9 0SF", emergencyName: "Gran Bell" });
     expect(prof.guardians[0]).toMatchObject({ email: "ade@example.test", phone: "07700 900123" });
     const g = prof.guardians[0];
@@ -916,7 +916,7 @@ describe("leads", () => {
     expect(bad.ok).toBe(false);
     const ok = await studentsEdit.updateFamilyContact(l, zoe.id, { guardians: [{ id: g.id, firstName: "Adaeze", lastName: "Bell", email: "adaeze@example.test", phone: "07700 900125" }], addressLine1: "2 Hall St", town: "Southport", postcode: "PR9 0SF" });
     expect(ok.ok).toBe(true);
-    prof = await students.getStudentProfile(l, zoe.id);
+    prof = (await students.getStudentProfile(l, zoe.id))!;
     expect(prof.guardians[0]).toMatchObject({ name: "Adaeze Bell", phone: "07700 900125" });
     expect(prof.contact).toMatchObject({ addressLine1: "2 Hall St", emergencyName: null });
     const asAssistant = await students.getStudentProfile({ ...l, role: "assistant" }, zoe.id).catch(() => null);
