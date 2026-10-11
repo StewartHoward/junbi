@@ -28,6 +28,7 @@ const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
+const dash = await import("@/data/dashboard");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -1035,5 +1036,54 @@ describe("existing Stripe account and Direct Debit takeover", () => {
     await pay.disconnectPayments(c);
     expect(calls.some((x) => x.method === "DELETE" && x.path === "/v1/webhook_endpoints/we_own1")).toBe(true);
     expect((await pay.paymentSettings(c)).account).toBeNull();
+  });
+});
+
+describe("dashboard and students summary", () => {
+  it("counts students, attendance, absences and the weekly chart, for this club only", async () => {
+    const opts = await studentsEdit.studentFormOptions(a);
+    const siteId = opts.sites[0].id;
+    const r = await studentsEdit.createStudent(a, {
+      firstName: "Dash", lastName: "Board", siteId, status: "active", firstAidConsent: false, photoConsent: false,
+      guardianFirstName: "Pat", guardianLastName: "Board", guardianEmail: "pat.board@example.test", relationship: "parent",
+    });
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const today = classes.todayISO();
+    const weekday = ((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
+    const c = await classes.createClass(a, { name: "Dashboard class", siteId, discipline: "taekwondo", weekday: String(weekday), startsAt: "00:05", durationMinutes: "60", capacity: "" });
+    if (!c.ok) throw new Error(JSON.stringify(c.errors));
+    await classes.setAttendance(a, c.value.id, today, r.value.id, true);
+
+    for (const period of ["7d", "30d", "3m", "12m"]) {
+      const s = await dash.dashboardStats(a, { period });
+      expect(s.attendance).toBeGreaterThanOrEqual(1);
+      expect(s.chart.length).toBe(dash.PERIODS[period as keyof typeof dash.PERIODS].buckets);
+      expect(s.chart.reduce((x, b) => x + b.n, 0)).toBeGreaterThanOrEqual(1);
+    }
+    const s = await dash.dashboardStats(a, { siteId });
+    expect(s.period).toBe("3m");
+    expect(s.activeStudents).toBeGreaterThanOrEqual(1);
+    expect(s.perClass).toBeGreaterThanOrEqual(1);
+    expect(s.monthlyPence).not.toBeNull();
+    expect(s.absent.find((x) => x.id === r.value.id)).toBeUndefined(); // joined today, and was in class
+
+    // An instructor sees the numbers but not the money.
+    expect((await dash.dashboardStats({ ...a, role: "instructor" })).monthlyPence).toBeNull();
+    // A coach limited to another site sees none of this site's students.
+    expect((await dash.dashboardStats({ ...a, role: "instructor", sites: [] })).activeStudents).toBe(0);
+    // Another club sees none of it.
+    const other = await dash.dashboardStats(b);
+    expect(other.attendance).toBe(0);
+    expect(other.activeStudents).toBe(0);
+
+    const sum = await dash.studentsSummary(a);
+    expect(sum.active).toBeGreaterThanOrEqual(1);
+    expect(sum.recent.some((x) => x.id === r.value.id)).toBe(true);
+    expect(sum.noPlan.length).toBeGreaterThanOrEqual(0);
+
+    const prof = await students.getStudentProfile(a, r.value.id);
+    expect(prof!.attendance.weeks).toHaveLength(12);
+    expect(prof!.attendance.weeks.at(-1)!.n).toBe(1);
+    expect(prof!.attendance.last).toBe(today);
   });
 });

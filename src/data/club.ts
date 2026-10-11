@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { withClub } from "@/db/client";
@@ -165,3 +166,11 @@ export async function applyPromoCode(actor: Actor, code: string): Promise<Result
     return { ok: true as const, value: { percentOff: Number(r.pct) } };
   });
 }
+
+/** The sites this person covers, for the sidebar and the venue buttons. Cached per request. */
+export const visibleSiteList = cache(async (actor: Actor) => {
+  const sites = await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) =>
+    tx.select({ id: s.sites.id, name: s.sites.name }).from(s.sites).orderBy(asc(s.sites.name)),
+  );
+  return sites.filter((x) => actor.sites === "all" || actor.sites.includes(x.id));
+});

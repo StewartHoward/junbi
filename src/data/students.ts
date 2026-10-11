@@ -91,6 +91,9 @@ export type StudentListItem = {
   /** One belt per art the student holds a grade in. Empty for new starters. */
   grades: Grade[];
   paymentNotice: string | null;
+  firstName: string;
+  lastName: string;
+  createdAt: Date;
 };
 
 export const STUDENT_FILTERS = ["payment-problems", "no-dd", "new"] as const;
@@ -147,6 +150,9 @@ export async function listStudents(actor: Actor, opts: StudentListOptions = {}):
         isNewSignup: r.source === "join_link" && Date.now() - r.createdAt.getTime() < 14 * 86_400_000,
         grades: sortedBelts(grades.get(r.id), order).map((h) => h.grade),
         paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(detail), detail: detail ?? "" }),
+        firstName: r.firstName,
+        lastName: r.lastName,
+        createdAt: r.createdAt,
       };
     });
   });
@@ -230,6 +236,19 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
 
     const issueDetail = (await householdPaymentIssues(tx, [st.householdId])).get(st.householdId);
 
+    // Classes each week for the last 12 weeks, for the attendance chart.
+    const weeks = (await tx.execute(sql`
+      select to_char(g, 'YYYY-MM-DD') as start, count(x.id)::int as n
+      from generate_series(date_trunc('week', now() at time zone 'Europe/London') - interval '11 weeks', date_trunc('week', now() at time zone 'Europe/London'), interval '1 week') g
+      left join (
+        select a.id, cs.starts_at at time zone 'Europe/London' as at
+        from attendance a join class_sessions cs on cs.id = a.session_id where a.student_id = ${st.id}
+      ) x on x.at >= g and x.at < g + interval '1 week'
+      group by g order by g`)) as unknown as Array<{ start: string; n: number }>;
+    const [lastRow] = (await tx.execute(sql`
+      select to_char(max(cs.starts_at at time zone 'Europe/London'), 'YYYY-MM-DD') as last
+      from attendance a join class_sessions cs on cs.id = a.session_id where a.student_id = ${st.id}`)) as unknown as Array<{ last: string | null }>;
+
     let billing: null | {
       mandateStatus: string | null;
       payments: Array<{ id: string; chargeDate: string; description: string; amount: string; status: string }>;
@@ -293,6 +312,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       planOptions: planOptions.map((p) => ({ id: p.id, label: `${p.name} · ${formatPence(p.amountPence)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}` })),
       paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(issueDetail), detail: issueDetail ?? "" }),
       billing,
+      attendance: { weeks, last: lastRow?.last ?? null },
     };
   });
 }

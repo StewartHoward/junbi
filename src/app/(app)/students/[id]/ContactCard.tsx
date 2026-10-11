@@ -56,45 +56,44 @@ export function ContactCard({ guardians, contact, action, canEdit }: { guardians
   return (
     <>
       {state.saved && <p className="muted" role="status" style={{ fontSize: 13, marginTop: 6 }}>Saved.</p>}
-      <div className="list" style={{ marginTop: 10 }}>
+      <div className="lrows">
         {guardians.map((g) => (
-          <div key={g.id} style={{ alignItems: "flex-start" }}>
-            <span>
-              <strong>{g.name}</strong>
-              <span className="muted" style={{ fontSize: 13 }}> · {REL[g.relationship] ?? g.relationship}{g.isPayer ? ", pays" : ""}</span>
-            </span>
-            <span style={{ textAlign: "right", fontSize: 14 }}>
-              {g.phone && <a href={tel(g.phone)}>{g.phone}</a>}
-              {g.phone && g.email && <br />}
-              {g.email && <a href={`mailto:${g.email}`}>{g.email}</a>}
-              {!g.phone && !g.email && contact && <span className="muted">No contact details</span>}
+          <div key={g.id} className="lrow" style={{ alignItems: "flex-start" }}>
+            <span className="grow">
+              <b>{g.name}</b>
+              <span className="sub">{REL[g.relationship] ?? g.relationship}{g.isPayer ? ", pays" : ""}</span>
+              {g.phone && <a href={tel(g.phone)} style={{ display: "block", fontSize: 14, marginTop: 4 }}>{g.phone}</a>}
+              {g.email && <a href={`mailto:${g.email}`} style={{ display: "block", fontSize: 14, marginTop: 2, overflowWrap: "anywhere" }}>{g.email}</a>}
+              {!g.phone && !g.email && contact && <span className="sub">No phone or email yet</span>}
             </span>
           </div>
         ))}
         {contact && (
           <>
-            <div style={{ alignItems: "flex-start" }}>
-              <span className="muted">Address</span>
-              <span style={{ textAlign: "right", fontSize: 14 }}>{address.length ? address.map((l, i) => <span key={i}>{l}<br /></span>) : <span className="muted">Not added</span>}</span>
+            <div className="lrow">
+              <span className="grow">
+                {address.length ? <b style={{ fontWeight: 600 }}>{address.join(", ")}</b> : <span className="muted">Not added</span>}
+                <span className="sub">Home address</span>
+              </span>
             </div>
-            <div style={{ alignItems: "flex-start" }}>
-              <span className="muted">Emergency contact</span>
-              <span style={{ textAlign: "right", fontSize: 14 }}>
+            <div className="lrow">
+              <span className="grow">
                 {contact.emergencyName || contact.emergencyPhone ? (
                   <>
-                    {contact.emergencyName}
-                    {contact.emergencyPhone && <><br /><a href={tel(contact.emergencyPhone)}>{contact.emergencyPhone}</a></>}
+                    <b>{contact.emergencyName || "Emergency contact"}</b>
+                    {contact.emergencyPhone && <a href={tel(contact.emergencyPhone)} style={{ display: "block", fontSize: 14, marginTop: 2 }}>{contact.emergencyPhone}</a>}
                   </>
                 ) : (
                   <span className="muted">Not added</span>
                 )}
+                <span className="sub">Emergency contact</span>
               </span>
             </div>
           </>
         )}
       </div>
       {canEdit && contact && (
-        <button type="button" className="btn secondary" style={{ marginTop: 12 }} onClick={() => setEditing(true)}>Edit contact details</button>
+        <button type="button" className="btn soft sm" style={{ marginTop: 12 }} onClick={() => setEditing(true)}>Edit contact details</button>
       )}
     </>
   );

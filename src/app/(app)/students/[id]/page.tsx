@@ -1,9 +1,7 @@
-import type { Metadata } from "next";
-import { ProfileView } from "./ProfileView";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Student" };
-
-export default async function StudentProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
-  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
-  return <ProfileView id={id} tab={tab} tabHref={(t) => `/students/${id}?tab=${t}`} />;
+/** Profiles open on the right of the Students list, so old links land there. */
+export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(/^[0-9a-f-]{36}$/i.test(id) ? `/students?id=${id}` : "/students");
 }

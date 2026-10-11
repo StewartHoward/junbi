@@ -56,6 +56,7 @@ export async function updateStudentAction(id: string, _prev: StudentFormState, f
   });
   if (!r.ok) return { errors: r.errors, values: values(f) };
   revalidatePath(`/students/${id}`);
+  revalidatePath("/students");
   redirect(`/students/${id}`);
 }
 
@@ -64,6 +65,7 @@ export async function recordBeltAction(studentId: string, _prev: StudentFormStat
   const r = await recordBelt(actor, studentId, { gradeId: str(f, "gradeId"), gradedOn: str(f, "gradedOn") });
   if (!r.ok) return { errors: r.errors, values: values(f) };
   revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
   revalidatePath("/students");
   return { values: {} };
 }
@@ -141,6 +143,7 @@ export async function addMembershipAction(id: string, _prev: MembershipState, f:
   const r = await addStudentMembership(actor, id, { planId: str(f, "planId"), startsOn: str(f, "startsOn"), withSignupFee: f.get("withSignupFee") === "on" });
   if (!r.ok) return { errors: r.errors };
   revalidatePath(`/students/${id}`);
+  revalidatePath("/students");
   return { done: r.value.emailed ? `Direct Debit link emailed to ${r.value.emailed}. The membership starts once they've set it up.` : "Membership added." };
 }
 
