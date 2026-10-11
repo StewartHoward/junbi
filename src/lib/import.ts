@@ -17,6 +17,11 @@ export const IMPORT_FIELDS = [
   { id: "guardianLastName", label: "Parent last name" },
   { id: "email", label: "Contact email" },
   { id: "phone", label: "Contact phone" },
+  { id: "address", label: "Address" },
+  { id: "town", label: "Town" },
+  { id: "postcode", label: "Postcode" },
+  { id: "emergencyName", label: "Emergency contact name" },
+  { id: "emergencyPhone", label: "Emergency contact phone" },
   { id: "medical", label: "Medical notes" },
 ] as const;
 
@@ -75,6 +80,10 @@ function guessField(header: string): ImportField | null {
   const h = norm(header);
   if (!h) return null;
   const has = (...words: string[]) => words.some((w) => new RegExp(`(^| )${w}`).test(h));
+  if (has("emergency", "next of kin", "nok")) return has("phone", "mobile", "tel", "number") ? "emergencyPhone" : "emergencyName";
+  if (has("post code", "postcode", "zip")) return "postcode";
+  if (has("town", "city")) return "town";
+  if (has("address", "street", "house")) return "address";
   if (has("e mail", "email")) return "email";
   if (has("phone", "mobile", "tel", "telephone", "contact number", "cell")) return "phone";
   if (has("dob", "d o b", "birth", "birthday")) return "dateOfBirth";

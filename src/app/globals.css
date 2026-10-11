@@ -175,3 +175,31 @@ input[type="search"] { min-height: 44px; padding: 0 14px; border: 1px solid var(
 .tick.on { background: var(--success-soft); color: var(--success); font-weight: 600; }
 .banner { background: var(--action-soft); border-radius: var(--radius-md); padding: 12px 16px; font-size: 14px; }
 @media (max-width: 500px) { .row:has(> .stat) { gap: 10px; } .stat { flex-basis: 90px; padding: 16px; } .stat .value { font-size: 26px; } }
+
+
+/* Students: list on the left, profile on the right */
+.split { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.split-list { position: sticky; top: 16px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; padding: 16px; }
+.split-filters { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.split-filters input[type="search"] { max-width: none; }
+.split-filters select { min-height: 40px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips a { font-size: 13px; padding: 5px 10px; border-radius: 980px; background: var(--surface-alt); color: var(--ink); text-decoration: none; }
+.chips a[aria-current="page"] { background: var(--ink); color: var(--surface); }
+.student-list { list-style: none; margin: 12px -8px 0; padding: 0; overflow-y: auto; flex: 1; border-top: 1px solid var(--line-soft); }
+.student-list a { display: flex; flex-direction: column; gap: 4px; padding: 10px 8px; border-radius: var(--radius-sm); color: var(--ink); text-decoration: none; }
+.student-list a:hover { background: var(--surface-alt); }
+.student-list a[aria-current="true"] { background: var(--accent-soft, #e8f0fe); }
+.sl-name { font-weight: 600; }
+.sl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.split-detail { min-width: 0; }
+.split-back { display: none; }
+@media (max-width: 1000px) {
+  .split { grid-template-columns: 1fr; }
+  .split-list { position: static; max-height: none; }
+  .split.has-detail .split-list { display: none; }
+  .split:not(.has-detail) .split-detail { display: none; }
+  .split-back { display: block; }
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

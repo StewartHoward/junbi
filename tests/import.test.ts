@@ -75,3 +75,11 @@ describe("matching belts", () => {
     expect(matchBelt("Purple", wt).grade).toBeNull();
   });
 });
+
+describe("address columns", () => {
+  it("recognises address, town, postcode and emergency contact columns", async () => {
+    const { guessMapping } = await import("@/lib/import");
+    const m = guessMapping(["Student Name", "Address", "Town", "Post Code", "Emergency Contact", "Emergency Contact Phone", "Parent Mobile"]);
+    expect(m).toMatchObject({ fullName: 0, address: 1, town: 2, postcode: 3, emergencyName: 4, emergencyPhone: 5, phone: 6 });
+  });
+});

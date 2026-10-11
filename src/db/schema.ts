@@ -187,6 +187,14 @@ export const households = pgTable("households", {
   id: id(),
   clubId: clubId(),
   name: text("name").notNull(),
+  /** Home address, shared by everyone in the family. */
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  town: text("town"),
+  postcode: text("postcode"),
+  /** Someone other than the parents to call in an emergency. */
+  emergencyName: text("emergency_name"),
+  emergencyPhone: text("emergency_phone"),
   createdAt: createdAt(),
 });
 

@@ -96,6 +96,11 @@ export const joinSchema = z
       .trim()
       .max(40)
       .refine((v) => v.replace(/\D/g, "").length >= 7, "Enter a phone number we can reach you on."),
+    addressLine1: z.string().trim().max(120).optional(),
+    town: z.string().trim().max(80).optional(),
+    postcode: z.string().trim().max(12).optional(),
+    emergencyName: z.string().trim().max(80).optional(),
+    emergencyPhone: z.string().trim().max(40).optional(),
     myDateOfBirth: z.string().optional(),
     mySiteId: z.string().optional(),
     myMedical: z.string().trim().max(2000).optional(),
@@ -169,8 +174,19 @@ export async function submitJoin(
       sql`select household_id from guardians where lower(email) = ${d.email} order by created_at limit 1`,
     )) as unknown as Array<{ household_id: string }>;
     let householdId = existing?.household_id;
+    const contact = {
+      ...(d.addressLine1 ? { addressLine1: d.addressLine1 } : {}),
+      ...(d.town ? { town: d.town } : {}),
+      ...(d.postcode ? { postcode: d.postcode.toUpperCase() } : {}),
+      ...(d.emergencyName ? { emergencyName: d.emergencyName } : {}),
+      ...(d.emergencyPhone ? { emergencyPhone: d.emergencyPhone } : {}),
+    };
+    if (householdId && Object.keys(contact).length) {
+      // A returning family: the newest address and emergency contact they gave wins.
+      await tx.update(s.households).set(contact).where(eq(s.households.id, householdId));
+    }
     if (!householdId) {
-      const [h] = await tx.insert(s.households).values({ clubId: club.clubId, name: `${d.parentLastName} family` }).returning({ id: s.households.id });
+      const [h] = await tx.insert(s.households).values({ clubId: club.clubId, name: `${d.parentLastName} family`, ...contact }).returning({ id: s.households.id });
       householdId = h.id;
       await tx.insert(s.guardians).values({
         clubId: club.clubId,

@@ -896,6 +896,32 @@ describe("leads", () => {
     expect((await leads.getLead(l, p2.ok ? p2.value.id : ""))!.status).toBe("converted");
   });
 
+  it("keeps the family's address and emergency contact, from sign-up and from the profile", async () => {
+    const token = (await join.joinLink(l)).split("/join/")[1];
+    const spy = quiet();
+    const r = await join.submitJoin(token, {
+      who: "children", parentFirstName: "Ade", parentLastName: "Bell", email: "ade@example.test", phone: "07700 900123",
+      addressLine1: "1 Hall St", town: "Southport", postcode: "pr9 0sf", emergencyName: "Gran Bell", emergencyPhone: "07700 900124",
+      children: [{ firstName: "Zoe", dateOfBirth: "2017-01-01", siteId: site }], firstAidConsent: true, photoConsent: true, terms: true,
+    });
+    spy.mockRestore();
+    expect(r.ok).toBe(true);
+    const [zoe] = await adminSql`select id from students where club_id = ${l.clubId} and first_name = 'Zoe'`;
+    let prof = await students.getStudentProfile(l, zoe.id);
+    expect(prof.contact).toMatchObject({ addressLine1: "1 Hall St", town: "Southport", postcode: "PR9 0SF", emergencyName: "Gran Bell" });
+    expect(prof.guardians[0]).toMatchObject({ email: "ade@example.test", phone: "07700 900123" });
+    const g = prof.guardians[0];
+    const bad = await studentsEdit.updateFamilyContact(l, zoe.id, { guardians: [{ id: g.id, firstName: "Ade", email: "nope" }] });
+    expect(bad.ok).toBe(false);
+    const ok = await studentsEdit.updateFamilyContact(l, zoe.id, { guardians: [{ id: g.id, firstName: "Adaeze", lastName: "Bell", email: "adaeze@example.test", phone: "07700 900125" }], addressLine1: "2 Hall St", town: "Southport", postcode: "PR9 0SF" });
+    expect(ok.ok).toBe(true);
+    prof = await students.getStudentProfile(l, zoe.id);
+    expect(prof.guardians[0]).toMatchObject({ name: "Adaeze Bell", phone: "07700 900125" });
+    expect(prof.contact).toMatchObject({ addressLine1: "2 Hall St", emergencyName: null });
+    const asAssistant = await students.getStudentProfile({ ...l, role: "assistant" }, zoe.id).catch(() => null);
+    if (asAssistant) expect(asAssistant.contact).toBeNull(); // contact details are for staff who edit students
+  });
+
   it("edits sites, and only removes one that nothing depends on", async () => {
     expect((await club.updateSite(l, site, "Southside Dojo", "2 High St")).ok).toBe(true);
     expect((await club.getClubOverview(l)).sites[0]).toMatchObject({ name: "Southside Dojo", address: "2 High St" });

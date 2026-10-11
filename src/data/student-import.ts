@@ -36,6 +36,7 @@ export type PreviewRow = {
   status: Status;
   medical: string | null;
   contact: ImportContact;
+  address: { addressLine1: string | null; town: string | null; postcode: string | null; emergencyName: string | null; emergencyPhone: string | null };
   familyKey: string;
   existingHouseholdId: string | null;
   warnings: string[];
@@ -212,6 +213,13 @@ function buildPreview(csv: string, mappingIn: Mapping | null, defaults: ImportDe
       status,
       medical: get("medical").slice(0, 2000) || null,
       contact,
+      address: {
+        addressLine1: get("address").slice(0, 120) || null,
+        town: get("town").slice(0, 80) || null,
+        postcode: get("postcode").toUpperCase().slice(0, 12) || null,
+        emergencyName: get("emergencyName").slice(0, 80) || null,
+        emergencyPhone: get("emergencyPhone").slice(0, 40) || null,
+      },
       familyKey,
       existingHouseholdId,
       warnings,
@@ -268,7 +276,7 @@ export async function runImport(
       }
       if (households.has(r.familyKey)) continue;
       const surname = r.contact.lastName || r.lastName || r.firstName;
-      const [h] = await tx.insert(s.households).values({ clubId: actor.clubId, name: `${surname} family` }).returning({ id: s.households.id });
+      const [h] = await tx.insert(s.households).values({ clubId: actor.clubId, name: `${surname} family`, ...r.address }).returning({ id: s.households.id });
       await tx.insert(s.guardians).values({
         clubId: actor.clubId,
         householdId: h.id,

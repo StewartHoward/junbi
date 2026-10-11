@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
-import { createStudent, recordBelt, updateStudent } from "@/data/student-edit";
+import { createStudent, recordBelt, updateFamilyContact, updateStudent } from "@/data/student-edit";
 import type { FieldErrors } from "@/data/accounts";
 import { addStudentMembership } from "@/data/payments";
 
@@ -142,4 +142,23 @@ export async function addMembershipAction(id: string, _prev: MembershipState, f:
   if (!r.ok) return { errors: r.errors };
   revalidatePath(`/students/${id}`);
   return { done: r.value.emailed ? `Direct Debit link emailed to ${r.value.emailed}. The membership starts once they've set it up.` : "Membership added." };
+}
+
+export type ContactState = { errors?: FieldErrors; saved?: boolean };
+
+export async function updateContactAction(id: string, _prev: ContactState, f: FormData): Promise<ContactState> {
+  const actor = await requireActor();
+  const ids = f.getAll("guardianId").map(String);
+  const r = await updateFamilyContact(actor, id, {
+    guardians: ids.map((gid) => ({ id: gid, firstName: str(f, `g_${gid}_firstName`), lastName: str(f, `g_${gid}_lastName`), email: str(f, `g_${gid}_email`), phone: str(f, `g_${gid}_phone`) })),
+    addressLine1: str(f, "addressLine1"),
+    addressLine2: str(f, "addressLine2"),
+    town: str(f, "town"),
+    postcode: str(f, "postcode"),
+    emergencyName: str(f, "emergencyName"),
+    emergencyPhone: str(f, "emergencyPhone"),
+  });
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath("/students");
+  return { saved: true };
 }

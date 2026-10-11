@@ -238,3 +238,61 @@ export async function recordBelt(actor: Actor, studentId: string, input: { grade
     return { ok: true as const, value: undefined };
   });
 }
+
+
+/* ---------- Family contact details ---------- */
+
+const opt = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
+const guardianEdit = z.object({
+  id: z.string().uuid(),
+  firstName: z.string().trim().min(1, "Enter their first name.").max(80),
+  lastName: z.string().trim().max(80).optional().transform((v) => v ?? ""),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(200)
+    .optional()
+    .transform((v) => v || null)
+    .refine((v) => !v || z.string().email().safeParse(v).success, "Enter a valid email address."),
+  phone: opt(40),
+});
+export const familyContactSchema = z.object({
+  guardians: z.array(guardianEdit).max(6),
+  addressLine1: opt(120),
+  addressLine2: opt(120),
+  town: opt(80),
+  postcode: opt(12).transform((v) => (v ? v.toUpperCase() : null)),
+  emergencyName: opt(80),
+  emergencyPhone: opt(40),
+});
+export type FamilyContactInput = z.input<typeof familyContactSchema>;
+
+/** Updates a family's parent contact details, home address and emergency contact from a student's profile. */
+export async function updateFamilyContact(actor: Actor, studentId: string, input: FamilyContactInput): Promise<Result> {
+  assertCan(actor, "students.edit");
+  if (!z.string().uuid().safeParse(studentId).success) return { ok: false, errors: { form: "Student not found." } };
+  const parsed = familyContactSchema.safeParse(input);
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    for (const i of parsed.error.issues) errors[i.path.join(".")] ??= i.message;
+    return { ok: false, errors };
+  }
+  const d = parsed.data;
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select({ householdId: s.students.householdId, siteId: s.students.siteId }).from(s.students).where(eq(s.students.id, studentId));
+    if (!st || (actor.sites !== "all" && !actor.sites.includes(st.siteId))) return { ok: false as const, errors: { form: "Student not found." } };
+    await tx
+      .update(s.households)
+      .set({ addressLine1: d.addressLine1, addressLine2: d.addressLine2, town: d.town, postcode: d.postcode, emergencyName: d.emergencyName, emergencyPhone: d.emergencyPhone })
+      .where(eq(s.households.id, st.householdId));
+    for (const g of d.guardians) {
+      await tx
+        .update(s.guardians)
+        .set({ firstName: g.firstName, lastName: g.lastName, email: g.email, phone: g.phone })
+        .where(and(eq(s.guardians.id, g.id), eq(s.guardians.householdId, st.householdId)));
+    }
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "household_contact", entityId: st.householdId });
+    return { ok: true as const, value: undefined };
+  });
+}

@@ -99,6 +99,30 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
           <input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={v.phone} {...errProps("phone", e)} />
           <FieldError id="phone-err" msg={e?.phone} />
         </div>
+        <div>
+          <label htmlFor="addressLine1">Home address</label>
+          <input id="addressLine1" name="addressLine1" autoComplete="address-line1" placeholder="House number and street" defaultValue={v.addressLine1} />
+        </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="town">Town</label>
+            <input id="town" name="town" autoComplete="address-level2" defaultValue={v.town} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="postcode">Postcode</label>
+            <input id="postcode" name="postcode" autoComplete="postal-code" defaultValue={v.postcode} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 160px" }}>
+            <label htmlFor="emergencyName">Emergency contact (optional)</label>
+            <input id="emergencyName" name="emergencyName" placeholder="Someone other than you" defaultValue={v.emergencyName} />
+          </div>
+          <div style={{ flex: "1 1 140px" }}>
+            <label htmlFor="emergencyPhone">Their phone</label>
+            <input id="emergencyPhone" name="emergencyPhone" type="tel" defaultValue={v.emergencyPhone} />
+          </div>
+        </div>
         {who === "me" && (
           <>
             <div>

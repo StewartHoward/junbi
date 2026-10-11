@@ -208,7 +208,8 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       .where(eq(s.gradingResults.studentId, st.id))
       .orderBy(desc(s.gradingResults.gradedOn));
 
-    const guardians = await tx.select().from(s.guardians).where(eq(s.guardians.householdId, st.householdId));
+    const guardians = await tx.select().from(s.guardians).where(eq(s.guardians.householdId, st.householdId)).orderBy(desc(s.guardians.isPayer), asc(s.guardians.createdAt));
+    const [household] = await tx.select().from(s.households).where(eq(s.households.id, st.householdId));
     const siblingRows = await tx
       .select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName })
       .from(s.students)
@@ -262,11 +263,25 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       history,
       guardians: guardians.map((g) => ({
         id: g.id,
+        firstName: g.firstName,
+        lastName: g.lastName,
         name: `${g.firstName} ${g.lastName}`,
         relationship: g.relationship,
+        isPayer: g.isPayer,
         // Contact details are only for staff who can see the full profile.
         email: can(actor, "students.edit") ? g.email : null,
+        phone: can(actor, "students.edit") ? g.phone : null,
       })),
+      contact: can(actor, "students.edit") && household
+        ? {
+            addressLine1: household.addressLine1,
+            addressLine2: household.addressLine2,
+            town: household.town,
+            postcode: household.postcode,
+            emergencyName: household.emergencyName,
+            emergencyPhone: household.emergencyPhone,
+          }
+        : null,
       siblings,
       memberships: memberships.map((m) => ({
         id: m.id,
