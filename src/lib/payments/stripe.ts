@@ -114,7 +114,7 @@ export const stripeProvider: PaymentProvider = {
       account: accountId,
       use_case: {
         type: "account_onboarding",
-        account_onboarding: { configurations: ["merchant"], refresh_url: input.refreshUrl, return_url: input.returnUrl(accountId) },
+        account_onboarding: { refresh_url: input.refreshUrl, return_url: input.returnUrl(accountId) },
       },
     });
     return link.url;

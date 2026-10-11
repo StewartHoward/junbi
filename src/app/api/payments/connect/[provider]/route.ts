@@ -17,6 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ provide
     return NextResponse.redirect(await startConnect(actor, provider, base, user?.email ?? ""));
   } catch (err) {
     console.error("Connecting payments failed", err);
-    return NextResponse.redirect(`${base}/payments?error=unavailable`);
+    const msg = err instanceof Error ? err.message.slice(0, 200) : "unavailable";
+    return NextResponse.redirect(`${base}/payments?error=${encodeURIComponent(/isn't available/.test(msg) ? "unavailable" : `Stripe said: ${msg}`)}`);
   }
 }
