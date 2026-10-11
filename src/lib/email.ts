@@ -19,6 +19,8 @@ export type Email = {
   clubId?: string | null;
   dedupeKey?: string;
   replyTo?: string;
+  /** Show the email as from this name (e.g. the club) instead of Junbi. The address stays the same. */
+  fromName?: string;
 };
 
 export type SendResult = { status: "sent" | "logged" | "skipped" | "failed"; error?: string };
@@ -45,7 +47,7 @@ export async function sendEmail(e: Email): Promise<SendResult> {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "Junbi <hello@junbi.co.uk>",
+          from: fromWithName(e.fromName),
           to: [e.to],
           subject: e.subject,
           html: e.html,
@@ -168,8 +170,12 @@ ${ps}${btn}${foot}
 }
 
 /** Like layout(), but the club's name leads and line breaks inside a paragraph are kept. */
-function clubLayout(clubName: string, title: string, paragraphs: string[], footnote: string) {
-  const ps = paragraphs.map((p) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1d1d1f">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+function clubLayout(clubName: string, title: string, paragraphs: string[], footnote: string, button?: { label: string; url: string }) {
+  const ps =
+    paragraphs.map((p) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#1d1d1f">${esc(p).replace(/\n/g, "<br>")}</p>`).join("") +
+    (button
+      ? `<p style="margin:28px 0"><a href="${esc(button.url)}" style="display:inline-block;background:#0066cc;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:12px 24px;border-radius:980px">${esc(button.label)}</a></p>`
+      : "");
   return `<!doctype html><html lang="en-GB"><body style="margin:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;padding:36px 32px">
@@ -193,6 +199,23 @@ function build(subject: string, title: string, paragraphs: string[], button?: { 
 
 const list = (names: string[]) => (names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
 const first = (name: string) => name.trim().split(/\s+/)[0] || "there";
+
+export type LeadEmail = {
+  firstName: string;
+  studentName: string | null;
+  clubName: string;
+  session: { when: Date; className: string | null; siteName: string | null; address: string | null } | null;
+  signupUrl: string | null;
+};
+
+const WHAT_TO_BRING = "Please wear comfortable clothes like a T-shirt and joggers, bring a bottle of water, and arrive about 10 minutes early so we can say hello.";
+
+function sessionLines(l: LeadEmail) {
+  const s = l.session!;
+  const day = s.when.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
+  const time = s.when.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Europe/London" }).replace(" ", "");
+  return [`${day} at ${time}`, s.className, [s.siteName, s.address].filter(Boolean).join(", ") || null].filter(Boolean).join("\n");
+}
 
 export const templates = {
   welcome: (name: string, clubName: string, url: string) =>
@@ -272,6 +295,34 @@ export const templates = {
     const title = subject;
     const foot = `Sent by ${senderName ? `${senderName} at ` : ""}${clubName}. Reply to this email to get in touch with the club.`;
     return { subject: `${subject}`, html: clubLayout(clubName, title, paragraphs, foot), text: [clubName, "", title, "", ...paragraphs, "", foot].join("\n") };
+  },
+  /** First email to a new lead: thanks, their trial session if booked, and the club's details. */
+  leadWelcome: (l: LeadEmail) => {
+    const who = l.studentName ? `${l.studentName}'s` : "your";
+    const paragraphs = [
+      `Hi ${first(l.firstName)},`,
+      `Thanks for getting in touch with ${l.clubName}. We'd love to see ${l.studentName ? l.studentName : "you"} on the mat.`,
+      ...(l.session ? [`${l.studentName ? `${l.studentName}'s` : "Your"} free trial session is booked:\n${sessionLines(l)}`, WHAT_TO_BRING] : ["We'll be in touch shortly to book " + who + " free trial session."]),
+      ...(l.signupUrl ? ["When you're ready to join, you can sign up online here. It takes about two minutes."] : []),
+    ];
+    const foot = `Sent by ${l.clubName}. Reply to this email with any questions.`;
+    const button = l.signupUrl ? { label: "Sign up", url: l.signupUrl } : undefined;
+    const subject = l.session ? `Your free trial at ${l.clubName}` : `Thanks for your interest in ${l.clubName}`;
+    const title = l.session ? "Your free trial is booked." : "Thanks for getting in touch.";
+    return { subject, html: clubLayout(l.clubName, title, paragraphs, foot, button), text: [l.clubName, "", title, "", ...paragraphs, ...(button ? ["", `${button.label}: ${button.url}`] : []), "", foot].join("\n") };
+  },
+  /** The day before their trial session. */
+  leadReminder: (l: LeadEmail) => {
+    const paragraphs = [
+      `Hi ${first(l.firstName)},`,
+      `Just a reminder that ${l.studentName ? `${l.studentName}'s` : "your"} free trial session at ${l.clubName} is coming up:\n${sessionLines(l)}`,
+      WHAT_TO_BRING,
+      "If you can't make it, just reply to this email and we'll find another time.",
+    ];
+    const foot = `Sent by ${l.clubName}. Reply to this email with any questions.`;
+    const button = l.signupUrl ? { label: "Sign up", url: l.signupUrl } : undefined;
+    const title = "See you soon.";
+    return { subject: `Reminder: your free trial at ${l.clubName}`, html: clubLayout(l.clubName, title, paragraphs, foot, button), text: [l.clubName, "", title, "", ...paragraphs, ...(button ? ["", `${button.label}: ${button.url}`] : []), "", foot].join("\n") };
   },
   trialReminder: (name: string, clubName: string, daysLeft: number, endsOn: string, url: string) =>
     build(

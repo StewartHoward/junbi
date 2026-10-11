@@ -11,6 +11,8 @@ export type StartSetupInput = {
   firstName: string;
   lastName: string;
   items: SetupItem[];
+  /** One-off sign-up fee for everyone in this set-up, taken with the first payment. 0 = none. */
+  signupFeePence?: number;
   successUrl: string;
   cancelUrl: string;
 };

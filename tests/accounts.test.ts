@@ -26,6 +26,7 @@ const importer = await import("@/data/student-import");
 const join = await import("@/data/join");
 const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
+const leads = await import("@/data/leads");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -742,6 +743,28 @@ describe("club payments and paying at sign-up", () => {
     await expect(pay.addStudentMembership({ ...p, role: "assistant" }, ivy.id, { planId: kids })).rejects.toThrow(/Not allowed/);
   });
 
+  it("adds the club's sign-up fee to the first payment, once per member", async () => {
+    expect((await pay.setSignupFee(p, "abc")).ok).toBe(false);
+    expect((await pay.setSignupFee(p, "£25")).ok).toBe(true);
+    await expect(pay.setSignupFee({ ...p, role: "instructor" }, "1")).rejects.toThrow(/Not allowed/);
+    const token = (await join.joinLink(p)).split("/join/")[1];
+    const form = await join.joinForm(token);
+    expect(form?.payment?.signupFeePence).toBe(2500);
+    const kids = form!.payment!.plans.find((x) => x.name === "Kids monthly")!.id;
+    const spy = quiet();
+    const r = await join.submitJoin(token, {
+      who: "children", parentFirstName: "Fay", parentLastName: "Fee", email: "fay@example.test", phone: "07700 900666",
+      children: [{ firstName: "Al", dateOfBirth: "2016-01-01", siteId: site, planId: kids }, { firstName: "Bo", dateOfBirth: "2017-01-01", siteId: site, planId: kids }],
+      firstAidConsent: true, photoConsent: false, terms: true,
+    }, { success: (id) => `http://x/done?setup=${id}`, cancel: "http://x/cancel" });
+    spy.mockRestore();
+    const setupId = r.ok ? new URL(r.value.paymentUrl!).searchParams.get("setup")! : "";
+    const setup = await pay.loadSetup(p.clubId, setupId);
+    expect(setup?.signupFeePence).toBe(5000);
+    expect((await pay.setSignupFee(p, "")).ok).toBe(true);
+    expect((await pay.listPlans(p)).signupFeePence).toBe(0);
+  });
+
   it("without Direct Debit, families still pick a price and join as members", async () => {
     const token = (await join.joinLink(a)).split("/join/")[1];
     expect((await join.joinForm(token))?.payment).toBeNull(); // no prices, no choice
@@ -765,5 +788,101 @@ describe("club payments and paying at sign-up", () => {
     expect(r2.ok && r2.value.emailed).toBeNull();
     const [mm] = await adminSql`select s.status from memberships m join students s on s.id = m.student_id where s.id = ${max.id}`;
     expect(mm.status).toBe("active");
+  });
+});
+
+describe("leads", () => {
+  const quiet = () => vi.spyOn(console, "log").mockImplementation(() => {});
+  let l: Actor;
+  let site: string;
+  let classId: string;
+  const nextWeekday = (weekday: number) => {
+    const d = new Date(Date.now() + 2 * 86_400_000);
+    while (((d.getUTCDay() + 6) % 7) + 1 !== weekday) d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+
+  beforeAll(async () => {
+    const r0 = await accounts.createClubAccount({ clubName: "Lead Club", name: "Lee Owner", email: "lead-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    l = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(l, { disciplines: ["taekwondo"], siteName: "Southside", siteAddress: "1 High St", syllabus: {} });
+    site = (await club.getClubOverview(l)).sites[0].id;
+    const c = await classes.createClass(l, { name: "Kids TKD", siteId: site, discipline: "taekwondo", weekday: "3", startsAt: "17:30", durationMinutes: "45", capacity: "" });
+    if (!c.ok) throw new Error(JSON.stringify(c.errors));
+    classId = c.value.id;
+  });
+
+  it("adds a lead with a trial class, works out the time and sends the welcome", async () => {
+    expect((await leads.addLead(l, { firstName: "Nia" })).ok).toBe(false); // needs email or phone
+    const wrongDay = await leads.addLead(l, { firstName: "Nia", email: "nia@example.test", classId, sessionDate: nextWeekday(4) });
+    expect(!wrongDay.ok && wrongDay.errors.sessionDate).toMatch(/Wednesday/);
+    const spy = quiet();
+    const r = await leads.addLead(l, { firstName: "Nia", lastName: "Shaw", email: "Nia@Example.test", phone: "07700 900777", studentName: "Kai", studentAge: "8", classId, sessionDate: nextWeekday(3), source: "Facebook" });
+    spy.mockRestore();
+    expect(r.ok && r.value.emailed).toBe(true);
+    const lead = await leads.getLead(l, r.ok ? r.value.id : "");
+    expect(lead).toMatchObject({ status: "booked", email: "nia@example.test", site: "Southside", className: "Kids TKD", studentName: "Kai" });
+    expect(lead!.sessionAt!.toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" })).toBe("17:30");
+    expect(lead!.welcomeSentAt).not.toBeNull();
+    const [{ n }] = await adminSql`select count(*)::int as n from email_log where template = 'lead-welcome' and club_id = ${l.clubId}`;
+    expect(n).toBe(1);
+    expect((await leads.listLeads(a)).leads).toEqual([]); // other clubs see nothing
+    await expect(leads.addLead({ ...l, role: "assistant" }, { firstName: "X", email: "x@example.test" })).rejects.toThrow(/Not allowed/);
+  });
+
+  it("reminds leads the day before their trial, once", async () => {
+    const spy = quiet();
+    const r = await leads.addLead(l, { firstName: "Rob", email: "rob@example.test", classId, sessionDate: nextWeekday(3) });
+    const id = r.ok ? r.value.id : "";
+    await adminSql`update leads set session_at = now() + interval '20 hours', created_at = now() - interval '3 days' where id = ${id}`;
+    const first = await leads.sendLeadReminders();
+    const second = await leads.sendLeadReminders();
+    spy.mockRestore();
+    expect(first.sent).toBeGreaterThanOrEqual(1);
+    expect(second.due).toBe(0);
+    expect((await leads.getLead(l, id))!.reminderSentAt).not.toBeNull();
+    // Re-booking clears it so the new session gets a reminder too.
+    const spy2 = quiet();
+    expect((await leads.bookLeadSession(l, id, { classId, sessionDate: nextWeekday(3) })).ok).toBe(true);
+    spy2.mockRestore();
+    expect((await leads.getLead(l, id))!.reminderSentAt).toBeNull();
+  });
+
+  it("shows the lead as joined when the family signs up with the same email", async () => {
+    const token = (await join.joinLink(l)).split("/join/")[1];
+    const spy = quiet();
+    const r = await join.submitJoin(token, {
+      who: "children", parentFirstName: "Nia", parentLastName: "Shaw", email: "nia@example.test", phone: "07700 900777",
+      children: [{ firstName: "Kai", dateOfBirth: "2018-01-01", siteId: site }], firstAidConsent: true, photoConsent: true, terms: true,
+    });
+    spy.mockRestore();
+    expect(r.ok).toBe(true);
+    const list = await leads.listLeads(l);
+    const nia = list.leads.find((x) => x.firstName === "Nia")!;
+    expect(nia.status).toBe("converted");
+    expect(nia.convertedStudentId).not.toBeNull();
+    expect(list.counts.converted).toBe(1);
+    // Staff adding a student with a lead's phone number converts it too.
+    const spy2 = quiet();
+    const p2 = await leads.addLead(l, { firstName: "Ola", phone: "+44 7700 900888" });
+    spy2.mockRestore();
+    const made = await studentsEdit.createStudent(l, { firstName: "Ola", lastName: "Ray", siteId: site, status: "active", firstAidConsent: true, photoConsent: true, relationship: "self", guardianFirstName: "Ola", guardianLastName: "Ray", guardianPhone: "07700 900888" });
+    expect(made.ok).toBe(true);
+    expect((await leads.getLead(l, p2.ok ? p2.value.id : ""))!.status).toBe("converted");
+  });
+
+  it("edits sites, and only removes one that nothing depends on", async () => {
+    expect((await club.updateSite(l, site, "Southside Dojo", "2 High St")).ok).toBe(true);
+    expect((await club.getClubOverview(l)).sites[0]).toMatchObject({ name: "Southside Dojo", address: "2 High St" });
+    const last = await club.removeSite(l, site);
+    expect(!last.ok && last.errors.form).toMatch(/at least one site/);
+    expect((await club.addSite(l, "Northside", "")).ok).toBe(true);
+    const north = (await club.getClubOverview(l)).sites.find((x) => x.name === "Northside")!.id;
+    const busy = await club.removeSite(l, site);
+    expect(!busy.ok && busy.errors.form).toMatch(/students/);
+    await expect(club.removeSite({ ...l, role: "instructor" }, north)).rejects.toThrow(/Not allowed/);
+    expect((await club.removeSite(l, north)).ok).toBe(true);
+    expect((await club.getClubOverview(l)).sites.map((x) => x.name)).toEqual(["Southside Dojo"]);
   });
 });

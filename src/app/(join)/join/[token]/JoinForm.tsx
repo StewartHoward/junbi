@@ -6,7 +6,7 @@ import { FieldError, errProps } from "@/components/FormBits";
 
 type Site = { id: string; name: string };
 type Plan = { id: string; name: string; amountPence: number; interval: string };
-type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[] } | null;
+type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[]; signupFeePence: number } | null;
 
 const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}`;
 
@@ -189,8 +189,12 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
       {payment && (
         <p className="m-fine" style={{ margin: 0 }}>
           {picked.length
-            ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}. `
-            : ""}
+            ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}${
+                payment.signupFeePence ? `, plus a one-off sign-up fee of £${((payment.signupFeePence * picked.length) / 100).toFixed(2)} with the first payment` : ""
+              }. `
+            : payment.signupFeePence
+              ? `There's a one-off sign-up fee of £${(payment.signupFeePence / 100).toFixed(2)} per member, taken with the first payment. `
+              : ""}
           {payment.provider
             ? <>Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.</>
             : "The club will be in touch about how to pay."}

@@ -6,7 +6,7 @@ import { getClubOverview } from "@/data/club";
 import { DISCIPLINES, type Preset } from "@/lib/disciplines";
 import { PLANS, SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
 import { cancelInviteAction, removeStaffAction, resetJoinLinkAction, setArtAction, setPlanAction } from "../actions";
-import { AddSiteForm, ClubNameForm, InviteStaffForm, PromoCodeForm } from "./SettingsForms";
+import { AddSiteForm, ClubNameForm, InviteStaffForm, PromoCodeForm, SiteRow } from "./SettingsForms";
 import { describeDiscount } from "@/data/accounts";
 import { listPendingInvites } from "@/data/email-flows";
 import { emailConfigured } from "@/lib/email";
@@ -80,7 +80,7 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {prices && <PricesCard plans={prices.plans} manage={can(actor, "payments.manage")} connected={prices.connected} />}
+      {prices && <PricesCard plans={prices.plans} manage={can(actor, "payments.manage")} connected={prices.connected} signupFeePence={prices.signupFeePence} />}
 
       {owner && (
         <section className="card" style={{ marginTop: 20 }}>
@@ -121,9 +121,7 @@ export default async function SettingsPage() {
         <h2 className="section-title">Sites</h2>
         <div className="list" style={{ marginTop: 8 }}>
           {o.sites.map((s) => (
-            <div key={s.id}>
-              <span><strong>{s.name}</strong>{s.address ? <span className="muted"> · {s.address}</span> : null}</span>
-            </div>
+            <SiteRow key={s.id} site={{ id: s.id, name: s.name, address: s.address }} canEdit={actor.sites === "all"} canRemove={owner && o.sites.length > 1} />
           ))}
         </div>
         {actor.sites === "all" && (

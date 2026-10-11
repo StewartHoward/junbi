@@ -65,6 +65,47 @@ export async function addSite(actor: Actor, name: string, address: string): Prom
   return { ok: true, value: undefined };
 }
 
+/** Change a site's name or address. */
+export async function updateSite(actor: Actor, siteId: string, name: string, address: string): Promise<Result> {
+  assertCan(actor, "classes.manage");
+  if (actor.sites !== "all") return { ok: false, errors: { form: "Only staff covering every site can change sites." } };
+  if (!z.string().uuid().safeParse(siteId).success) return { ok: false, errors: { form: "Site not found." } };
+  const n = z.string().trim().min(2, "Enter a site name.").max(80).safeParse(name);
+  if (!n.success) return { ok: false, errors: { siteName: n.error.issues[0].message } };
+  const done = await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) =>
+    tx.update(s.sites).set({ name: n.data, address: address.trim().slice(0, 200) || null }).where(eq(s.sites.id, siteId)).returning({ id: s.sites.id }),
+  );
+  return done.length ? { ok: true, value: undefined } : { ok: false, errors: { form: "Site not found." } };
+}
+
+/**
+ * Remove a site. Only when nothing depends on it: students need moving first, and classes with
+ * registers are kept so attendance history isn't lost. A club always keeps at least one site.
+ */
+export async function removeSite(actor: Actor, siteId: string): Promise<Result> {
+  assertCan(actor, "club.manage");
+  if (!z.string().uuid().safeParse(siteId).success) return { ok: false, errors: { form: "Site not found." } };
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const sites = await tx.select({ id: s.sites.id, name: s.sites.name }).from(s.sites);
+    const site = sites.find((x) => x.id === siteId);
+    if (!site) return { ok: false as const, errors: { form: "Site not found." } };
+    if (sites.length <= 1) return { ok: false as const, errors: { form: "Your club needs at least one site. Rename this one instead." } };
+    const [{ students }] = (await tx.execute(sql`select count(*)::int as students from students where site_id = ${siteId}::uuid`)) as unknown as Array<{ students: number }>;
+    if (students > 0) {
+      return { ok: false as const, errors: { form: `${site.name} still has ${students} student${students === 1 ? "" : "s"}. Move them to another site first (Edit on their profile).` } };
+    }
+    const [{ live, registers }] = (await tx.execute(sql`
+      select count(*) filter (where not c.archived)::int as live,
+             (select count(*)::int from class_sessions cs join attendance a on a.session_id = cs.id where cs.class_id in (select id from classes where site_id = ${siteId}::uuid)) as registers
+      from classes c where c.site_id = ${siteId}::uuid`)) as unknown as Array<{ live: number; registers: number }>;
+    if (live > 0) return { ok: false as const, errors: { form: `${site.name} still has ${live} class${live === 1 ? "" : "es"} on the timetable. Remove them in Classes first.` } };
+    if (registers > 0) return { ok: false as const, errors: { form: `${site.name} has past registers we'd lose. Rename it instead, or keep it.` } };
+    await tx.delete(s.sites).where(eq(s.sites.id, siteId));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "delete", entity: "site", entityId: siteId, before: { name: site.name } });
+    return { ok: true as const, value: undefined };
+  });
+}
+
 /**
  * Turn an art on or off. Turning one on loads its default belt system if the club has no grades
  * for it yet. Turning one off hides it but keeps every grade and grading result.

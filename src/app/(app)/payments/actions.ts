@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
-import { addPlan, archivePlan, disconnectPayments } from "@/data/payments";
+import { addPlan, archivePlan, disconnectPayments, setSignupFee } from "@/data/payments";
 import type { FieldErrors } from "@/data/accounts";
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "");
@@ -30,4 +30,13 @@ export async function disconnectAction() {
   const actor = await requireActor();
   await disconnectPayments(actor);
   revalidatePath("/payments");
+}
+
+export async function setSignupFeeAction(_prev: PlanState, f: FormData): Promise<PlanState> {
+  const actor = await requireActor();
+  const r = await setSignupFee(actor, str(f, "signupFee"));
+  if (!r.ok) return { errors: r.errors, values: { signupFee: str(f, "signupFee") } };
+  revalidatePath("/payments");
+  revalidatePath("/settings");
+  return { saved: true };
 }

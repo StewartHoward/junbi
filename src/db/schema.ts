@@ -76,6 +76,8 @@ export const clubs = pgTable(
     discountPercent: integer("discount_percent"),
     /** How many paid months the discount lasts. Null with a discount means for good. */
     discountMonths: integer("discount_months"),
+    /** One-off fee per new member, taken with their first payment. 0 = none. */
+    signupFeePence: integer("signup_fee_pence").notNull().default(0),
     /** Secret part of the club's family sign-up link (/join/<token>). The owner can reset it. */
     joinToken: text("join_token")
       .notNull()
@@ -305,6 +307,8 @@ export const paymentSetups = pgTable("payment_setups", {
   items: jsonb("items").notNull(),
   /** pending, completed, abandoned */
   status: text("status").notNull().default("pending"),
+  /** Total sign-up fee taken with the first payment (already multiplied by the number of members). */
+  signupFeePence: integer("signup_fee_pence").notNull().default(0),
   createdAt: createdAt(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
@@ -527,6 +531,37 @@ export const promoCodes = pgTable("promo_codes", {
   createdAt: createdAt(),
 });
 
+/**
+ * Someone interested in joining: a parent who rang, a walk-in, a Facebook enquiry. They get a welcome email
+ * when added and a reminder before their trial session, and turn into "converted" when they sign up.
+ */
+export const leads = pgTable("leads", {
+  id: id(),
+  clubId: clubId(),
+  siteId: uuid("site_id").references(() => sites.id, { onDelete: "set null" }),
+  /** The person we talk to: the parent, or the adult training. */
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull().default(""),
+  email: text("email"),
+  phone: text("phone"),
+  /** Who's training, when it's a child. Empty when the contact is training themselves. */
+  studentName: text("student_name"),
+  studentAge: integer("student_age"),
+  /** Their trial session, if booked. */
+  classId: uuid("class_id").references(() => classes.id, { onDelete: "set null" }),
+  sessionAt: timestamp("session_at", { withTimezone: true }),
+  source: text("source"),
+  notes: text("notes"),
+  /** new, booked, attended, converted, lost */
+  status: text("status").notNull().default("new"),
+  convertedStudentId: uuid("converted_student_id").references(() => students.id, { onDelete: "set null" }),
+  convertedAt: timestamp("converted_at", { withTimezone: true }),
+  welcomeSentAt: timestamp("welcome_sent_at", { withTimezone: true }),
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
 export const TENANT_TABLES = [
   "club_disciplines",
   "staff_invites",
@@ -550,4 +585,5 @@ export const TENANT_TABLES = [
   "message_recipients",
   "club_payment_accounts",
   "payment_setups",
+  "leads",
 ] as const;

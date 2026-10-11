@@ -8,6 +8,7 @@ import { disciplineName } from "@/lib/disciplines";
 import { appUrl, sendEmail, templates } from "@/lib/email";
 import type { FieldErrors, Result } from "./accounts";
 import { joinPlans, startJoinPayment } from "./payments";
+import { convertLeads } from "./leads";
 
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
@@ -60,7 +61,7 @@ export type JoinForm = {
   sites: Array<{ id: string; name: string }>;
   arts: Array<{ id: string; name: string }>;
   /** The memberships to choose from (set when the club has prices). provider is set when they pay by Direct Debit straight away. */
-  payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }> } | null;
+  payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }>; signupFeePence: number } | null;
 };
 
 /** What the public sign-up page needs. Null when the link is wrong or has been reset. */
@@ -229,6 +230,10 @@ export async function submitJoin(
       names.push(p.firstName);
       await addMembership(st.id, p.planId);
     }
+
+    // Anyone who was a lead (same email or phone) now shows as converted.
+    const firstId = have.get(key(people[0]));
+    if (firstId) await convertLeads(tx, club.clubId, { email: d.email, phone: d.phone, studentId: firstId });
 
     const notify = (await tx.execute(
       sql`select u.email from club_staff cs join users u on u.id = cs.user_id where cs.role in ('owner', 'admin')`,

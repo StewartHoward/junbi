@@ -138,7 +138,7 @@ export type MembershipState = { errors?: FieldErrors; done?: string };
 
 export async function addMembershipAction(id: string, _prev: MembershipState, f: FormData): Promise<MembershipState> {
   const actor = await requireActor();
-  const r = await addStudentMembership(actor, id, { planId: str(f, "planId"), startsOn: str(f, "startsOn") });
+  const r = await addStudentMembership(actor, id, { planId: str(f, "planId"), startsOn: str(f, "startsOn"), withSignupFee: f.get("withSignupFee") === "on" });
   if (!r.ok) return { errors: r.errors };
   revalidatePath(`/students/${id}`);
   return { done: r.value.emailed ? `Direct Debit link emailed to ${r.value.emailed}. The membership starts once they've set it up.` : "Membership added." };

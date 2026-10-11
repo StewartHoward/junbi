@@ -90,15 +90,19 @@ export const stripeProvider: PaymentProvider = {
         cancel_url: input.cancelUrl,
         metadata: { junbi_setup_id: input.setupId },
         subscription_data: { metadata: { junbi_setup_id: input.setupId } },
-        line_items: input.items.map((i) => ({
-          quantity: 1,
-          price_data: {
-            currency: "gbp",
-            unit_amount: i.amountPence,
-            recurring: { interval: i.interval === "annual" ? "year" : "month" },
-            product_data: { name: i.name, metadata: { junbi_student_id: i.studentId, junbi_plan_id: i.planId } },
-          },
-        })),
+        line_items: [
+          ...input.items.map((i) => ({
+            quantity: 1,
+            price_data: {
+              currency: "gbp",
+              unit_amount: i.amountPence,
+              recurring: { interval: i.interval === "annual" ? "year" : "month" },
+              product_data: { name: i.name, metadata: { junbi_student_id: i.studentId, junbi_plan_id: i.planId } },
+            },
+          })),
+          // One-off: Stripe adds it to the first invoice only.
+          ...(input.signupFeePence ? [{ quantity: 1, price_data: { currency: "gbp", unit_amount: input.signupFeePence, product_data: { name: "Sign-up fee", metadata: { junbi_fee: "signup" } } } }] : []),
+        ],
       },
       account.accountId,
       `setup-${input.setupId}`,

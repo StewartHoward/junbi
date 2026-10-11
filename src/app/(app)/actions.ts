@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
 import { archiveClass, createClass, setAttendance, validDate } from "@/data/classes";
-import { addSite, applyPromoCode, renameClub, setArt, setPlan } from "@/data/club";
+import { addSite, applyPromoCode, removeSite, renameClub, setArt, setPlan, updateSite } from "@/data/club";
 import type { FieldErrors } from "@/data/accounts";
 import { cancelInvite, inviteStaff, removeStaff } from "@/data/email-flows";
 import { resetJoinLink } from "@/data/join";
@@ -58,6 +58,23 @@ export async function addSiteAction(_prev: ActionState, f: FormData): Promise<Ac
   const r = await addSite(actor, str(f, "siteName"), str(f, "siteAddress"));
   if (!r.ok) return { errors: r.errors, values: { siteName: str(f, "siteName"), siteAddress: str(f, "siteAddress") } };
   revalidatePath("/settings");
+  return { saved: true };
+}
+
+export async function updateSiteAction(siteId: string, _prev: ActionState, f: FormData): Promise<ActionState> {
+  const actor = await requireActor();
+  const values = { siteName: str(f, "siteName"), siteAddress: str(f, "siteAddress") };
+  const r = await updateSite(actor, siteId, values.siteName, values.siteAddress);
+  if (!r.ok) return { errors: r.errors, values };
+  revalidatePath("/", "layout");
+  return { saved: true };
+}
+
+export async function removeSiteAction(siteId: string, _prev: ActionState): Promise<ActionState> {
+  const actor = await requireActor();
+  const r = await removeSite(actor, siteId);
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath("/", "layout");
   return { saved: true };
 }
 

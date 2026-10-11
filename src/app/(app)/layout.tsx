@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const actor = await requireActor();
   const links = [
     { href: "/today", label: "Today" },
-    ...(can(actor, "students.view") ? [{ href: "/students", label: "Students" }] : []),
+    ...(can(actor, "students.view") ? [{ href: "/students", label: "Students" }, { href: "/leads", label: "Leads" }] : []),
     { href: "/classes", label: "Classes" },
     ...(can(actor, "messages.send") ? [{ href: "/messages", label: "Messages" }] : []),
     ...(can(actor, "payments.view") ? [{ href: "/payments", label: "Payments" }] : []),

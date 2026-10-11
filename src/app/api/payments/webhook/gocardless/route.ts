@@ -61,6 +61,10 @@ export async function POST(req: Request) {
         );
         subscriptions.push({ studentId: item.studentId, planId: item.planId, subscriptionId: sub.subscriptions.id });
       }
+      // The sign-up fee goes as a one-off payment on the new mandate, collected alongside the first month.
+      if (setup.signupFeePence > 0) {
+        await gcApi(token, "POST", "/payments", { payments: { amount: setup.signupFeePence, currency: "GBP", description: "Sign-up fee", links: { mandate } } }, `fee-${setupId}`);
+      }
       await completeSetup(clubId, setupId, { customerId: br.billing_requests.links.customer ?? null, mandateId: mandate, subscriptions });
     } else if (e.resource_type === "mandates" && MANDATE[e.action]) {
       await updateMandate(clubId, { mandateId: e.links.mandate }, MANDATE[e.action]);

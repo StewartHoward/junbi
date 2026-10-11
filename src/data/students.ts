@@ -207,6 +207,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       .innerJoin(s.plans, eq(s.plans.id, s.memberships.planId))
       .where(and(eq(s.memberships.studentId, st.id), ne(s.memberships.status, "cancelled")))
       .orderBy(desc(s.memberships.startsOn));
+    const [clubFee] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     const planOptions = can(actor, "students.edit")
       ? await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence))
       : [];
@@ -258,6 +259,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
         price: can(actor, "payments.view") ? `${formatPence(m.amountPence)} ${m.interval === "annual" ? "a year" : m.interval === "termly" ? "a term" : "a month"}` : null,
         startsOn: m.startsOn,
       })),
+      signupFee: clubFee?.fee && can(actor, "payments.view") ? formatPence(clubFee.fee) : null,
       planOptions: planOptions.map((p) => ({ id: p.id, label: `${p.name} · ${formatPence(p.amountPence)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}` })),
       paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(issueDetail), detail: issueDetail ?? "" }),
       billing,

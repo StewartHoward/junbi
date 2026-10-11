@@ -5,6 +5,7 @@ import { withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
 import { assertCan, canAtSite, ForbiddenError, type Actor } from "@/auth/permissions";
 import type { FieldErrors, Result } from "./accounts";
+import { convertLeads } from "./leads";
 
 const uuid = z.string().uuid();
 const optText = (max: number) =>
@@ -132,6 +133,8 @@ export async function createStudent(actor: Actor, input: NewStudentInput): Promi
       }
     }
     await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "student", entityId: st.id });
+    // A new family that was a lead: mark the lead converted.
+    if (!d.householdId) await convertLeads(tx, actor.clubId, { email: d.guardianEmail, phone: d.guardianPhone, studentId: st.id });
     return { ok: true as const, value: { id: st.id } };
   });
 }

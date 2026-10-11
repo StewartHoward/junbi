@@ -7,6 +7,7 @@ import { clubArts, getClubOverview } from "@/data/club";
 import { ArtFilter } from "@/components/ArtFilter";
 import { disciplineName } from "@/lib/disciplines";
 import { recentSignups } from "@/data/join";
+import { upcomingTrials } from "@/data/leads";
 
 export const metadata: Metadata = { title: "Today" };
 
@@ -21,7 +22,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const arts = await clubArts(actor);
   const filter = art && arts.includes(art) ? art : undefined;
   const date = todayISO();
-  const [classes, overview, signups] = await Promise.all([classesOn(actor, date, { discipline: filter }), getClubOverview(actor), recentSignups(actor)]);
+  const [classes, overview, signups, trials] = await Promise.all([classesOn(actor, date, { discipline: filter }), getClubOverview(actor), recentSignups(actor), can(actor, "students.view") ? upcomingTrials(actor) : []]);
   const checkedIn = classes.reduce((n, c) => n + c.present, 0);
   const trialDays = overview.club.trialEndsOn
     ? Math.round((Date.parse(`${overview.club.trialEndsOn}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000)
@@ -97,6 +98,30 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
+      {trials.length > 0 && (
+        <section className="card" style={{ marginTop: 24 }}>
+          <div className="head">
+            <h2 className="section-title">Trial sessions coming up</h2>
+            <Link href="/leads?show=booked">All leads</Link>
+          </div>
+          <div className="list" style={{ marginTop: 8 }}>
+            {trials.map((l) => (
+              <div key={l.id}>
+                <div>
+                  <Link href={`/leads/${l.id}`} style={{ fontWeight: 600, color: "var(--ink)" }}>{l.studentName ?? `${l.firstName} ${l.lastName}`}</Link>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {l.sessionAt!.toLocaleString("en-GB", { weekday: "short", hour: "numeric", minute: "2-digit", hour12: true, timeZone: CLUB_TZ })}
+                    {l.className ? ` · ${l.className}` : ""}
+                    {l.studentName ? ` · parent ${l.firstName}` : ""}
+                  </div>
+                </div>
+                <span className="pill ready">Trial</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {signups.length > 0 && (
         <section className="card" style={{ marginTop: 24 }}>
           <div className="head">
@@ -112,7 +137,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                     {s.site} · {s.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: CLUB_TZ })}
                   </div>
                 </div>
-                <span className="pill ready">Trial</span>
+                <span className="pill ok">New member</span>
               </div>
             ))}
           </div>

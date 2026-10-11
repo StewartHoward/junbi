@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addSiteAction, applyPromoCodeAction, inviteStaffAction, renameClubAction, type ActionState } from "../actions";
+import { addSiteAction, applyPromoCodeAction, inviteStaffAction, removeSiteAction, renameClubAction, updateSiteAction, type ActionState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
 
 export function ClubNameForm({ name }: { name: string }) {
@@ -41,6 +41,56 @@ export function AddSiteForm() {
         {state.saved && <span role="status" className="muted">Site added</span>}
       </div>
     </form>
+  );
+}
+
+/** One site in Settings: name and address, with Edit and Remove. */
+export function SiteRow({ site, canEdit, canRemove }: { site: { id: string; name: string; address: string | null }; canEdit: boolean; canRemove: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [saved, save, saving] = useActionState<ActionState, FormData>(async (p, f) => {
+    const r = await updateSiteAction(site.id, p, f);
+    if (r.saved) setEditing(false);
+    return r;
+  }, {});
+  const [removed, remove, removing] = useActionState<ActionState, FormData>(removeSiteAction.bind(null, site.id), {});
+  if (editing) {
+    return (
+      <form action={save} className="form" noValidate style={{ maxWidth: "none", display: "block", padding: "12px 0" }}>
+        <div className="grid2">
+          <div>
+            <label htmlFor={`sn-${site.id}`}>Site name</label>
+            <input id={`sn-${site.id}`} name="siteName" defaultValue={saved.values?.siteName ?? site.name} {...errProps("siteName", saved.errors)} />
+            <FieldError id="siteName-err" msg={saved.errors?.siteName} />
+          </div>
+          <div>
+            <label htmlFor={`sa-${site.id}`}>Address</label>
+            <input id={`sa-${site.id}`} name="siteAddress" defaultValue={saved.values?.siteAddress ?? site.address ?? ""} />
+          </div>
+        </div>
+        {saved.errors?.form && <p className="banner" role="alert">{saved.errors.form}</p>}
+        <div className="actions">
+          <button className="btn primary" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+          <button type="button" className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      </form>
+    );
+  }
+  return (
+    <div style={{ flexWrap: "wrap" }}>
+      <span><strong>{site.name}</strong>{site.address ? <span className="muted"> · {site.address}</span> : null}</span>
+      <span className="actions">
+        {canEdit && <button type="button" className="btn ghost" onClick={() => setEditing(true)} aria-label={`Edit ${site.name}`}>Edit</button>}
+        {canRemove && !confirm && <button type="button" className="btn ghost" onClick={() => setConfirm(true)} aria-label={`Remove ${site.name}`}>Remove</button>}
+        {canRemove && confirm && (
+          <form action={remove} className="actions">
+            <button className="btn secondary" disabled={removing}>{removing ? "Removing…" : `Yes, remove ${site.name}`}</button>
+            <button type="button" className="btn ghost" onClick={() => setConfirm(false)}>Keep</button>
+          </form>
+        )}
+      </span>
+      {removed.errors?.form && <p className="banner" role="alert" style={{ flexBasis: "100%", marginTop: 8 }}>{removed.errors.form}</p>}
+    </div>
   );
 }
 

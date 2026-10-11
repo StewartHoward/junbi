@@ -7,7 +7,7 @@ import type { MembershipState } from "../actions";
 type Option = { id: string; label: string };
 
 /** "Add membership" on a student's profile: pick a price, and Junbi starts it or emails the Direct Debit link. */
-export function AddMembershipForm({ action, options, today }: { action: (s: MembershipState, f: FormData) => Promise<MembershipState>; options: Option[]; today: string }) {
+export function AddMembershipForm({ action, options, today, signupFee }: { action: (s: MembershipState, f: FormData) => Promise<MembershipState>; options: Option[]; today: string; signupFee: string | null }) {
   const [state, run, pending] = useActionState<MembershipState, FormData>(action, {});
   const [open, setOpen] = useState(false);
   const e = state.errors;
@@ -35,6 +35,12 @@ export function AddMembershipForm({ action, options, today }: { action: (s: Memb
             <label htmlFor="m-start">Starts</label>
             <input id="m-start" name="startsOn" type="date" defaultValue={today} />
           </div>
+          {signupFee && (
+            <label className="check" style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <input type="checkbox" name="withSignupFee" defaultChecked />
+              <span>Add the {signupFee} sign-up fee to their first Direct Debit payment</span>
+            </label>
+          )}
           {e?.form && <p className="banner" role="alert">{e.form}</p>}
           <div className="actions">
             <button className="btn primary" disabled={pending}>{pending ? "Adding…" : "Add membership"}</button>

@@ -35,9 +35,11 @@ export async function paymentSettings(actor: Actor) {
       .innerJoin(s.households, eq(s.households.id, s.payments.householdId))
       .orderBy(desc(s.payments.chargeDate))
       .limit(20);
+    const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     return {
       account: account ?? null,
       plans,
+      signupFeePence: club?.fee ?? 0,
       mandates: Object.fromEntries(mandates.map((m) => [m.status, m.count])) as Record<string, number>,
       recent,
       available: { stripe: provider("stripe").available(), gocardless: provider("gocardless").available() },
@@ -109,8 +111,22 @@ export async function listPlans(actor: Actor) {
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const plans = await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
     const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
-    return { plans, connected: Boolean(a) };
+    const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
+    return { plans, connected: Boolean(a), signupFeePence: club?.fee ?? 0 };
   });
+}
+
+/** The club's one-off sign-up fee per new member. Empty or 0 turns it off. */
+export async function setSignupFee(actor: Actor, amount: string): Promise<Result<{ pence: number }>> {
+  assertCan(actor, "payments.manage");
+  const v = amount.trim().replace(/^£/, "");
+  if (v && !(/^\d{1,4}(\.\d{1,2})?$/.test(v))) return { ok: false, errors: { signupFee: "Enter an amount, e.g. 25 or 25.50. Leave empty for no fee." } };
+  const pence = v ? Math.round(Number(v) * 100) : 0;
+  await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    await tx.update(s.clubs).set({ signupFeePence: pence }).where(eq(s.clubs.id, actor.clubId));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "signup_fee", entityId: actor.clubId, after: { pence } });
+  });
+  return { ok: true, value: { pence } };
 }
 
 export async function addPlan(actor: Actor, input: z.input<typeof planSchema>): Promise<Result<{ id: string }>> {
@@ -145,7 +161,7 @@ export async function archivePlan(actor: Actor, planId: string) {
 export async function addStudentMembership(
   actor: Actor,
   studentId: string,
-  input: { planId: string; startsOn?: string },
+  input: { planId: string; startsOn?: string; withSignupFee?: boolean },
 ): Promise<Result<{ emailed: string | null }>> {
   assertCan(actor, "students.edit");
   if (!z.string().uuid().safeParse(studentId).success) return { ok: false, errors: { form: "Student not found." } };
@@ -190,6 +206,7 @@ export async function addStudentMembership(
     items: [{ studentId: st.id, planId: plan.id }],
     successUrl: (id) => `${base}/join/${club.token}/done?setup=${id}`,
     cancelUrl: `${base}/join/${club.token}/done?cancelled=1`,
+    withSignupFee: input.withSignupFee ?? false,
   });
   if (!r.ok) return { ok: false, errors: { form: "We couldn't make a Direct Debit link just now. Try again in a minute." } };
   const price = `${formatPence(plan.amountPence)} ${plan.interval === "annual" ? "a year" : "a month"}`;
@@ -216,7 +233,8 @@ export async function joinPlans(tx: Tx) {
   if (!plans.length) return null;
   const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
   const live = a && provider(a.provider as ProviderId).available();
-  return { provider: live ? (a.provider as ProviderId) : null, plans };
+  const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(sql`${s.clubs.id} = current_club_id()`);
+  return { provider: live ? (a.provider as ProviderId) : null, plans, signupFeePence: club?.fee ?? 0 };
 }
 
 export async function joinPaymentOptions(tx: Tx) {
@@ -230,7 +248,7 @@ export async function joinPaymentOptions(tx: Tx) {
 /** Starts Direct Debit for a family that has just signed up. Returns the provider page to send them to. */
 export async function startJoinPayment(
   clubId: string,
-  input: { householdId: string; email: string; firstName: string; lastName: string; items: Array<{ studentId: string; planId: string }>; successUrl: (setupId: string) => string; cancelUrl: string },
+  input: { householdId: string; email: string; firstName: string; lastName: string; items: Array<{ studentId: string; planId: string }>; successUrl: (setupId: string) => string; cancelUrl: string; withSignupFee?: boolean },
 ): Promise<Result<{ url: string; setupId: string }>> {
   const prepared = await withClub({ clubId }, async (tx) => {
     const account = await accountFor(tx);
@@ -245,11 +263,13 @@ export async function startJoinPayment(
       return [{ studentId: st.id, planId: plan.id, name: `${plan.name} (${st.firstName})`, amountPence: plan.amountPence, interval: plan.interval }];
     });
     if (!items.length) return null;
+    const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, clubId));
+    const signupFeePence = input.withSignupFee === false ? 0 : (club?.fee ?? 0) * items.length;
     const [setup] = await tx
       .insert(s.paymentSetups)
-      .values({ clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })) })
+      .values({ clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })), signupFeePence })
       .returning({ id: s.paymentSetups.id });
-    return { account, items, setupId: setup.id };
+    return { account, items, setupId: setup.id, signupFeePence };
   });
   if (!prepared) return { ok: false, errors: { form: "Online payment isn't set up for this club." } };
 
@@ -260,6 +280,7 @@ export async function startJoinPayment(
       firstName: input.firstName,
       lastName: input.lastName,
       items: prepared.items,
+      signupFeePence: prepared.signupFeePence,
       successUrl: input.successUrl(prepared.setupId),
       cancelUrl: input.cancelUrl,
     });

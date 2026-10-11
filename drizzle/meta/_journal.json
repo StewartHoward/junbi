@@ -162,6 +162,20 @@
       "when": 1791667559924,
       "tag": "0022_trial_seven_days",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791667560924,
+      "tag": "0023_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791667561924,
+      "tag": "0024_signup_fee",
+      "breakpoints": true
     }
   ]
 }

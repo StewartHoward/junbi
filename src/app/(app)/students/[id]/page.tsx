@@ -193,7 +193,7 @@ export default async function StudentProfilePage({
                   <span>{p.licence ? `Valid to ${fmtDate(p.licence.expiresOn)}` : "None yet"}</span>
                 </div>
               </div>
-              {can(actor, "students.edit") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={todayISO()} />}
+              {can(actor, "students.edit") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={todayISO()} signupFee={p.signupFee} />}
             </section>
 
             {p.medical && (
