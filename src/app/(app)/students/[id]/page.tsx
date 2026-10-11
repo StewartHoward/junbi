@@ -6,7 +6,8 @@ import { getStudentProfile } from "@/data/students";
 import { ForbiddenError, can } from "@/auth/permissions";
 import { disciplineName } from "@/lib/disciplines";
 import { todayISO } from "@/data/classes";
-import { recordBeltAction } from "../actions";
+import { addMembershipAction, recordBeltAction } from "../actions";
+import { AddMembershipForm } from "./AddMembershipForm";
 import { UpdateBeltForm } from "./UpdateBeltForm";
 import { BeltSwatch, PaymentPill, RankChip, StatusPill } from "@/components/badges";
 
@@ -169,12 +170,18 @@ export default async function StudentProfilePage({
             <section className="card">
               <h2 className="section-title">Membership</h2>
               <div className="list" style={{ marginTop: 10 }}>
-                {p.membership && (
+                {p.memberships.length === 0 && (
                   <div>
                     <span className="muted">Plan</span>
-                    <span>{p.membership.plan}{p.membership.price ? ` · ${p.membership.price}` : ""}</span>
+                    <span className="muted">None yet</span>
                   </div>
                 )}
+                {p.memberships.map((m) => (
+                  <div key={m.id}>
+                    <span className="muted">Plan</span>
+                    <span style={{ textAlign: "right" }}>{m.plan}{m.price ? ` · ${m.price}` : ""}</span>
+                  </div>
+                ))}
                 {p.billing && (
                   <div>
                     <span className="muted">Direct Debit</span>
@@ -186,6 +193,7 @@ export default async function StudentProfilePage({
                   <span>{p.licence ? `Valid to ${fmtDate(p.licence.expiresOn)}` : "None yet"}</span>
                 </div>
               </div>
+              {can(actor, "students.edit") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={todayISO()} />}
             </section>
 
             {p.medical && (

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
 import { createStudent, recordBelt, updateStudent } from "@/data/student-edit";
 import type { FieldErrors } from "@/data/accounts";
+import { addStudentMembership } from "@/data/payments";
 
 export type StudentFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -131,4 +132,14 @@ export async function sendJoinLinkAction(_prev: StudentFormState & { sent?: stri
   const r = await sendJoinLink(actor, str(f, "email"));
   if (!r.ok) return { errors: r.errors, values: { email: str(f, "email") } };
   return { sent: r.value.email };
+}
+
+export type MembershipState = { errors?: FieldErrors; done?: string };
+
+export async function addMembershipAction(id: string, _prev: MembershipState, f: FormData): Promise<MembershipState> {
+  const actor = await requireActor();
+  const r = await addStudentMembership(actor, id, { planId: str(f, "planId"), startsOn: str(f, "startsOn") });
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath(`/students/${id}`);
+  return { done: r.value.emailed ? `Direct Debit link emailed to ${r.value.emailed}. The membership starts once they've set it up.` : "Membership added." };
 }

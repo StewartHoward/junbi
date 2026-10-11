@@ -201,13 +201,15 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
     const siblingGrades = await currentGradesByArt(tx, siblingRows.map((x) => x.id));
     const siblings = siblingRows.map((x) => ({ ...x, grade: sortedBelts(siblingGrades.get(x.id), order)[0]?.grade ?? null }));
 
-    const [membership] = await tx
-      .select({ plan: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval, startsOn: s.memberships.startsOn })
+    const memberships = await tx
+      .select({ id: s.memberships.id, plan: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval, startsOn: s.memberships.startsOn })
       .from(s.memberships)
       .innerJoin(s.plans, eq(s.plans.id, s.memberships.planId))
-      .where(eq(s.memberships.studentId, st.id))
-      .orderBy(desc(s.memberships.startsOn))
-      .limit(1);
+      .where(and(eq(s.memberships.studentId, st.id), ne(s.memberships.status, "cancelled")))
+      .orderBy(desc(s.memberships.startsOn));
+    const planOptions = can(actor, "students.edit")
+      ? await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence))
+      : [];
 
     const issueDetail = (await householdPaymentIssues(tx, [st.householdId])).get(st.householdId);
 
@@ -250,9 +252,13 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
         email: can(actor, "students.edit") ? g.email : null,
       })),
       siblings,
-      membership: membership
-        ? { plan: membership.plan, price: can(actor, "payments.view") ? formatPence(membership.amountPence) : null, startsOn: membership.startsOn }
-        : null,
+      memberships: memberships.map((m) => ({
+        id: m.id,
+        plan: m.plan,
+        price: can(actor, "payments.view") ? `${formatPence(m.amountPence)} ${m.interval === "annual" ? "a year" : m.interval === "termly" ? "a term" : "a month"}` : null,
+        startsOn: m.startsOn,
+      })),
+      planOptions: planOptions.map((p) => ({ id: p.id, label: `${p.name} · ${formatPence(p.amountPence)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}` })),
       paymentNotice: paymentNoticeFor(actor, { hasIssue: Boolean(issueDetail), detail: issueDetail ?? "" }),
       billing,
     };

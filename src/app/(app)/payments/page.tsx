@@ -4,8 +4,8 @@ import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { paymentSettings } from "@/data/payments";
 import { formatPence } from "@/data/students";
-import { archivePlanAction, disconnectAction } from "./actions";
-import { PlanForm } from "./PlanForm";
+import { disconnectAction } from "./actions";
+import { PricesCard } from "./PricesCard";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -84,32 +84,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         )}
       </section>
 
-      <section className="card" style={{ marginTop: 20 }}>
-        <h2 className="section-title">Membership prices</h2>
-        <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-          Families choose one of these for each child when they sign up with your link or QR code, then set up their Direct Debit straight away.
-        </p>
-        {p.plans.length > 0 && (
-          <div className="list" style={{ marginTop: 8 }}>
-            {p.plans.map((pl) => (
-              <div key={pl.id}>
-                <span>
-                  <strong>{pl.name}</strong>
-                  <span className="muted" style={{ fontSize: 13 }}> · {formatPence(pl.amountPence)} {pl.interval === "annual" ? "a year" : "a month"}</span>
-                </span>
-                {manage && (
-                  <form action={archivePlanAction}>
-                    <input type="hidden" name="planId" value={pl.id} />
-                    <button className="btn ghost" title="Families already on this price carry on">Remove</button>
-                  </form>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {manage && <div style={{ marginTop: 16 }}><PlanForm /></div>}
-        {!p.account && p.plans.length > 0 && <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Connect Stripe or GoCardless above and these appear on your sign-up form.</p>}
-      </section>
+      <PricesCard plans={p.plans} manage={manage} connected={Boolean(p.account)} />
 
       <section className="card" style={{ marginTop: 20 }}>
         <h2 className="section-title">Direct Debits</h2>

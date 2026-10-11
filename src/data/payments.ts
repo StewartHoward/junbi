@@ -7,6 +7,8 @@ import { assertCan, type Actor } from "@/auth/permissions";
 import { decrypt, encrypt, verifyState, signState } from "@/lib/payments/crypto";
 import { PROVIDERS, provider, type ConnectedAccount, type ProviderId, type SetupItem } from "@/lib/payments";
 import type { Result } from "./accounts";
+import { formatPence } from "./students";
+import { appUrl, sendEmail, templates } from "@/lib/email";
 
 /*
  * Club payments: each club connects its own Stripe or GoCardless account, sets its membership prices,
@@ -101,6 +103,16 @@ const planSchema = z.object({
   interval: z.enum(["monthly", "annual"], { message: "Choose monthly or yearly." }),
 });
 
+/** The club's prices and whether Direct Debit is connected, for the Settings page. */
+export async function listPlans(actor: Actor) {
+  assertCan(actor, "payments.view");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const plans = await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
+    const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
+    return { plans, connected: Boolean(a) };
+  });
+}
+
 export async function addPlan(actor: Actor, input: z.input<typeof planSchema>): Promise<Result<{ id: string }>> {
   assertCan(actor, "payments.manage");
   const p = planSchema.safeParse(input);
@@ -123,6 +135,69 @@ export async function archivePlan(actor: Actor, planId: string) {
   await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) => tx.update(s.plans).set({ active: false }).where(eq(s.plans.id, planId)));
 }
 
+/* ---------- Staff adding a membership ---------- */
+
+/**
+ * Staff put a student on a membership. When the club takes Direct Debit and the family isn't paying
+ * by Direct Debit yet, the parent is emailed a link to set it up and the membership starts once they have.
+ * Otherwise the membership starts now.
+ */
+export async function addStudentMembership(
+  actor: Actor,
+  studentId: string,
+  input: { planId: string; startsOn?: string },
+): Promise<Result<{ emailed: string | null }>> {
+  assertCan(actor, "students.edit");
+  if (!z.string().uuid().safeParse(studentId).success) return { ok: false, errors: { form: "Student not found." } };
+  if (!z.string().uuid().safeParse(input.planId).success) return { ok: false, errors: { planId: "Choose a membership." } };
+  const startsOn = input.startsOn && /^\d{4}-\d{2}-\d{2}$/.test(input.startsOn) ? input.startsOn : new Date().toISOString().slice(0, 10);
+
+  const found = await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName, householdId: s.students.householdId, siteId: s.students.siteId }).from(s.students).where(eq(s.students.id, studentId));
+    if (!st || (actor.sites !== "all" && !actor.sites.includes(st.siteId))) return { error: { form: "Student not found." } as Record<string, string> };
+    const [plan] = await tx.select().from(s.plans).where(and(eq(s.plans.id, input.planId), eq(s.plans.active, true)));
+    if (!plan) return { error: { planId: "Choose a membership." } as Record<string, string> };
+    const account = await accountFor(tx);
+    const live = account && provider(account.provider).available() && plan.interval !== "termly";
+    const [paying] = live
+      ? await tx.select({ id: s.mandates.id }).from(s.mandates).where(and(eq(s.mandates.householdId, st.householdId), inArray(s.mandates.status, ["active", "submitted", "pending_submission"]))).limit(1)
+      : [];
+    const [payer] = await tx
+      .select({ firstName: s.guardians.firstName, lastName: s.guardians.lastName, email: s.guardians.email })
+      .from(s.guardians)
+      .where(eq(s.guardians.householdId, st.householdId))
+      .orderBy(desc(s.guardians.isPayer), asc(s.guardians.createdAt))
+      .limit(1);
+    if (live && !paying && payer?.email) {
+      const [club] = await tx.select({ name: s.clubs.name, token: s.clubs.joinToken }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
+      return { send: { st, plan, payer: { ...payer, email: payer.email }, club, provider: account.provider } };
+    }
+    await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, status: "active" });
+    await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "membership", entityId: st.id, after: { planId: plan.id } });
+    return { added: true };
+  });
+  if ("error" in found) return { ok: false, errors: found.error! };
+  if (!("send" in found) || !found.send) return { ok: true, value: { emailed: null } };
+
+  const { st, plan, payer, club, provider: pid } = found.send;
+  const base = await appUrl();
+  const r = await startJoinPayment(actor.clubId, {
+    householdId: st.householdId,
+    email: payer.email,
+    firstName: payer.firstName,
+    lastName: payer.lastName,
+    items: [{ studentId: st.id, planId: plan.id }],
+    successUrl: (id) => `${base}/join/${club.token}/done?setup=${id}`,
+    cancelUrl: `${base}/join/${club.token}/done?cancelled=1`,
+  });
+  if (!r.ok) return { ok: false, errors: { form: "We couldn't make a Direct Debit link just now. Try again in a minute." } };
+  const price = `${formatPence(plan.amountPence)} ${plan.interval === "annual" ? "a year" : "a month"}`;
+  const t = templates.paymentLink(`${payer.firstName} ${payer.lastName}`, club.name, st.firstName, `${plan.name} (${price})`, pid === "stripe" ? "Stripe" : "GoCardless", r.value.url);
+  await sendEmail({ to: payer.email, ...t, template: "payment-link", clubId: actor.clubId });
+  return { ok: true, value: { emailed: payer.email } };
+}
+
 /* ---------- Sign-up link ---------- */
 
 async function accountFor(tx: Tx): Promise<ConnectedAccount | null> {
@@ -132,6 +207,18 @@ async function accountFor(tx: Tx): Promise<ConnectedAccount | null> {
 }
 
 /** What the public sign-up form needs to offer memberships. Null when the club isn't taking payments online. */
+/**
+ * The memberships families choose from on the sign-up link. Shown whenever the club has set prices;
+ * provider is set when the club also takes Direct Debit at sign-up.
+ */
+export async function joinPlans(tx: Tx) {
+  const plans = await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
+  if (!plans.length) return null;
+  const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
+  const live = a && provider(a.provider as ProviderId).available();
+  return { provider: live ? (a.provider as ProviderId) : null, plans };
+}
+
 export async function joinPaymentOptions(tx: Tx) {
   const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
   if (!a || !provider(a.provider as ProviderId).available()) return null;
@@ -283,7 +370,10 @@ export async function cancelMembership(clubId: string, subscriptionId: string) {
   );
 }
 
-/** True when the sign-up link takes Direct Debit (provider connected and at least one price). */
-export async function takesPaymentsAtSignup(actor: Actor): Promise<boolean> {
-  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => Boolean(await joinPaymentOptions(tx)));
+/** What the sign-up link does about money: "debit" (prices and Direct Debit), "prices" (prices only) or "none". */
+export async function signupPayments(actor: Actor): Promise<"debit" | "prices" | "none"> {
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const o = await joinPlans(tx);
+    return !o ? "none" : o.provider ? "debit" : "prices";
+  });
 }

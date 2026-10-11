@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
@@ -48,6 +49,11 @@ export async function endSession() {
 export async function currentUser(): Promise<{ id: string; name: string; email: string } | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || token.length > 100) return null;
+  return userForToken(token);
+}
+
+// Cached for the length of one request: the layout and the page both ask, but the database is asked once.
+const userForToken = cache(async (token: string): Promise<{ id: string; name: string; email: string } | null> => {
   const rows = (await db().execute(sql`select * from auth_session_user(${hashToken(token)})`)) as unknown as Array<{
     user_id: string;
     name: string;
@@ -55,12 +61,16 @@ export async function currentUser(): Promise<{ id: string; name: string; email: 
   }>;
   const u = rows[0];
   return u ? { id: u.user_id, name: u.name, email: u.email } : null;
-}
+});
 
 /** Resolves the signed-in staff member and their club for the current request. */
 export async function currentActor(): Promise<SessionActor | null> {
   const user = await currentUser();
-  if (!user) return null;
+  return user ? actorForUser(user.id, user.name) : null;
+}
+
+const actorForUser = cache(async (userId: string, userName: string): Promise<SessionActor | null> => {
+  const user = { id: userId, name: userName };
   const rows = (await db().execute(sql`select * from staff_memberships_for(${user.id}::uuid)`)) as unknown as MembershipRow[];
   const m = rows[0];
   if (!m) return null;
@@ -73,7 +83,7 @@ export async function currentActor(): Promise<SessionActor | null> {
     sites: m.all_sites ? "all" : m.site_ids,
     onboarded: m.onboarded,
   };
-}
+});
 
 /** For app pages: signed in, and the club has finished set-up. */
 export async function requireActor(): Promise<SessionActor> {

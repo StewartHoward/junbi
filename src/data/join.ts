@@ -7,11 +7,12 @@ import { assertCan, can, type Actor } from "@/auth/permissions";
 import { disciplineName } from "@/lib/disciplines";
 import { appUrl, sendEmail, templates } from "@/lib/email";
 import type { FieldErrors, Result } from "./accounts";
-import { joinPaymentOptions, startJoinPayment } from "./payments";
+import { joinPlans, startJoinPayment } from "./payments";
 
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
- * Parents fill in their details and their children's, and the students land in the club as Trial.
+ * Parents fill in their details and their children's, pick a membership, and join the club as members.
+ * When the club takes Direct Debit, they go straight on to set it up with Stripe or GoCardless.
  */
 
 export async function joinLink(actor: Actor): Promise<string> {
@@ -58,8 +59,8 @@ export type JoinForm = {
   clubName: string;
   sites: Array<{ id: string; name: string }>;
   arts: Array<{ id: string; name: string }>;
-  /** Set when the club takes Direct Debit at sign-up: the memberships to choose from. */
-  payment: { provider: "stripe" | "gocardless"; plans: Array<{ id: string; name: string; amountPence: number; interval: string }> } | null;
+  /** The memberships to choose from (set when the club has prices). provider is set when they pay by Direct Debit straight away. */
+  payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }> } | null;
 };
 
 /** What the public sign-up page needs. Null when the link is wrong or has been reset. */
@@ -71,7 +72,7 @@ export async function joinForm(token: unknown): Promise<JoinForm | null> {
     const arts = (
       await tx.select({ d: s.clubDisciplines.discipline }).from(s.clubDisciplines).where(eq(s.clubDisciplines.active, true)).orderBy(asc(s.clubDisciplines.createdAt))
     ).map((r) => ({ id: r.d, name: disciplineName(r.d) }));
-    return { clubName: club.clubName, sites, arts, payment: await joinPaymentOptions(tx) };
+    return { clubName: club.clubName, sites, arts, payment: await joinPlans(tx) };
   });
 }
 
@@ -130,7 +131,7 @@ function joinErrors(e: z.ZodError): FieldErrors {
   return out;
 }
 
-/** Saves a family sign-up. Students start as Trial so the club can see who's new. */
+/** Saves a family sign-up. Everyone joins as a member on the membership they picked. */
 export async function submitJoin(
   token: unknown,
   input: JoinInput,
@@ -147,8 +148,8 @@ export async function submitJoin(
     const firstSite = [...sites][0];
     if (!firstSite) return { error: { form: "This club isn't taking sign-ups yet." } as FieldErrors };
 
-    // When the club takes Direct Debit at sign-up, everyone needs a membership.
-    const payment = await joinPaymentOptions(tx);
+    // When the club has prices, everyone picks a membership.
+    const payment = await joinPlans(tx);
     const planOk = (id?: string) => !!id && !!payment?.plans.some((p) => p.id === id);
     if (payment) {
       const errs: FieldErrors = {};
@@ -191,11 +192,20 @@ export async function submitJoin(
 
     const names: string[] = [];
     const items: Array<{ studentId: string; planId: string }> = [];
+    const today = new Date().toISOString().slice(0, 10);
+    // Without Direct Debit, the membership starts now and the club collects payment its own way.
+    const addMembership = async (studentId: string, planId?: string) => {
+      if (!payment || !planId) return;
+      const [has] = await tx.select({ id: s.memberships.id }).from(s.memberships).where(and(eq(s.memberships.studentId, studentId), eq(s.memberships.status, "active"))).limit(1);
+      if (has) return;
+      if (payment.provider) return void items.push({ studentId, planId });
+      await tx.insert(s.memberships).values({ clubId: club.clubId, studentId, planId, startsOn: today, status: "active" });
+    };
     for (const p of people) {
       const known = have.get(key(p));
       if (known) {
         names.push(p.firstName);
-        if (payment && p.planId) items.push({ studentId: known, planId: p.planId });
+        await addMembership(known, p.planId);
         continue;
       }
       const [st] = await tx
@@ -207,7 +217,7 @@ export async function submitJoin(
           firstName: p.firstName,
           lastName: p.lastName,
           dateOfBirth: p.dateOfBirth,
-          status: "trial",
+          status: "active",
           medicalNotes: p.medical || null,
           firstAidConsent: d.firstAidConsent,
           photoConsent: d.photoConsent,
@@ -217,7 +227,7 @@ export async function submitJoin(
       have.set(key(p), st.id);
       await tx.insert(s.auditLog).values({ clubId: club.clubId, action: "create", entity: "student", entityId: st.id, after: { via: "join_link" } });
       names.push(p.firstName);
-      if (payment && p.planId) items.push({ studentId: st.id, planId: p.planId });
+      await addMembership(st.id, p.planId);
     }
 
     const notify = (await tx.execute(

@@ -4,7 +4,7 @@ import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { joinLink } from "@/data/join";
 import { qrSvg } from "@/lib/qr";
-import { takesPaymentsAtSignup } from "@/data/payments";
+import { signupPayments } from "@/data/payments";
 import { PrintButton } from "./PrintButton";
 
 export const metadata: Metadata = { title: "Sign-up poster" };
@@ -14,7 +14,7 @@ export default async function SignupPoster() {
   if (!can(actor, "students.edit")) redirect("/students");
   const url = await joinLink(actor);
   const svg = await qrSvg(url);
-  const payments = await takesPaymentsAtSignup(actor);
+  const payments = (await signupPayments(actor)) !== "none";
   return (
     <>
       <style>{`

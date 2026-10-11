@@ -15,6 +15,7 @@ export async function addPlanAction(_prev: PlanState, f: FormData): Promise<Plan
   const r = await addPlan(actor, values as never);
   if (!r.ok) return { errors: r.errors, values };
   revalidatePath("/payments");
+  revalidatePath("/settings");
   return { saved: true };
 }
 
@@ -22,6 +23,7 @@ export async function archivePlanAction(f: FormData) {
   const actor = await requireActor();
   await archivePlan(actor, str(f, "planId"));
   revalidatePath("/payments");
+  revalidatePath("/settings");
 }
 
 export async function disconnectAction() {

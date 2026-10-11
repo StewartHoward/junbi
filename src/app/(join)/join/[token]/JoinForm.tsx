@@ -6,9 +6,9 @@ import { FieldError, errProps } from "@/components/FormBits";
 
 type Site = { id: string; name: string };
 type Plan = { id: string; name: string; amountPence: number; interval: string };
-type Payment = { provider: "stripe" | "gocardless"; plans: Plan[] } | null;
+type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[] } | null;
 
-const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : "a month"}`;
+const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}`;
 
 function PlanPicker({ name, plans, value, error, onChange }: { name: string; plans: Plan[]; value?: string; error?: string; onChange: (id: string) => void }) {
   return (
@@ -191,11 +191,13 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
           {picked.length
             ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}. `
             : ""}
-          Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.
+          {payment.provider
+            ? <>Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.</>
+            : "The club will be in touch about how to pay."}
         </p>
       )}
       <button type="submit" className="m-btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? "Signing up…" : payment ? "Continue to Direct Debit" : "Sign up"}
+        {pending ? "Signing up…" : payment?.provider ? "Continue to Direct Debit" : "Become a member"}
       </button>
     </form>
   );

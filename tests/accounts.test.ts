@@ -487,15 +487,15 @@ describe("family sign-up link", () => {
     expect(await join.joinForm("../../etc")).toBeNull();
   });
 
-  it("signs up a family with two children as Trial, in the right club only", async () => {
+  it("signs up a family with two children as members, in the right club only", async () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => {});
     const r = await join.submitJoin(await tokenOf(a), base());
     spy.mockRestore();
     expect(r.ok && r.value).toMatchObject({ clubName: "Club A Taekwondo", names: ["Ruby", "Theo"], paymentUrl: null });
     const kids = await adminSql`select s.club_id, s.first_name, s.last_name, s.status, s.source, s.medical_notes, s.first_aid_consent, g.email from students s join guardians g on g.household_id = s.household_id where g.email = 'pat.jones@example.test' order by s.first_name`;
     expect(kids.map((k) => [k.first_name, k.last_name, k.status, k.source, k.club_id === a.clubId])).toEqual([
-      ["Ruby", "Jones", "trial", "join_link", true],
-      ["Theo", "Smith", "trial", "join_link", true],
+      ["Ruby", "Jones", "active", "join_link", true],
+      ["Theo", "Smith", "active", "join_link", true],
     ]);
     expect(kids[1].medical_notes).toBe("Nut allergy");
     const recent = await join.recentSignups(a);
@@ -721,11 +721,49 @@ describe("club payments and paying at sign-up", () => {
     expect(c.ends_on).not.toBeNull();
   });
 
-  it("without a connected account or prices, the sign-up link works as before", async () => {
+  it("staff add a membership: emails the Direct Debit link to a family that isn't paying yet", async () => {
+    const kids = (await pay.listPlans(p)).plans.find((x) => x.name === "Kids monthly")!.id;
+    const made = await studentsEdit.createStudent(p, { firstName: "Max", lastName: "Reed", siteId: site, status: "trial", firstAidConsent: true, photoConsent: true, relationship: "parent", guardianFirstName: "Rita", guardianLastName: "Reed", guardianEmail: "rita@example.test", guardianPhone: "07700 900444" });
+    if (!made.ok) throw new Error(JSON.stringify(made.errors));
+    expect((await pay.addStudentMembership(p, made.value.id, { planId: "" })).ok).toBe(false);
+    const spy = quiet();
+    const r = await pay.addStudentMembership(p, made.value.id, { planId: kids });
+    spy.mockRestore();
+    expect(r.ok && r.value.emailed).toBe("rita@example.test");
+    const [setup] = await adminSql`select status, items from payment_setups where club_id = ${p.clubId} and items::text like ${"%" + made.value.id + "%"}`;
+    expect(setup.status).toBe("pending");
+    const [{ n }] = await adminSql`select count(*)::int as n from memberships where student_id = ${made.value.id}`;
+    expect(n).toBe(0); // starts once they've set up the Direct Debit
+
+    // A family already paying by Direct Debit: the membership just starts.
+    const [ivy] = await adminSql`select id from students where club_id = ${p.clubId} and first_name = 'Ivy'`;
+    const r2 = await pay.addStudentMembership(p, ivy.id, { planId: kids });
+    expect(r2.ok && r2.value.emailed).toBeNull();
+    await expect(pay.addStudentMembership({ ...p, role: "assistant" }, ivy.id, { planId: kids })).rejects.toThrow(/Not allowed/);
+  });
+
+  it("without Direct Debit, families still pick a price and join as members", async () => {
     const token = (await join.joinLink(a)).split("/join/")[1];
-    expect((await join.joinForm(token))?.payment).toBeNull();
+    expect((await join.joinForm(token))?.payment).toBeNull(); // no prices, no choice
     await pay.disconnectPayments(p);
     const t2 = (await join.joinLink(p)).split("/join/")[1];
-    expect((await join.joinForm(t2))?.payment).toBeNull();
+    const form = await join.joinForm(t2);
+    expect(form?.payment?.provider).toBeNull();
+    const yearly = form!.payment!.plans.find((x) => x.name === "Adults yearly")!.id;
+    const spy = quiet();
+    const r = await join.submitJoin(t2, {
+      who: "me", parentFirstName: "Olu", parentLastName: "Ade", email: "olu@example.test", phone: "07700 900555", myDateOfBirth: "1985-03-03", myPlanId: yearly,
+      children: [], firstAidConsent: true, photoConsent: true, terms: true,
+    }, { success: (id) => `http://x/done?setup=${id}`, cancel: "http://x/cancel" });
+    spy.mockRestore();
+    expect(r.ok && r.value.paymentUrl).toBeNull();
+    const [m] = await adminSql`select m.status, s.status as student from memberships m join students s on s.id = m.student_id where s.first_name = 'Olu'`;
+    expect(m).toMatchObject({ status: "active", student: "active" });
+    // Staff adding a membership without Direct Debit: it starts straight away.
+    const [max] = await adminSql`select id from students where club_id = ${p.clubId} and first_name = 'Max'`;
+    const r2 = await pay.addStudentMembership(p, max.id, { planId: yearly });
+    expect(r2.ok && r2.value.emailed).toBeNull();
+    const [mm] = await adminSql`select s.status from memberships m join students s on s.id = m.student_id where s.id = ${max.id}`;
+    expect(mm.status).toBe("active");
   });
 });

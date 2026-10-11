@@ -10,6 +10,8 @@ import { AddSiteForm, ClubNameForm, InviteStaffForm, PromoCodeForm } from "./Set
 import { describeDiscount } from "@/data/accounts";
 import { listPendingInvites } from "@/data/email-flows";
 import { emailConfigured } from "@/lib/email";
+import { listPlans } from "@/data/payments";
+import { PricesCard } from "../payments/PricesCard";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -17,7 +19,8 @@ export default async function SettingsPage() {
   const actor = await requireActor();
   const owner = can(actor, "club.manage");
   if (!owner && !can(actor, "classes.manage")) redirect("/today");
-  const [o, invites] = await Promise.all([getClubOverview(actor), listPendingInvites(actor)]);
+  const seePrices = can(actor, "payments.view");
+  const [o, invites, prices] = await Promise.all([getClubOverview(actor), listPendingInvites(actor), seePrices ? listPlans(actor) : null]);
   const plan = PLANS.find((p) => p.id === o.club.plan);
   const discount = describeDiscount(o.club.discountPercent, o.club.discountMonths);
   const freeForGood = (o.club.discountPercent ?? 0) >= 100 && o.club.discountMonths == null;
@@ -76,6 +79,8 @@ export default async function SettingsPage() {
           <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Every plan has every feature. Pick the one that fits your club&apos;s size. <a href="/pricing">See pricing</a></p>
         </section>
       )}
+
+      {prices && <PricesCard plans={prices.plans} manage={can(actor, "payments.manage")} connected={prices.connected} />}
 
       {owner && (
         <section className="card" style={{ marginTop: 20 }}>

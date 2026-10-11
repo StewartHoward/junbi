@@ -237,6 +237,18 @@ export const templates = {
       { label: "Sign up", url },
       "If you weren't expecting this, you can ignore it.",
     ),
+  paymentLink: (parentName: string, clubName: string, studentName: string, planText: string, providerName: string, url: string) =>
+    build(
+      `Set up your Direct Debit for ${clubName}`,
+      "Set up your Direct Debit.",
+      [
+        `Hi ${first(parentName)},`,
+        `${clubName} has added ${studentName} to ${planText}. Please set up the Direct Debit with ${providerName}. It takes about two minutes and is protected by the Direct Debit Guarantee.`,
+        "The link works for 24 hours. If it runs out, just ask the club for a new one.",
+      ],
+      { label: "Set up Direct Debit", url },
+      "If you weren't expecting this, contact the club before setting anything up.",
+    ),
   joinConfirm: (parentName: string, clubName: string, names: string[]) =>
     build(
       `You're signed up to ${clubName}`,
@@ -251,7 +263,7 @@ export const templates = {
     build(
       `New sign-up: ${list(names)}`,
       `New sign-up for ${clubName}.`,
-      [`${parentName} has signed up ${list(names)} using your sign-up link.`, "They're on your student list as Trial."],
+      [`${parentName} has signed up ${list(names)} using your sign-up link.`, "They're on your student list as members."],
       { label: "See them in Junbi", url },
     ),
   /** A message from a club to its families. Body paragraphs are split on blank lines. */

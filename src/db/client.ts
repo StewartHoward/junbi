@@ -42,10 +42,8 @@ export async function withClub<T>(
   database: Db = db(),
 ): Promise<T> {
   return database.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.club_id', ${scope.clubId}, true)`);
-    if (scope.userId) {
-      await tx.execute(sql`select set_config('app.user_id', ${scope.userId}, true)`);
-    }
+    // One round trip for both settings: every trip to the database counts on a page load.
+    await tx.execute(sql`select set_config('app.club_id', ${scope.clubId}, true), set_config('app.user_id', ${scope.userId ?? ""}, true)`);
     return fn(tx);
   });
 }
