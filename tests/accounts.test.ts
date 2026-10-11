@@ -676,6 +676,17 @@ describe("club payments and paying at sign-up", () => {
     await expect(pay.paymentSettings({ ...p, role: "instructor" })).rejects.toThrow(/Not allowed/);
   });
 
+  it("hides old prices from the sign-up form but keeps them for existing members", async () => {
+    const yearly = (await pay.listPlans(p)).plans.find((x) => x.name === "Adults yearly")!;
+    await pay.setPlanOnSignup(p, yearly.id, false);
+    const token = (await join.joinLink(p)).split("/join/")[1];
+    expect((await join.joinForm(token))?.payment?.plans.map((x) => x.name)).toEqual(["Kids monthly"]);
+    expect((await pay.listPlans(p)).plans.find((x) => x.id === yearly.id)?.showOnSignup).toBe(false); // still listed for staff
+    await expect(pay.setPlanOnSignup({ ...p, role: "instructor" }, yearly.id, true)).rejects.toThrow(/Not allowed/);
+    await pay.setPlanOnSignup(p, yearly.id, true);
+    expect((await join.joinForm(token))?.payment?.plans).toHaveLength(2);
+  });
+
   it("asks for a membership on the sign-up form, then hands over to Direct Debit", async () => {
     const token = (await join.joinLink(p)).split("/join/")[1];
     const form = await join.joinForm(token);

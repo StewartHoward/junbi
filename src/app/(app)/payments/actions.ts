@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
-import { addPlan, archivePlan, disconnectPayments, setSignupFee } from "@/data/payments";
+import { addPlan, archivePlan, disconnectPayments, setPlanOnSignup, setSignupFee } from "@/data/payments";
 import { connectStripeKey, takeOver, type TakeoverResult } from "@/data/stripe-own";
 import { appUrl } from "@/lib/email";
 import { redirect } from "next/navigation";
@@ -15,7 +15,7 @@ export type PlanState = { errors?: FieldErrors; values?: Record<string, string>;
 export async function addPlanAction(_prev: PlanState, f: FormData): Promise<PlanState> {
   const actor = await requireActor();
   const values = { name: str(f, "name"), amount: str(f, "amount"), interval: str(f, "interval") };
-  const r = await addPlan(actor, values as never);
+  const r = await addPlan(actor, { ...values, showOnSignup: f.get("showOnSignup") === "on" } as never);
   if (!r.ok) return { errors: r.errors, values };
   revalidatePath("/payments");
   revalidatePath("/settings");
@@ -64,4 +64,11 @@ export async function takeOverAction(_prev: TakeoverState, f: FormData): Promise
   revalidatePath("/payments");
   revalidatePath("/payments/takeover");
   return { results: r.value.results };
+}
+
+export async function setPlanOnSignupAction(f: FormData) {
+  const actor = await requireActor();
+  await setPlanOnSignup(actor, str(f, "planId"), str(f, "show") === "1");
+  revalidatePath("/payments");
+  revalidatePath("/settings");
 }

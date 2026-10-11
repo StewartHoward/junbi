@@ -274,6 +274,8 @@ export const plans = pgTable("plans", {
   amountPence: integer("amount_pence").notNull(),
   interval: billingInterval("interval").notNull().default("monthly"),
   active: boolean("active").notNull().default(true),
+  /** Offered to new families on the sign-up link. Old prices can stay for existing members but be hidden here. */
+  showOnSignup: boolean("show_on_signup").notNull().default(true),
 });
 
 /** The club's own Stripe or GoCardless account, connected to Junbi. One per club. */

@@ -29,6 +29,10 @@ export function PlanForm() {
           </select>
         </div>
       </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}>
+        <input type="checkbox" name="showOnSignup" defaultChecked={state.values ? state.values.showOnSignup === "on" : true} />
+        Show on the sign-up form
+      </label>
       <div className="actions">
         <button className="btn secondary" disabled={pending}>{pending ? "Adding…" : "Add price"}</button>
         {state.saved && <span role="status" className="muted">Added</span>}

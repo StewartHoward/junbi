@@ -140,13 +140,18 @@ const planSchema = z.object({
     .transform((v) => v.replace(/^£/, ""))
     .refine((v) => /^\d{1,4}(\.\d{1,2})?$/.test(v) && Number(v) >= 1, "Enter a price from £1, e.g. 35 or 35.50."),
   interval: z.enum(["monthly", "annual"], { message: "Choose monthly or yearly." }),
+  showOnSignup: z.boolean().optional().default(true),
 });
 
 /** The club's prices and whether Direct Debit is connected, for the Settings page. */
 export async function listPlans(actor: Actor) {
   assertCan(actor, "payments.view");
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
-    const plans = await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
+    const plans = await tx
+      .select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval, showOnSignup: s.plans.showOnSignup })
+      .from(s.plans)
+      .where(eq(s.plans.active, true))
+      .orderBy(asc(s.plans.amountPence));
     const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
     const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     return { plans, connected: Boolean(a), signupFeePence: club?.fee ?? 0 };
@@ -176,12 +181,19 @@ export async function addPlan(actor: Actor, input: z.input<typeof planSchema>): 
   }
   const amountPence = Math.round(Number(p.data.amount) * 100);
   const [row] = await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) =>
-    tx.insert(s.plans).values({ clubId: actor.clubId, name: p.data.name, amountPence, interval: p.data.interval }).returning({ id: s.plans.id }),
+    tx.insert(s.plans).values({ clubId: actor.clubId, name: p.data.name, amountPence, interval: p.data.interval, showOnSignup: p.data.showOnSignup }).returning({ id: s.plans.id }),
   );
   return { ok: true, value: { id: row.id } };
 }
 
 /** Takes a price off the sign-up form. Families already paying it carry on. */
+/** Show or hide a price on the sign-up link. Hidden prices still work for existing members, takeovers and staff. */
+export async function setPlanOnSignup(actor: Actor, planId: string, show: boolean) {
+  assertCan(actor, "payments.manage");
+  if (!z.string().uuid().safeParse(planId).success) return;
+  await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) => tx.update(s.plans).set({ showOnSignup: show }).where(eq(s.plans.id, planId)));
+}
+
 export async function archivePlan(actor: Actor, planId: string) {
   assertCan(actor, "payments.manage");
   if (!z.string().uuid().safeParse(planId).success) return;
@@ -266,7 +278,11 @@ async function accountFor(tx: Tx): Promise<ConnectedAccount | null> {
  * provider is set when the club also takes Direct Debit at sign-up.
  */
 export async function joinPlans(tx: Tx) {
-  const plans = await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
+  const plans = await tx
+    .select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval })
+    .from(s.plans)
+    .where(and(eq(s.plans.active, true), eq(s.plans.showOnSignup, true)))
+    .orderBy(asc(s.plans.amountPence));
   if (!plans.length) return null;
   const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
   const live = a && provider(a.provider as ProviderId).available();

@@ -1,9 +1,9 @@
 import { formatPence } from "@/data/students";
-import { archivePlanAction } from "./actions";
+import { archivePlanAction, setPlanOnSignupAction } from "./actions";
 import { PlanForm } from "./PlanForm";
 import { SignupFeeForm } from "./SignupFeeForm";
 
-type Plan = { id: string; name: string; amountPence: number; interval: string };
+type Plan = { id: string; name: string; amountPence: number; interval: string; showOnSignup?: boolean };
 
 const every = (i: string) => (i === "annual" ? "a year" : i === "termly" ? "a term" : "a month");
 
@@ -13,7 +13,8 @@ export function PricesCard({ plans, manage, connected, signupFeePence }: { plans
     <section className="card" style={{ marginTop: 20 }} id="prices">
       <h2 className="section-title">Membership prices</h2>
       <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-        Families pick one of these for each child when they sign up with your link or QR code.
+        Families pick from these for each child when they sign up with your link or QR code. Old prices you no longer offer can be hidden from
+        the sign-up form and still used for existing members.
         {connected ? " They then set up their Direct Debit straight away." : ""}
       </p>
       {plans.length > 0 ? (
@@ -23,12 +24,22 @@ export function PricesCard({ plans, manage, connected, signupFeePence }: { plans
               <span>
                 <strong>{pl.name}</strong>
                 <span className="muted" style={{ fontSize: 13 }}> · {formatPence(pl.amountPence)} {every(pl.interval)}</span>
+                {pl.showOnSignup === false && <span className="pill neutral" style={{ marginLeft: 8 }}>Not on sign-up form</span>}
               </span>
               {manage && (
-                <form action={archivePlanAction}>
-                  <input type="hidden" name="planId" value={pl.id} />
-                  <button className="btn ghost" title="Families already on this price carry on">Remove</button>
-                </form>
+                <span className="actions">
+                  <form action={setPlanOnSignupAction}>
+                    <input type="hidden" name="planId" value={pl.id} />
+                    <input type="hidden" name="show" value={pl.showOnSignup === false ? "1" : "0"} />
+                    <button className="btn ghost" title={pl.showOnSignup === false ? "Offer this price to new families again" : "Keep it for existing members but stop offering it to new families"}>
+                      {pl.showOnSignup === false ? "Show on sign-up" : "Hide from sign-up"}
+                    </button>
+                  </form>
+                  <form action={archivePlanAction}>
+                    <input type="hidden" name="planId" value={pl.id} />
+                    <button className="btn ghost" title="Families already on this price carry on">Remove</button>
+                  </form>
+                </span>
               )}
             </div>
           ))}
