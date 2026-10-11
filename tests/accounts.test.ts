@@ -1095,6 +1095,17 @@ describe("Junbi admin", () => {
     process.env.SUPER_ADMIN_EMAILS = "Boss@Junbi.test, other@junbi.test";
     expect(isSuperAdmin("boss@junbi.test")).toBe(true);
     expect(isSuperAdmin("owner-a@example.test")).toBe(false);
+    // First time in: the admin asks for a link, which makes a login with no club and no password yet.
+    const link = await captureLink(() => flows.requestAdminSetup("boss@junbi.test"), "/reset-password");
+    expect(link).toBeTruthy();
+    const [boss] = await adminSql`select password_hash from users where email = 'boss@junbi.test'`;
+    expect(boss.password_hash).toBeNull();
+    expect((await accounts.checkLogin("boss@junbi.test", "")).ok).toBe(false);
+    expect((await flows.resetPassword(link, "the admin's own long phrase")).ok).toBe(true);
+    expect((await accounts.checkLogin("boss@junbi.test", "the admin's own long phrase")).ok).toBe(true);
+    // Anyone not on the list gets nothing made for them.
+    await flows.requestAdminSetup("stranger@junbi.test");
+    expect(await adminSql`select 1 from users where email = 'stranger@junbi.test'`).toHaveLength(0);
     process.env.SUPER_ADMIN_EMAILS = "";
     expect(isSuperAdmin("boss@junbi.test")).toBe(false);
 

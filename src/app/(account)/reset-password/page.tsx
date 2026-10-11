@@ -6,8 +6,8 @@ import { ResetForm } from "./ResetForm";
 
 export const metadata: Metadata = { title: "Choose a new password" };
 
-export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-  const { token = "" } = await searchParams;
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string; to?: string }> }) {
+  const { token = "", to } = await searchParams;
   if (!(await resetLinkValid(token))) {
     return (
       <div className="m-auth">
@@ -23,7 +23,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
     <div className="m-auth">
       <h1>Choose a new password.</h1>
       <p className="m-sub" style={{ fontSize: 19 }}>You&apos;ll be signed out everywhere else.</p>
-      <ResetForm action={resetPasswordAction.bind(null, token)} />
+      <ResetForm action={resetPasswordAction.bind(null, token, to === "admin" ? "/admin" : "/today")} />
     </div>
   );
 }

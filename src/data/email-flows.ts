@@ -23,7 +23,7 @@ export async function sendWelcome(w: { userId: string; clubId: string; name: str
 /* ---------- Password reset ---------- */
 
 /** Always succeeds from the caller's point of view, so nobody can find out which emails have accounts. */
-export async function requestPasswordReset(emailRaw: string) {
+export async function requestPasswordReset(emailRaw: string, opts: { admin?: boolean } = {}) {
   const email = emailRaw.trim().toLowerCase();
   if (!z.string().email().safeParse(email).success) return;
   const token = newToken();
@@ -32,7 +32,7 @@ export async function requestPasswordReset(emailRaw: string) {
   )) as unknown as Array<{ user_id: string; name: string }>;
   const u = rows[0];
   if (!u) return;
-  const t = templates.passwordReset(u.name, `${await appUrl()}/reset-password?token=${token}`);
+  const t = templates.passwordReset(u.name, `${await appUrl()}/reset-password?token=${token}${opts.admin ? "&to=admin" : ""}`);
   await sendEmail({ to: email, ...t, template: "password-reset" });
 }
 
@@ -215,4 +215,16 @@ export async function sendTrialReminders() {
     if (res.status === "sent" || res.status === "logged") sent++;
   }
   return { due: rows.length, sent };
+}
+
+/**
+ * Junbi admins: makes the login if it doesn't exist yet (no club, no password) and emails a link to
+ * choose a password. Does nothing for anyone not listed in SUPER_ADMIN_EMAILS.
+ */
+export async function requestAdminSetup(emailRaw: string) {
+  const { isSuperAdmin } = await import("@/auth/admin");
+  const email = emailRaw.trim().toLowerCase();
+  if (!isSuperAdmin(email) || !z.string().email().safeParse(email).success) return;
+  await db().execute(sql`select auth_create_user(${email}, ${"Junbi admin"}, ${null})`);
+  await requestPasswordReset(email, { admin: true });
 }

@@ -48,6 +48,9 @@ export async function createClubAccount(input: SignupInput): Promise<Result<{ us
   const d = parsed.data;
   const pw = passwordProblem(d.password, d.email);
   if (pw) return { ok: false, errors: { password: pw } };
+  // Junbi admin emails can't be taken by a club sign-up.
+  const { isSuperAdmin } = await import("@/auth/admin");
+  if (isSuperAdmin(d.email)) return { ok: false, errors: { email: "This email can't be used for a club. Try another." } };
 
   const passwordHash = await hashPassword(d.password);
   const clubId = randomUUID();

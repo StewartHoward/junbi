@@ -70,11 +70,11 @@ export async function forgotPasswordAction(_prev: FormState, f: FormData): Promi
   return { values: { email, sent: "1" } };
 }
 
-export async function resetPasswordAction(token: string, _prev: FormState, f: FormData): Promise<FormState> {
+export async function resetPasswordAction(token: string, next: "/today" | "/admin", _prev: FormState, f: FormData): Promise<FormState> {
   const r = await resetPassword(token, str(f, "password"));
   if (!r.ok) return { errors: r.errors };
   await startSession(r.value.userId);
-  redirect("/today");
+  redirect(next === "/admin" ? "/admin" : "/today");
 }
 
 export async function acceptInviteAction(token: string, existing: boolean, _prev: FormState, f: FormData): Promise<FormState> {
