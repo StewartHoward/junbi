@@ -47,6 +47,26 @@ export async function stripeApi<T>(method: "GET" | "POST" | "DELETE", path: stri
   return json;
 }
 
+/** Stripe's newer v2 API (JSON in and out), used for creating clubs' accounts. */
+const V2_VERSION = "2026-09-30.endive";
+export async function stripeV2<T>(method: "GET" | "POST", path: string, body?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe isn't set up for Junbi yet.");
+  const res = await fetch(`https://api.stripe.com${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "Stripe-Version": V2_VERSION,
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
+  if (!res.ok) throw new Error(json.error?.message ?? `Stripe error ${res.status}`);
+  return json;
+}
+
 /** Checks the Stripe-Signature header: t=…,v1=… with HMAC-SHA256 of "t.payload". Allows 5 minutes of clock drift. */
 export function verifyStripeSignature(payload: string, header: string | null, secret = process.env.STRIPE_WEBHOOK_SECRET ?? "", now = Date.now()): boolean {
   if (!header || !secret) return false;
@@ -66,41 +86,48 @@ export const stripeProvider: PaymentProvider = {
   available: () => Boolean(process.env.STRIPE_SECRET_KEY),
   async onboard(input) {
     // Reuse the club's unfinished account if they started before, so abandoned sign-ups don't pile up.
-    const list = await stripeApi<{ data: Array<{ id: string; metadata?: Record<string, string> }> }>("GET", "/accounts", { limit: 100 });
+    const list = await stripeApi<{ data: Array<{ id: string; metadata?: Record<string, string> }> }>("GET", "/accounts", { limit: 100 }).catch(() => ({ data: [] }));
     let accountId = list.data.find((a) => a.metadata?.junbi_club_id === input.clubId)?.id;
     if (!accountId) {
-      const acct = await stripeApi<{ id: string }>(
+      // A full Stripe account the club owns: its own Stripe Dashboard, it pays its own Stripe fees, Stripe covers losses.
+      const acct = await stripeV2<{ id: string }>(
         "POST",
-        "/accounts",
+        "/v2/core/accounts",
         {
-          country: "GB",
-          email: input.email || undefined,
-          business_profile: { name: input.clubName.slice(0, 100), mcc: "7941", product_description: "Martial arts club memberships" },
-          controller: {
-            stripe_dashboard: { type: "full" },
-            fees: { payer: "account" },
-            losses: { payments: "stripe" },
-            requirement_collection: "stripe",
+          ...(input.email ? { contact_email: input.email } : {}),
+          display_name: input.clubName.slice(0, 100),
+          dashboard: "full",
+          identity: { country: "gb" },
+          configuration: {
+            merchant: {
+              capabilities: { card_payments: { requested: true }, bacs_debit_payments: { requested: true } },
+            },
           },
-          capabilities: { bacs_debit_payments: { requested: true }, card_payments: { requested: true } },
+          defaults: { currency: "gbp", responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
           metadata: { junbi_club_id: input.clubId },
         },
-        undefined,
-        `acct-${input.clubId}`,
+        `acct-v2-${input.clubId}-${new Date().toISOString().slice(0, 10)}`,
       );
       accountId = acct.id;
     }
-    const link = await stripeApi<{ url: string }>("POST", "/account_links", {
+    const link = await stripeV2<{ url: string }>("POST", "/v2/core/account_links", {
       account: accountId,
-      type: "account_onboarding",
-      refresh_url: input.refreshUrl,
-      return_url: input.returnUrl(accountId),
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: { configurations: ["merchant"], refresh_url: input.refreshUrl, return_url: input.returnUrl(accountId) },
+      },
     });
     return link.url;
   },
   async finishOnboard(accountId) {
-    const a = await stripeApi<{ id: string; details_submitted?: boolean; charges_enabled?: boolean }>("GET", `/accounts/${accountId}`, null);
-    return { accountId: a.id, submitted: Boolean(a.details_submitted), chargesEnabled: Boolean(a.charges_enabled) };
+    try {
+      const a = await stripeApi<{ id: string; details_submitted?: boolean; charges_enabled?: boolean }>("GET", `/accounts/${accountId}`, null);
+      return { accountId: a.id, submitted: Boolean(a.details_submitted), chargesEnabled: Boolean(a.charges_enabled) };
+    } catch {
+      // Stripe only sends people back here when they've finished or chosen to stop; save it and let Stripe finish checks.
+      const a = await stripeV2<{ id: string }>("GET", `/v2/core/accounts/${encodeURIComponent(accountId)}`);
+      return { accountId: a.id, submitted: true, chargesEnabled: false };
+    }
   },
   connectUrl(state, redirectUri) {
     const q = new URLSearchParams({ response_type: "code", client_id: process.env.STRIPE_CONNECT_CLIENT_ID ?? "", scope: "read_write", state, redirect_uri: redirectUri });
