@@ -95,7 +95,7 @@ type StripeSub = {
   metadata?: Record<string, string>;
   default_payment_method: StripePM | string;
   customer: { id: string; email: string | null; name: string | null; invoice_settings?: { default_payment_method: StripePM | string } } | string;
-  items: { data: Array<{ quantity?: number; price: { unit_amount: number | null; recurring: { interval: string; interval_count: number } | null; product: string | { name?: string } } }> };
+  items: { data: Array<{ quantity?: number; price: { unit_amount: number | null; nickname?: string | null; recurring: { interval: string; interval_count: number } | null; product: string | { name?: string } } }> };
 };
 
 const pmOf = (sub: StripeSub): StripePM => {
@@ -135,7 +135,8 @@ async function listSubscriptions(key: string): Promise<StripeSub[]> {
         status: "active",
         limit: 100,
         ...(after ? { starting_after: after } : {}),
-        expand: ["data.customer", "data.default_payment_method", "data.customer.invoice_settings.default_payment_method", "data.items.data.price.product"],
+        // Stripe allows at most 4 levels of expansion, so the product name isn't expanded; the price nickname is used instead.
+        expand: ["data.customer", "data.default_payment_method", "data.customer.invoice_settings.default_payment_method"],
       },
       undefined,
       undefined,
@@ -196,7 +197,7 @@ export async function takeoverOptions(actor: Actor): Promise<{ connected: boolea
       canTakeOver: !reason,
       reason,
       nextPaymentOn: new Date(sub.current_period_end * 1000).toISOString().slice(0, 10),
-      description: typeof product === "object" && product?.name ? product.name : "",
+      description: typeof product === "object" && product?.name ? product.name : items[0]?.price.nickname ?? "",
       household: g ? { id: g.householdId, name: g.name, students } : null,
       suggestedPlanId: plans.find((p) => p.amountPence === amountPence && p.interval === interval)?.id ?? null,
     };
