@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { checkLogin, completeSetup, createClubAccount, type FieldErrors } from "@/data/accounts";
 import { endSession, requireActorForSetup, startSession } from "@/auth/session";
+import { appUrl } from "@/lib/email";
 import {
   acceptInviteAsExistingUser,
   acceptInviteAsNewUser,
@@ -28,7 +29,14 @@ export async function signupAction(_prev: FormState, f: FormData): Promise<FormS
   await startSession(r.value.userId);
   // Never let a slow or failed email stop someone getting into their new club.
   await sendWelcome({ ...r.value, name: values.name, email: values.email, clubName: values.clubName }).catch((err) => console.error("welcome email failed", err));
-  redirect("/setup");
+  // Card next (nothing taken until the trial ends), unless the club is free.
+  const { checkoutAfterSignup } = await import("@/data/billing");
+  const url = await checkoutAfterSignup(r.value, values.email, await appUrl()).catch((err) => {
+    console.error("billing checkout at sign-up failed", err);
+    return null;
+  });
+  redirect(url ?? "/setup");
+
 }
 
 export async function loginAction(_prev: FormState, f: FormData): Promise<FormState> {

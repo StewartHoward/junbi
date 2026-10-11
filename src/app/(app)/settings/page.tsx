@@ -46,6 +46,7 @@ export default async function SettingsPage() {
             {o.club.founding ? " as a Founding Club" : ""}
             {freeForGood ? ". Your account is free, so there's nothing to pay." : o.club.trialEndsOn ? `. Your free trial runs until ${new Date(`${o.club.trialEndsOn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.` : "."}
           </p>
+          <p style={{ marginTop: 8, fontSize: 14 }}><a href="/billing">Billing: card, invoices and payments to Junbi ›</a></p>
           {o.club.plan !== "association" && (
             <div className="list" style={{ marginTop: 8 }}>
               {SELF_SERVE_PLANS.map((p) => {

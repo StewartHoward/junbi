@@ -29,6 +29,7 @@ const pay = await import("@/data/payments");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
 const dash = await import("@/data/dashboard");
+const billing = await import("@/data/billing");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -1122,5 +1123,87 @@ describe("Junbi admin", () => {
     expect(clubFeeNow({ plan: "club", founding: true, trialEndsOn: "2026-09-01", discountPercent: null, discountMonths: null }, t)).toMatchObject({ status: "paying", pence: 1950 });
     expect(clubFeeNow({ plan: "club", founding: true, trialEndsOn: "2025-09-01", discountPercent: null, discountMonths: null }, t)).toMatchObject({ pence: 3900 });
     expect(clubFeeNow({ plan: "starter", founding: false, trialEndsOn: "2026-09-01", discountPercent: 100, discountMonths: null }, t)).toMatchObject({ status: "free", pence: 0 });
+  });
+});
+
+describe("Junbi billing: card at sign-up, nothing taken until the trial ends", () => {
+  const realFetch = globalThis.fetch;
+  const calls: Array<{ method: string; path: string; body: string }> = [];
+  let c: Actor;
+  const prevKey = process.env.STRIPE_SECRET_KEY;
+
+  beforeAll(async () => {
+    const r = await accounts.createClubAccount({ clubName: "Billing Club", name: "Bea Owner", email: "bill-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    c = owner(r.value.userId, r.value.clubId);
+    await adminSql`update clubs set founding = true where id = ${c.clubId}`; // the 10 Founding places are used up by earlier tests
+    await accounts.completeSetup(c, { disciplines: ["taekwondo"], siteName: "Main", siteAddress: "", syllabus: {} });
+    process.env.STRIPE_SECRET_KEY = "sk_test_junbiplatform";
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? "GET";
+      calls.push({ method, path: url.pathname, body: decodeURIComponent(String(init?.body ?? "")) });
+      const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } });
+      if (!url.hostname.endsWith("stripe.com")) return realFetch(input, init);
+      if (method === "GET" && url.pathname.startsWith("/v1/coupons/")) return json({ error: { message: "No such coupon" } }, 404);
+      if (method === "POST" && url.pathname === "/v1/coupons") return json({ id: "junbi-50-6m" });
+      if (method === "POST" && url.pathname === "/v1/checkout/sessions") return json({ id: "cs_test_1", url: "https://checkout.stripe.com/c/pay/cs_test_1" });
+      if (method === "GET" && url.pathname === "/v1/checkout/sessions/cs_test_1")
+        return json({ metadata: { club_id: c.clubId }, subscription: { id: "sub_b1", status: "trialing", customer: "cus_b1", current_period_end: 1893456000 } });
+      if (method === "POST" && url.pathname === "/v1/webhook_endpoints") return json({ id: "we_bill", secret: "whsec_bill" });
+      return json({ error: { message: `unexpected ${method} ${url.pathname}` } }, 400);
+    }) as typeof fetch;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = realFetch;
+    process.env.STRIPE_SECRET_KEY = prevKey;
+  });
+
+  it("sends a new owner to add a card, with the trial and Founding discount on the subscription", async () => {
+    expect(await billing.billingGate(c)).toBe(true);
+    expect(await billing.billingGate({ ...c, role: "admin" })).toBe(false); // only the owner is asked
+
+    const url = await billing.startBillingCheckout(c, "https://junbi.test", "bill-owner@example.test");
+    expect(url).toContain("checkout.stripe.com");
+    const co = calls.find((x) => x.path === "/v1/checkout/sessions")!;
+    expect(co.body).toContain("mode=subscription");
+    expect(co.body).toMatch(/subscription_data\[trial_end\]=\d+/);
+    expect(co.body).toContain(`subscription_data[metadata][club_id]=${c.clubId}`);
+    expect(co.body).toContain("line_items[0][price_data][unit_amount]=3900");
+    expect(co.body).toContain("discounts[0][coupon]=junbi-50-6m");
+    expect(calls.some((x) => x.path === "/v1/coupons" && x.body.includes("percent_off=50") && x.body.includes("duration_in_months=6"))).toBe(true);
+    // Another club can't finish this club's checkout.
+    expect(await billing.finishBillingCheckout(b, "cs_test_1")).toBe(false);
+    expect(await billing.finishBillingCheckout(c, "cs_test_1")).toBe(true);
+    expect(await billing.billingGate(c)).toBe(false);
+    expect((await billing.clubBilling(c)).status).toBe("trialing");
+  });
+
+  it("follows the subscription and records what the club pays Junbi", async () => {
+    await billing.handleBillingEvent({ type: "customer.subscription.updated", data: { object: { id: "sub_b1", status: "active", customer: "cus_b1", current_period_end: 1893456000, metadata: {} } } });
+    expect((await billing.clubBilling(c)).status).toBe("active");
+    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1", customer: "cus_b1", status: "paid", amount_paid: 1950, amount_due: 1950, hosted_invoice_url: "https://invoice.stripe.com/i/1", status_transitions: { paid_at: 1760000000 } } } });
+    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1", customer: "cus_b1", status: "paid", amount_paid: 1950, amount_due: 1950 } } }); // repeats are harmless
+    const bb = await billing.clubBilling(c);
+    expect(bb.invoices.map((i) => [i.amountPence, i.status])).toEqual([[1950, "paid"]]);
+    const [row] = (await appSql`select junbi_paid_total_pence, billing_status from admin_clubs() where club_id = ${c.clubId}`) as unknown as Array<{ junbi_paid_total_pence: number; billing_status: string }>;
+    expect(row).toMatchObject({ junbi_paid_total_pence: 1950, billing_status: "active" });
+    // A failed payment still lets the club in, with the status showing.
+    await billing.handleBillingEvent({ type: "customer.subscription.updated", data: { object: { id: "sub_b1", status: "past_due", customer: "cus_b1" } } });
+    expect(await billing.billingGate(c)).toBe(false);
+    await billing.handleBillingEvent({ type: "customer.subscription.deleted", data: { object: { id: "sub_b1", status: "canceled", customer: "cus_b1" } } });
+    expect(await billing.billingGate(c)).toBe(true);
+  });
+
+  it("never asks a free-for-good club for a card, and keeps the webhook secret encrypted", async () => {
+    expect(billing.needsCard({ plan: "club", founding: false, trialEndsOn: null, discountPercent: 100, discountMonths: null, billingStatus: null })).toBe(false);
+    expect(billing.needsCard({ plan: "club", founding: false, trialEndsOn: null, discountPercent: 100, discountMonths: 3, billingStatus: null })).toBe(true);
+    expect(await billing.billingWebhookReady()).toBe(false);
+    expect((await billing.ensureBillingWebhook("https://junbi.test")).created).toBe(true);
+    expect((await billing.ensureBillingWebhook("https://junbi.test")).created).toBe(false);
+    expect(await billing.billingWebhookSecret()).toBe("whsec_bill");
+    const [stored] = await adminSql`select value from platform_settings where key = 'billing_webhook'`;
+    expect(stored.value).not.toContain("whsec_bill");
   });
 });

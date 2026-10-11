@@ -35,3 +35,21 @@ export async function adminSetupAction(_prev: FormState, f: FormData): Promise<F
   await requestAdminSetup(email).catch((err) => console.error("admin set-up email failed", err));
   return { values: { email, sent: "1" } };
 }
+
+export type SwitchState = { ok?: string; error?: string };
+
+/** Creates Junbi's billing webhook on Junbi's Stripe account so club payments show here. */
+export async function switchOnBillingAction(): Promise<SwitchState> {
+  const { requireSuperAdmin } = await import("@/auth/admin");
+  await requireSuperAdmin();
+  const { ensureBillingWebhook } = await import("@/data/billing");
+  const { appUrl } = await import("@/lib/email");
+  try {
+    const r = await ensureBillingWebhook(await appUrl());
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/admin");
+    return { ok: r.created ? "Connected. Club payments will now show here." : "Already connected." };
+  } catch (err) {
+    return { error: `Stripe said: ${(err as Error).message}` };
+  }
+}

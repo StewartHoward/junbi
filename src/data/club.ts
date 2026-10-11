@@ -148,6 +148,8 @@ export async function setPlan(actor: Actor, plan: string): Promise<Result> {
     await tx.update(s.clubs).set({ plan: parsed.data }).where(eq(s.clubs.id, actor.clubId));
     await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "club_plan", entityId: actor.clubId, before: { plan: club?.plan }, after: { plan: parsed.data } });
   });
+  const { syncBillingPlan } = await import("./billing");
+  await syncBillingPlan(actor.clubId, parsed.data).catch((err) => console.error("billing plan change failed", err));
   return { ok: true, value: undefined };
 }
 

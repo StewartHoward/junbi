@@ -11,6 +11,7 @@ type Row = {
   created_at: Date; onboarded_at: Date | null; owner_name: string | null; owner_email: string | null;
   sites: number; staff: number; students_active: number; students_total: number; students_new_30d: number;
   payment_provider: string | null; families_paying: number; collected_30d_pence: number; last_sign_in: Date | null; trial_iso: string | null;
+  billing_status: string | null; billing_period_end: Date | null; junbi_paid_30d_pence: number; junbi_paid_total_pence: number; junbi_last_paid: Date | null;
 };
 
 /** Every club on Junbi, for the Junbi admin page. Only Junbi admins get past the check. */
@@ -41,6 +42,11 @@ export async function adminClubs() {
       familiesPaying: r.families_paying,
       collected30dPence: r.collected_30d_pence,
       lastSignIn: r.last_sign_in ? new Date(r.last_sign_in) : null,
+      billingStatus: r.billing_status,
+      billingPeriodEnd: r.billing_period_end ? new Date(r.billing_period_end) : null,
+      paid30dPence: r.junbi_paid_30d_pence,
+      paidTotalPence: r.junbi_paid_total_pence,
+      lastPaid: r.junbi_last_paid ? new Date(r.junbi_last_paid) : null,
       fee,
     };
   });

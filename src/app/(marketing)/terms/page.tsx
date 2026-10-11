@@ -37,8 +37,9 @@ export default function TermsPage() {
 
         <h2>3. Free trial</h2>
         <p>
-          New clubs get a free 7-day trial with no card needed. When the trial ends, you&apos;ll need to choose a paid plan to keep using Junbi. If you
-          don&apos;t, your account will be paused, and nothing you&apos;ve added is lost straight away.
+          New clubs get a free 7-day trial. You add a card when you sign up, but nothing is taken until the trial ends. Your first monthly payment
+          is taken on the day your trial ends, unless you cancel before then. If a payment fails, your account may be paused, and nothing you&apos;ve
+          added is lost straight away.
         </p>
 
         <h2>4. Plans and fees</h2>

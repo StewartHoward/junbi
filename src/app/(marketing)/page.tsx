@@ -52,7 +52,7 @@ export default function Home() {
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
         </div>
-        <p className="m-fine">Free for 7 days. No card needed. One flat price, 0% of your fees.</p>
+        <p className="m-fine">Free for 7 days. Nothing taken until your trial ends. One flat price, 0% of your fees.</p>
 
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students checked in">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>junbi</span></div>

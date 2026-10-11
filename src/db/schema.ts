@@ -84,6 +84,12 @@ export const clubs = pgTable(
       .default(sql`replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')`),
     /** Set when the owner finishes club set-up (arts, first site, belt syllabus). */
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+    /** Junbi charging the club: its customer and subscription on Junbi's own Stripe account. */
+    billingCustomerId: text("billing_customer_id"),
+    billingSubscriptionId: text("billing_subscription_id"),
+    /** Stripe subscription status: trialing, active, past_due, unpaid, canceled, incomplete. Null = no card yet. */
+    billingStatus: text("billing_status"),
+    billingPeriodEnd: timestamp("billing_period_end", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clubs_slug_key").on(t.slug), uniqueIndex("clubs_join_token_key").on(t.joinToken)],
@@ -572,6 +578,30 @@ export const leads = pgTable("leads", {
   createdAt: createdAt(),
 });
 
+/** What Junbi has charged each club (from Stripe invoices). */
+export const junbiInvoices = pgTable(
+  "junbi_invoices",
+  {
+    id: id(),
+    clubId: clubId(),
+    stripeInvoiceId: text("stripe_invoice_id").notNull(),
+    amountPence: integer("amount_pence").notNull(),
+    status: text("status").notNull(),
+    hostedUrl: text("hosted_url"),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("junbi_invoices_stripe_key").on(t.stripeInvoiceId)],
+);
+
+/** Junbi-wide settings, e.g. the billing webhook's signing secret (encrypted). Not club data. */
+export const platformSettings = pgTable("platform_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const TENANT_TABLES = [
   "club_disciplines",
   "staff_invites",
@@ -596,4 +626,5 @@ export const TENANT_TABLES = [
   "club_payment_accounts",
   "payment_setups",
   "leads",
+  "junbi_invoices",
 ] as const;
