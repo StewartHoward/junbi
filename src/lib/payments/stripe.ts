@@ -74,7 +74,7 @@ export const stripeProvider: PaymentProvider = {
         "/accounts",
         {
           country: "GB",
-          email: input.email,
+          email: input.email || undefined,
           business_profile: { name: input.clubName.slice(0, 100), mcc: "7941", product_description: "Martial arts club memberships" },
           controller: {
             stripe_dashboard: { type: "full" },

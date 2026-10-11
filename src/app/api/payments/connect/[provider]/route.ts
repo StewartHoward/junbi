@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentActor } from "@/auth/session";
+import { currentActor, currentUser } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { startConnect } from "@/data/payments";
 import { appUrl } from "@/lib/email";
@@ -13,7 +13,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ provide
   if (!actor || !can(actor, "club.manage")) return NextResponse.redirect(`${base}/login`);
   const { provider } = await params;
   try {
-    return NextResponse.redirect(await startConnect(actor, provider, base));
+    const user = await currentUser();
+    return NextResponse.redirect(await startConnect(actor, provider, base, user?.email ?? ""));
   } catch (err) {
     console.error("Connecting payments failed", err);
     return NextResponse.redirect(`${base}/payments?error=unavailable`);

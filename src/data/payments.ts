@@ -59,17 +59,16 @@ export function connectUrl(actor: Actor, id: string, redirectUri: string): strin
  * Where to send the owner to connect: Stripe's hosted sign-up (Junbi makes the club's account) or,
  * for GoCardless, its OAuth page.
  */
-export async function startConnect(actor: Actor & { clubName: string }, id: string, base: string): Promise<string> {
+export async function startConnect(actor: Actor & { clubName: string }, id: string, base: string, email: string): Promise<string> {
   assertCan(actor, "club.manage");
   const p = provider(providerId.parse(id));
   if (!p.available()) throw new Error(`${p.name} isn't available on Junbi yet.`);
   const callback = `${base}/api/payments/callback/${p.id}`;
   if (!p.onboard) return p.connectUrl(signState({ clubId: actor.clubId, provider: p.id }), callback);
-  const [me] = (await db().execute(sql`select email from users where id = ${actor.userId}::uuid`)) as unknown as Array<{ email: string }>;
   return p.onboard({
     clubId: actor.clubId,
     clubName: actor.clubName,
-    email: me?.email ?? "",
+    email,
     returnUrl: (accountId) => `${callback}?state=${encodeURIComponent(signState({ clubId: actor.clubId, provider: p.id, accountId }, 3 * 3600))}`,
     refreshUrl: `${base}/api/payments/connect/${p.id}`,
   });
