@@ -190,6 +190,13 @@
       "when": 1791667563924,
       "tag": "0026_family_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791667564924,
+      "tag": "0027_admin_clubs",
+      "breakpoints": true
     }
   ]
 }

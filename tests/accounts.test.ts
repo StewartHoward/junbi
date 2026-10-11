@@ -1050,7 +1050,7 @@ describe("dashboard and students summary", () => {
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     const today = classes.todayISO();
     const weekday = ((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
-    const c = await classes.createClass(a, { name: "Dashboard class", siteId, discipline: "taekwondo", weekday: String(weekday), startsAt: "00:05", durationMinutes: "60", capacity: "" });
+    const c = await classes.createClass(a, { name: "Dashboard class", siteId, discipline: "taekwondo", weekday: String(weekday), startsAt: "00:00", durationMinutes: "60", capacity: "" });
     if (!c.ok) throw new Error(JSON.stringify(c.errors));
     await classes.setAttendance(a, c.value.id, today, r.value.id, true);
 
@@ -1085,5 +1085,31 @@ describe("dashboard and students summary", () => {
     expect(prof!.attendance.weeks).toHaveLength(12);
     expect(prof!.attendance.weeks.at(-1)!.n).toBe(1);
     expect(prof!.attendance.last).toBe(today);
+  });
+});
+
+describe("Junbi admin", () => {
+  it("only lets listed emails in, and lists every club with its fee and students", async () => {
+    const { isSuperAdmin } = await import("@/auth/admin");
+    const { clubFeeNow } = await import("@/lib/plans");
+    process.env.SUPER_ADMIN_EMAILS = "Boss@Junbi.test, other@junbi.test";
+    expect(isSuperAdmin("boss@junbi.test")).toBe(true);
+    expect(isSuperAdmin("owner-a@example.test")).toBe(false);
+    process.env.SUPER_ADMIN_EMAILS = "";
+    expect(isSuperAdmin("boss@junbi.test")).toBe(false);
+
+    // The cross-club list comes from one read-only function the app role can call.
+    const rows = (await appSql`select * from admin_clubs()`) as unknown as Array<{ club_id: string; name: string; students_active: number; owner_email: string }>;
+    const clubA = rows.find((r) => r.club_id === a.clubId)!;
+    expect(clubA.owner_email).toBe("owner-a@example.test");
+    expect(clubA.students_active).toBeGreaterThan(0);
+    expect(rows.some((r) => r.club_id === b.clubId)).toBe(true);
+
+    const t = "2026-10-12";
+    expect(clubFeeNow({ plan: "club", founding: false, trialEndsOn: "2026-10-15", discountPercent: null, discountMonths: null }, t)).toMatchObject({ status: "trial", pence: 0 });
+    expect(clubFeeNow({ plan: "club", founding: false, trialEndsOn: "2026-09-01", discountPercent: null, discountMonths: null }, t)).toMatchObject({ status: "paying", pence: 3900 });
+    expect(clubFeeNow({ plan: "club", founding: true, trialEndsOn: "2026-09-01", discountPercent: null, discountMonths: null }, t)).toMatchObject({ status: "paying", pence: 1950 });
+    expect(clubFeeNow({ plan: "club", founding: true, trialEndsOn: "2025-09-01", discountPercent: null, discountMonths: null }, t)).toMatchObject({ pence: 3900 });
+    expect(clubFeeNow({ plan: "starter", founding: false, trialEndsOn: "2026-09-01", discountPercent: 100, discountMonths: null }, t)).toMatchObject({ status: "free", pence: 0 });
   });
 });
