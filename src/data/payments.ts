@@ -9,6 +9,7 @@ import { PROVIDERS, provider, type ConnectedAccount, type ProviderId, type Setup
 import type { Result } from "./accounts";
 import { formatPence } from "./students";
 import { appUrl, sendEmail, templates } from "@/lib/email";
+import { removeOwnStripeWebhook } from "./stripe-own";
 
 /*
  * Club payments: each club connects its own Stripe or GoCardless account, sets its membership prices,
@@ -23,7 +24,9 @@ const providerId = z.enum(PROVIDERS);
 export async function paymentSettings(actor: Actor) {
   assertCan(actor, "payments.view");
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
-    const [account] = await tx.select({ provider: s.clubPaymentAccounts.provider, accountId: s.clubPaymentAccounts.accountId, connectedAt: s.clubPaymentAccounts.connectedAt }).from(s.clubPaymentAccounts);
+    const [account] = await tx
+      .select({ provider: s.clubPaymentAccounts.provider, accountId: s.clubPaymentAccounts.accountId, connectedAt: s.clubPaymentAccounts.connectedAt, tokenEnc: s.clubPaymentAccounts.accessTokenEnc })
+      .from(s.clubPaymentAccounts);
     const plans = await tx.select().from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence));
     const mandates = await tx
       .select({ status: s.mandates.status, count: sql<number>`count(*)::int` })
@@ -37,7 +40,13 @@ export async function paymentSettings(actor: Actor) {
       .limit(20);
     const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     return {
-      account: account ?? null,
+      // ownKey: the club connected its existing Stripe account with a key, so it can take over Direct Debits running there.
+      account: account
+        ? (() => {
+            const own = account.provider === "stripe" && account.tokenEnc ? (JSON.parse(decrypt(account.tokenEnc)) as { key?: string }).key ?? null : null;
+            return { provider: account.provider, accountId: account.accountId, connectedAt: account.connectedAt, ownKey: Boolean(own), testMode: Boolean(own?.includes("_test_")) };
+          })()
+        : null,
       plans,
       signupFeePence: club?.fee ?? 0,
       mandates: Object.fromEntries(mandates.map((m) => [m.status, m.count])) as Record<string, number>,
@@ -113,6 +122,7 @@ export async function finishConnect(actor: Actor, id: string, code: string | nul
 
 export async function disconnectPayments(actor: Actor) {
   assertCan(actor, "club.manage");
+  await removeOwnStripeWebhook(actor.clubId);
   await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const [a] = await tx.select().from(s.clubPaymentAccounts);
     await tx.delete(s.clubPaymentAccounts).where(eq(s.clubPaymentAccounts.clubId, actor.clubId));

@@ -26,9 +26,18 @@ export function formEncode(obj: Record<string, unknown>, prefix = ""): string {
   return parts.filter(Boolean).join("&");
 }
 
-export async function stripeApi<T>(method: "GET" | "POST" | "DELETE", path: string, params: Record<string, unknown> | null, account?: string, idempotencyKey?: string): Promise<T> {
-  const key = process.env.STRIPE_SECRET_KEY;
+export async function stripeApi<T>(
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  params: Record<string, unknown> | null,
+  account?: string,
+  idempotencyKey?: string,
+  /** A club's own key (clubs that connected their existing Stripe account). Used instead of Junbi's key. */
+  ownKey?: string,
+): Promise<T> {
+  const key = ownKey || process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe isn't set up for Junbi yet.");
+  if (ownKey) account = undefined;
   const body = params && method !== "GET" ? formEncode(params) : undefined;
   const url = params && method === "GET" ? `${API}${path}?${formEncode(params)}` : `${API}${path}`;
   const res = await fetch(url, {
@@ -46,6 +55,28 @@ export async function stripeApi<T>(method: "GET" | "POST" | "DELETE", path: stri
   if (!res.ok) throw new Error(json.error?.message ?? `Stripe error ${res.status}`);
   return json;
 }
+
+/**
+ * Clubs that connect their existing Stripe account paste a key; we store it (encrypted) as JSON along with
+ * the webhook Junbi created on their account: { key, whsec, whId }.
+ */
+export type OwnStripe = { key: string; whsec: string; whId: string };
+export function ownStripe(account: Pick<ConnectedAccount, "provider" | "accessToken"> | null | undefined): OwnStripe | null {
+  if (!account || account.provider !== "stripe" || !account.accessToken) return null;
+  try {
+    const v = JSON.parse(account.accessToken) as Partial<OwnStripe>;
+    return v.key ? { key: v.key, whsec: v.whsec ?? "", whId: v.whId ?? "" } : null;
+  } catch {
+    return null;
+  }
+}
+/** How to call Stripe for a club: on its own key, or as Junbi on behalf of its connected account. */
+export function stripeAuth(account: ConnectedAccount): { account?: string; key?: string } {
+  const own = ownStripe(account);
+  return own ? { key: own.key } : { account: account.accountId };
+}
+
+export const WEBHOOK_EVENTS = ["checkout.session.completed", "mandate.updated", "invoice.paid", "invoice.payment_failed", "customer.subscription.deleted"];
 
 /** Stripe's newer v2 API (JSON in and out), used for creating clubs' accounts. */
 const V2_VERSION = "2026-09-30.endive";
@@ -171,8 +202,9 @@ export const stripeProvider: PaymentProvider = {
           ...(input.signupFeePence ? [{ quantity: 1, price_data: { currency: "gbp", unit_amount: input.signupFeePence, product_data: { name: "Sign-up fee", metadata: { junbi_fee: "signup" } } } }] : []),
         ],
       },
-      account.accountId,
+      stripeAuth(account).account,
       `setup-${input.setupId}`,
+      stripeAuth(account).key,
     );
     return { ref: session.id, url: session.url };
   },

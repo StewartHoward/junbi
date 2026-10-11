@@ -27,6 +27,7 @@ const join = await import("@/data/join");
 const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
 const leads = await import("@/data/leads");
+const ownStripe = await import("@/data/stripe-own");
 const { hashPassword, verifyPassword, passwordProblem } = await import("@/auth/password");
 type Actor = import("@/auth/permissions").Actor;
 
@@ -884,5 +885,106 @@ describe("leads", () => {
     await expect(club.removeSite({ ...l, role: "instructor" }, north)).rejects.toThrow(/Not allowed/);
     expect((await club.removeSite(l, north)).ok).toBe(true);
     expect((await club.getClubOverview(l)).sites.map((x) => x.name)).toEqual(["Southside Dojo"]);
+  });
+});
+
+describe("existing Stripe account and Direct Debit takeover", () => {
+  let c: Actor;
+  let site: string;
+  let studentId: string;
+  let planId: string;
+  const calls: Array<{ method: string; path: string; body: string; key: string }> = [];
+  const future = Math.floor(Date.now() / 1000) + 10 * 86_400;
+  const sub = (id: string, email: string, pm: unknown) => ({
+    id, status: "active", cancel_at_period_end: false, current_period_end: future, metadata: {},
+    default_payment_method: pm,
+    customer: { id: `cus_${id}`, email, name: "Fam Parent", invoice_settings: { default_payment_method: null } },
+    items: { data: [{ quantity: 1, price: { unit_amount: 3500, recurring: { interval: "month", interval_count: 1 }, product: { name: "Kids monthly (old system)" } } }] },
+  });
+  const realFetch = globalThis.fetch;
+
+  beforeAll(async () => {
+    const r0 = await accounts.createClubAccount({ clubName: "Own Stripe Club", name: "Olu Owner", email: "own-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    c = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(c, { disciplines: ["taekwondo"], siteName: "Main", siteAddress: "", syllabus: {} });
+    site = (await club.getClubOverview(c)).sites[0].id;
+    const made = await studentsEdit.createStudent(c, { firstName: "Kit", lastName: "Fam", siteId: site, status: "active", firstAidConsent: true, photoConsent: true, relationship: "parent", guardianFirstName: "Fam", guardianLastName: "Parent", guardianEmail: "fam@example.test", guardianPhone: "07700 900999" });
+    if (!made.ok) throw new Error(JSON.stringify(made.errors));
+    studentId = made.value.id;
+    const pl = await pay.addPlan(c, { name: "Kids monthly", amount: "35", interval: "monthly" });
+    if (!pl.ok) throw new Error("plan");
+    planId = pl.value.id;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? "GET";
+      const key = String((init?.headers as Record<string, string>)?.Authorization ?? "").replace("Bearer ", "");
+      calls.push({ method, path: url.pathname, body: String(init?.body ?? ""), key });
+      const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } });
+      if (!url.hostname.endsWith("stripe.com")) return realFetch(input, init);
+      if (method === "GET" && url.pathname === "/v1/account") return json({ id: "acct_own1", settings: { dashboard: { display_name: "Own Club" } } });
+      if (method === "POST" && url.pathname === "/v1/webhook_endpoints") return json({ id: "we_own1", secret: "whsec_own1" });
+      if (method === "DELETE") return json({ deleted: true });
+      if (method === "GET" && url.pathname === "/v1/subscriptions") return json({ has_more: false, data: [sub("sub_1", "fam@example.test", { id: "pm_bacs", type: "bacs_debit", bacs_debit: { last4: "2345" } }), sub("sub_2", "nobody@example.test", null)] });
+      if (method === "GET" && url.pathname === "/v1/subscriptions/sub_1") return json(sub("sub_1", "fam@example.test", { id: "pm_bacs", type: "bacs_debit" }));
+      if (method === "POST" && url.pathname === "/v1/products") return json({ id: "prod_1" });
+      if (method === "POST" && url.pathname === "/v1/subscriptions") return json({ id: "sub_new1" });
+      if (method === "POST" && url.pathname === "/v1/subscriptions/sub_1") return json({ id: "sub_1" });
+      return json({ error: { message: `unexpected ${method} ${url.pathname}` } }, 400);
+    }) as typeof fetch;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it("connects the club's own Stripe with a key and sets up a webhook on it", async () => {
+    expect((await ownStripe.connectStripeKey(c, "not-a-key", "https://junbi.test")).ok).toBe(false);
+    await expect(ownStripe.connectStripeKey({ ...c, role: "admin" }, "sk_test_abcdefghijklmnop", "https://junbi.test")).rejects.toThrow(/Not allowed/);
+    const r = await ownStripe.connectStripeKey(c, "  sk_test_abcdefghijklmnop ", "https://junbi.test");
+    expect(r.ok && r.value).toMatchObject({ accountName: "Own Club", testMode: true });
+    const wh = calls.find((x) => x.path === "/v1/webhook_endpoints")!;
+    expect(decodeURIComponent(wh.body)).toContain(`url=https://junbi.test/api/payments/webhook/stripe?club=${c.clubId}`);
+    expect(wh.key).toBe("sk_test_abcdefghijklmnop");
+    const st = await pay.paymentSettings(c);
+    expect(st.account).toMatchObject({ provider: "stripe", accountId: "acct_own1", ownKey: true, testMode: true });
+    const [row] = await adminSql`select access_token_enc from club_payment_accounts where club_id = ${c.clubId}`;
+    expect(row.access_token_enc).not.toContain("sk_test_"); // stored encrypted
+  });
+
+  it("lists the running Direct Debits matched to families, and takes one over without a double charge", async () => {
+    const opts = await ownStripe.takeoverOptions(c);
+    expect(opts.connected).toBe(true);
+    const fam = opts.rows.find((r) => r.subscriptionId === "sub_1")!;
+    expect(fam).toMatchObject({ canTakeOver: true, amountPence: 3500, interval: "monthly", method: "Direct Debit ··2345", suggestedPlanId: planId });
+    expect(fam.household?.students.map((s) => s.id)).toEqual([studentId]);
+    expect(opts.rows.find((r) => r.subscriptionId === "sub_2")).toMatchObject({ canTakeOver: false, household: null });
+
+    calls.length = 0;
+    const r = await ownStripe.takeOver(c, [{ subscriptionId: "sub_1", studentId, planId }]);
+    expect(r.ok && r.value.results).toEqual([expect.objectContaining({ subscriptionId: "sub_1", ok: true })]);
+    const created = calls.find((x) => x.method === "POST" && x.path === "/v1/subscriptions")!;
+    const body = new URLSearchParams(created.body);
+    expect(body.get("customer")).toBe("cus_sub_1");
+    expect(body.get("default_payment_method")).toBe("pm_bacs");
+    expect(body.get("trial_end")).toBe(String(future)); // nothing charged before the old next payment date
+    expect(body.get("items[0][price_data][unit_amount]")).toBe("3500");
+    const stopped = new URLSearchParams(calls.find((x) => x.path === "/v1/subscriptions/sub_1" && x.method === "POST")!.body);
+    expect(stopped.get("cancel_at_period_end")).toBe("true");
+    expect(stopped.get("metadata[junbi_replaced_by]")).toBe("sub_new1");
+
+    const [m] = await adminSql`select status, provider_subscription_id, starts_on::text as starts_on from memberships where student_id = ${studentId}`;
+    expect(m).toMatchObject({ status: "active", provider_subscription_id: "sub_new1", starts_on: new Date(future * 1000).toISOString().slice(0, 10) });
+    const [md] = await adminSql`select provider, provider_customer_id, status from mandates where club_id = ${c.clubId}`;
+    expect(md).toMatchObject({ provider: "stripe", provider_customer_id: "cus_sub_1", status: "active" });
+    await expect(ownStripe.takeOver({ ...c, role: "instructor" }, [{ subscriptionId: "sub_1", studentId, planId }])).rejects.toThrow(/Not allowed/);
+  });
+
+  it("disconnecting removes Junbi's webhook from the club's Stripe", async () => {
+    calls.length = 0;
+    await pay.disconnectPayments(c);
+    expect(calls.some((x) => x.method === "DELETE" && x.path === "/v1/webhook_endpoints/we_own1")).toBe(true);
+    expect((await pay.paymentSettings(c)).account).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { stripeApi, verifyStripeSignature } from "@/lib/payments/stripe";
-import { cancelMembership, clubForAccount, completeSetup, recordPayment, updateMandate } from "@/data/payments";
+import { ownStripe, stripeApi, verifyStripeSignature } from "@/lib/payments/stripe";
+import { cancelMembership, clubForAccount, completeSetup, connectedAccount, recordPayment, updateMandate } from "@/data/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +16,26 @@ const mandateStatus = (s: unknown) => (s === "active" ? "active" : s === "inacti
  */
 export async function POST(req: Request) {
   const payload = await req.text();
-  if (!verifyStripeSignature(payload, req.headers.get("stripe-signature"))) return NextResponse.json({ error: "Bad signature" }, { status: 400 });
-  const event = JSON.parse(payload) as Event;
-  if (!event.account) return NextResponse.json({ ok: true, ignored: "not a connected account event" });
-  const clubId = await clubForAccount("stripe", event.account);
+  const sig = req.headers.get("stripe-signature");
+  // Clubs on their own Stripe account have a webhook of their own pointing here with ?club=<id>.
+  const clubParam = new URL(req.url).searchParams.get("club");
+  let clubId: string | null;
+  let auth: { account?: string; key?: string };
+  let event: Event;
+  if (clubParam) {
+    if (!/^[0-9a-f-]{36}$/i.test(clubParam)) return NextResponse.json({ error: "Bad club" }, { status: 400 });
+    const own = ownStripe(await connectedAccount(clubParam));
+    if (!own || !verifyStripeSignature(payload, sig, own.whsec)) return NextResponse.json({ error: "Bad signature" }, { status: 400 });
+    event = JSON.parse(payload) as Event;
+    clubId = clubParam;
+    auth = { key: own.key };
+  } else {
+    if (!verifyStripeSignature(payload, sig)) return NextResponse.json({ error: "Bad signature" }, { status: 400 });
+    event = JSON.parse(payload) as Event;
+    if (!event.account) return NextResponse.json({ ok: true, ignored: "not a connected account event" });
+    clubId = await clubForAccount("stripe", event.account);
+    auth = { account: event.account };
+  }
   if (!clubId) return NextResponse.json({ ok: true, ignored: "unknown account" });
   const o = event.data.object;
 
@@ -32,7 +48,9 @@ export async function POST(req: Request) {
         "GET",
         `/subscriptions/${o.subscription}`,
         { expand: ["items.data.price.product"] },
-        event.account,
+        auth.account,
+        undefined,
+        auth.key,
       );
       await completeSetup(clubId, setupId, {
         customerId: String(o.customer ?? "") || null,
@@ -44,7 +62,7 @@ export async function POST(req: Request) {
       break;
     }
     case "mandate.updated": {
-      const pm = await stripeApi<{ customer: string | null }>("GET", `/payment_methods/${o.payment_method}`, null, event.account).catch(() => ({ customer: null }));
+      const pm = await stripeApi<{ customer: string | null }>("GET", `/payment_methods/${o.payment_method}`, null, auth.account, undefined, auth.key).catch(() => ({ customer: null }));
       await updateMandate(clubId, { mandateId: o.id, customerId: pm.customer }, mandateStatus(o.status), o.id);
       break;
     }

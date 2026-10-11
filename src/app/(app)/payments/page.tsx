@@ -36,7 +36,11 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         Families pay by Direct Debit into your own Stripe or GoCardless account. Junbi never touches the money and takes 0%.
       </p>
 
-      {sp.connected && <p className="banner" role="status" style={{ marginTop: 16 }}>{NAMES[sp.connected as keyof typeof NAMES] ?? "Your account"} is connected.</p>}
+      {sp.connected && (
+        <p className="banner" role="status" style={{ marginTop: 16 }}>
+          {sp.connected === "own" ? "Your Stripe account is connected. You can now take over the Direct Debits running in it." : `${NAMES[sp.connected as keyof typeof NAMES] ?? "Your account"} is connected.`}
+        </p>
+      )}
       {sp.error && (
         <p className="banner" role="alert" style={{ marginTop: 16 }}>
           {sp.error === "cancelled" ? "Connecting was cancelled." : sp.error === "unavailable" ? "That isn't available on Junbi just yet." : sp.error}
@@ -46,11 +50,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <section className="card" style={{ marginTop: 24 }}>
         <h2 className="section-title">How families pay</h2>
         {p.account ? (
+          <>
           <div className="list" style={{ marginTop: 8 }}>
             <div>
               <span>
                 <strong>{NAMES[p.account.provider as keyof typeof NAMES]}</strong>
+                {p.account.ownKey && <span className="muted" style={{ fontSize: 13 }}> · your existing account</span>}
                 <span className="muted" style={{ fontSize: 13 }}> · connected {p.account.connectedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                {p.account.testMode && <span className="pill warn" style={{ marginLeft: 8 }}>Test key</span>}
               </span>
               {owner && (
                 <form action={disconnectAction}>
@@ -59,6 +66,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               )}
             </div>
           </div>
+          {p.account.ownKey && manage && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line-soft)" }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>Moving from another system?</h3>
+              <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Take over the Direct Debits already running in your Stripe account. Families don&apos;t need to sign anything again.</p>
+              <a className="btn primary" href="/payments/takeover" style={{ marginTop: 12 }}>Take over Direct Debits</a>
+            </div>
+          )}
+          </>
         ) : (
           <>
             <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Choose one. You can switch later, and families already paying carry on as they are.</p>
@@ -80,6 +95,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               ))}
             </div>
             <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>Don&apos;t have either yet? Connecting takes you to sign up, which takes about ten minutes.</p>
+            {owner && p.available.stripe && (
+              <div className="card" style={{ marginTop: 16, boxShadow: "none", border: "1px solid var(--line)" }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600 }}>Already collecting through Stripe?</h3>
+                <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
+                  If another system runs your Direct Debits through your own Stripe account, connect that account instead. Then you can take over
+                  those Direct Debits without families signing again.
+                </p>
+                <a className="btn secondary" href="/payments/stripe-key" style={{ marginTop: 12 }}>Connect your existing Stripe</a>
+              </div>
+            )}
           </>
         )}
       </section>
