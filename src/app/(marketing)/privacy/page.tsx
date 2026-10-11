@@ -116,8 +116,8 @@ export default function PrivacyPage() {
         <ul>
           <li>Club account information: for as long as the club has a Junbi account.</li>
           <li>
-            Club records: for as long as the club keeps them in Junbi. A club owner can ask us to delete the club&apos;s account and records at any
-            time, and we will do so within 30 days, apart from anything we must keep by law.
+            Club records: for as long as the club keeps them in Junbi. When a club closes its account, or asks us to, we delete its records within
+            30 days, apart from anything we must keep by law.
           </li>
           <li>Business and billing records: for six years, as UK tax law requires.</li>
           <li>Backups are kept for a short period and then overwritten.</li>

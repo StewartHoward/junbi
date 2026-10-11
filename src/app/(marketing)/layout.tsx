@@ -35,6 +35,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Link href="/pricing">Pricing</Link>
             <Link href="/founding-clubs">Founding Clubs</Link>
             <Link href="/login">Sign in</Link>
+            <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
           </nav>
           <span>© 2026 Junbi. Made in the UK for martial arts clubs.</span>
