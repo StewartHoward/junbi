@@ -57,7 +57,7 @@ export function SignupForm({ plan, founding, code }: { plan: string; founding: b
       <div>
         <label className="m-check">
           <input type="checkbox" name="terms" defaultChecked={v.terms === "on"} {...errProps("terms", e)} />
-          <span>I agree to Junbi&apos;s terms and privacy policy, and I&apos;m allowed to set this club up.</span>
+          <span>I agree to Junbi&apos;s terms and <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>, and I&apos;m allowed to set this club up.</span>
         </label>
         <FieldError id="terms-err" msg={e?.terms} />
       </div>
