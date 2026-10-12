@@ -168,6 +168,12 @@ export async function checkoutAfterSignup(ids: { userId: string; clubId: string 
 type Sub = { id: string; status: string; customer: string; current_period_end?: number; metadata?: { club_id?: string }; items?: { data: Array<{ id: string }> } };
 
 async function saveSubscription(clubId: string, sub: Sub) {
+  const [before] = await withClub({ clubId }, (tx) => tx.select({ status: s.clubs.billingStatus, name: s.clubs.name, plan: s.clubs.plan }).from(s.clubs).where(eq(s.clubs.id, clubId)));
+  // First time a card goes in: let the Junbi team know.
+  if (before && !OK_STATUSES.has(before.status ?? "") && OK_STATUSES.has(sub.status)) {
+    const { alertCardAdded } = await import("@/lib/alerts");
+    await alertCardAdded({ clubId, clubName: before.name, plan: before.plan, status: sub.status });
+  }
   await withClub({ clubId }, (tx) =>
     tx.update(s.clubs).set({
       billingCustomerId: sub.customer,
@@ -333,6 +339,11 @@ export async function handleBillingEvent(event: { type: string; data: { object: 
       periodStart: inv.period_start ? new Date(inv.period_start * 1000) : null,
       paidAt,
     };
+    if (status === "failed" && row.amountPence > 0) {
+      const [club] = await withClub({ clubId }, (tx) => tx.select({ name: s.clubs.name }).from(s.clubs).where(eq(s.clubs.id, clubId)));
+      const { alertClubPaymentFailed } = await import("@/lib/alerts");
+      await alertClubPaymentFailed({ clubId, clubName: club?.name ?? "A club", amountPence: row.amountPence, invoiceId: inv.id });
+    }
     await withClub({ clubId }, (tx) =>
       tx.insert(s.junbiInvoices).values(row).onConflictDoUpdate({
         target: s.junbiInvoices.stripeInvoiceId,

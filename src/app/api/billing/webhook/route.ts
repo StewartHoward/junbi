@@ -17,6 +17,8 @@ export async function POST(req: Request) {
     await handleBillingEvent(event);
   } catch (err) {
     console.error("billing webhook failed", event.type, err);
+    const { alertError } = await import("@/lib/alerts");
+    await alertError(`Billing webhook: ${event.type}`, err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
   return NextResponse.json({ ok: true });

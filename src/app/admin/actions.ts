@@ -53,3 +53,12 @@ export async function switchOnBillingAction(): Promise<SwitchState> {
     return { error: (err as Error).message };
   }
 }
+
+/** Sends a test alert so you can check alert emails arrive. */
+export async function testAlertAction(): Promise<SwitchState> {
+  const { requireSuperAdmin } = await import("@/auth/admin");
+  await requireSuperAdmin();
+  const { alertError } = await import("@/lib/alerts");
+  await alertError("Test alert from the admin page", new Error(`This is a test. If you can read this, error alerts work. (${new Date().toISOString()})`));
+  return { ok: `Sent to ${process.env.ALERT_EMAIL || "hello@junbi.co.uk"}.` };
+}

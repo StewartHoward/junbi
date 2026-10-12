@@ -1191,6 +1191,8 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
     // Another club can't finish this club's checkout.
     expect(await billing.finishBillingCheckout(b, "cs_test_1")).toBe(false);
     expect(await billing.finishBillingCheckout(c, "cs_test_1")).toBe(true);
+    const [alerted] = await adminSql`select count(*)::int as n from email_log where template = 'alert-card-added' and club_id = ${c.clubId}`;
+    expect(alerted.n).toBe(1); // the Junbi team hears a card went in
     expect(await billing.billingGate(c)).toBe(false);
     expect((await billing.clubBilling(c)).status).toBe("trialing");
   });
@@ -1242,5 +1244,19 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
     expect(await billing.billingWebhookSecret()).toBe("whsec_bill");
     const [stored] = await adminSql`select value from platform_settings where key = 'billing_webhook'`;
     expect(stored.value).not.toContain("whsec_bill");
+  });
+});
+
+describe("alerts to the Junbi team", () => {
+  it("emails an error once per half hour, and ignores redirects", async () => {
+    const { alertError, alertNewClub } = await import("@/lib/alerts");
+    const quiet = vi.spyOn(console, "log").mockImplementation(() => {});
+    await alertError("GET /test", new Error("Database fell over"));
+    await alertError("GET /test", new Error("Database fell over")); // same error again: grouped
+    await alertError("GET /test", Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login" }));
+    await alertNewClub({ clubName: "Alert Club", ownerName: "Al Owner", email: "al@example.test", plan: "club", founding: false });
+    quiet.mockRestore();
+    const rows = await adminSql`select template, count(*)::int as n from email_log where template like 'alert-%' and template <> 'alert-card-added' group by template order by template`;
+    expect(rows.map((r) => [r.template, r.n])).toEqual([["alert-error", 1], ["alert-new-club", 1]]);
   });
 });

@@ -31,6 +31,8 @@ export async function POST(req: Request) {
     } catch (err) {
       failed++;
       console.error("gocardless webhook event failed", e.id, e.resource_type, e.action, err);
+      const { alertError } = await import("@/lib/alerts");
+      await alertError(`GoCardless webhook: ${e.resource_type} ${e.action}`, err, { Event: e.id });
     }
   }
   // Ask GoCardless to resend if anything failed; every step is safe to repeat.

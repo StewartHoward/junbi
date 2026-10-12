@@ -5,6 +5,7 @@ import { todayISO } from "@/data/classes";
 import { PLANS } from "@/lib/plans";
 import { billingWebhookReady } from "@/data/billing";
 import { BillingSwitch } from "./BillingSwitch";
+import { TestAlert } from "./TestAlert";
 
 export const metadata: Metadata = { title: "Junbi admin" };
 
@@ -86,7 +87,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <p className="eyebrow">{new Date(`${today}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
           <h1 className="ptitle">Junbi admin</h1>
         </div>
-        <div className="acts"><span className="live-tag"><span className="live" />Live</span></div>
+        <div className="acts"><TestAlert /><span className="live-tag"><span className="live" />Live</span></div>
       </div>
 
       {!hooked && (
