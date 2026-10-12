@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logoutAction } from "@/app/(account)/actions";
+import { logoutAction, switchClubAction } from "@/app/(account)/actions";
 
 const ICON: Record<string, React.ReactNode> = {
   "/today": <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />,
@@ -14,12 +14,21 @@ const ICON: Record<string, React.ReactNode> = {
   "/settings": <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
 };
 
-export function Sidebar({ clubName, sites, userName, role, links }: { clubName: string; sites: string[]; userName: string; role: string; links: Array<{ href: string; label: string }> }) {
+export function Sidebar({ clubName, clubId, clubs = [], sites, userName, role, links }: { clubName: string; clubId?: string; clubs?: Array<{ id: string; name: string }>; sites: string[]; userName: string; role: string; links: Array<{ href: string; label: string }> }) {
   const path = usePathname();
   return (
     <nav className="sidebar" aria-label="App">
       <span className="wordmark">{clubName}</span>
       <span className="brand-sub">{sites.length ? sites.join(" · ") : "Junbi"}</span>
+      {clubs.length > 1 && (
+        <form action={switchClubAction} className="club-switch">
+          <label htmlFor="club-switch" className="sr-only">Switch club</label>
+          <select id="club-switch" name="clubId" defaultValue={clubId} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+            {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <noscript><button type="submit" className="btn ghost">Go</button></noscript>
+        </form>
+      )}
       <div className="nav-links">
       {links.map((l) => (
         <Link key={l.href} href={l.href} aria-current={path.startsWith(l.href) ? "page" : undefined}>

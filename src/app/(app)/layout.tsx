@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const sites = await visibleSiteList(actor);
   return (
     <div className="shell">
-      <Sidebar clubName={actor.clubName} sites={sites.map((x) => x.name)} userName={actor.userName} role={actor.role} links={links} />
+      <Sidebar clubName={actor.clubName} clubId={actor.clubId} clubs={actor.clubs} sites={sites.map((x) => x.name)} userName={actor.userName} role={actor.role} links={links} />
       <main className="main">{children}</main>
     </div>
   );

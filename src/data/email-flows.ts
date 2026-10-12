@@ -179,14 +179,14 @@ export async function acceptInviteAsNewUser(token: unknown, name: string, passwo
 }
 
 /** Accept as someone who already has a Junbi login: checks their password, then joins the club. */
-export async function acceptInviteAsExistingUser(token: unknown, password: string): Promise<Result<{ userId: string }>> {
+export async function acceptInviteAsExistingUser(token: unknown, password: string): Promise<Result<{ userId: string; clubId?: string }>> {
   const inv = await lookupInvite(token);
   if (!inv || !tokenOk(token)) return { ok: false, errors: { form: "This invitation has expired. Ask for a new one." } };
   const login = await checkLogin(inv.email, password);
   if (!login.ok) return login;
   const [c] = (await db().execute(sql`select invite_accept(${hashToken(token)}, ${login.value.userId}::uuid) as club`)) as unknown as Array<{ club: string | null }>;
   if (!c?.club) return { ok: false, errors: { form: "This invitation has expired. Ask for a new one." } };
-  return { ok: true, value: { userId: login.value.userId } };
+  return { ok: true, value: { userId: login.value.userId, clubId: c.club } };
 }
 
 /* ---------- Trial reminders ---------- */

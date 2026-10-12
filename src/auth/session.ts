@@ -8,9 +8,11 @@ import { db } from "@/db/client";
 import type { Actor, Role } from "./permissions";
 
 export const SESSION_COOKIE = "junbi_session";
+/** Which club to open for people on the staff of more than one. Only ever picks among their own clubs. */
+export const CLUB_COOKIE = "junbi_club";
 const SESSION_DAYS = 30;
 
-export type SessionActor = Actor & { clubName: string; userName: string; onboarded: boolean };
+export type SessionActor = Actor & { clubName: string; userName: string; onboarded: boolean; clubs: Array<{ id: string; name: string }> };
 
 type MembershipRow = {
   staff_id: string;
@@ -72,7 +74,8 @@ export async function currentActor(): Promise<SessionActor | null> {
 const actorForUser = cache(async (userId: string, userName: string): Promise<SessionActor | null> => {
   const user = { id: userId, name: userName };
   const rows = (await db().execute(sql`select * from staff_memberships_for(${user.id}::uuid)`)) as unknown as MembershipRow[];
-  const m = rows[0];
+  const chosen = (await cookies()).get(CLUB_COOKIE)?.value;
+  const m = rows.find((r) => r.club_id === chosen) ?? rows[0];
   if (!m) return null;
   return {
     userId: user.id,
@@ -82,6 +85,7 @@ const actorForUser = cache(async (userId: string, userName: string): Promise<Ses
     role: m.role,
     sites: m.all_sites ? "all" : m.site_ids,
     onboarded: m.onboarded,
+    clubs: rows.map((r) => ({ id: r.club_id, name: r.club_name })),
   };
 });
 
@@ -98,4 +102,14 @@ export async function requireActorForSetup(): Promise<SessionActor> {
   const actor = await currentActor();
   if (!actor) redirect("/login");
   return actor;
+}
+
+/** Switch to another club this person is staff at. Ignored for clubs they don't belong to. */
+export async function chooseClub(clubId: string, justSignedIn?: string) {
+  const userId = justSignedIn ?? (await currentUser())?.id;
+  if (!userId || !/^[0-9a-f-]{36}$/i.test(clubId)) return false;
+  const rows = (await db().execute(sql`select club_id from staff_memberships_for(${userId}::uuid)`)) as unknown as Array<{ club_id: string }>;
+  if (!rows.some((r) => r.club_id === clubId)) return false;
+  (await cookies()).set(CLUB_COOKIE, clubId, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 400 * 86_400 });
+  return true;
 }

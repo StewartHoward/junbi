@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { checkLogin, completeSetup, createClubAccount, type FieldErrors } from "@/data/accounts";
-import { endSession, requireActorForSetup, startSession } from "@/auth/session";
+import { chooseClub, endSession, requireActorForSetup, startSession } from "@/auth/session";
 import { appUrl } from "@/lib/email";
 import {
   acceptInviteAsExistingUser,
@@ -91,5 +91,13 @@ export async function acceptInviteAction(token: string, existing: boolean, _prev
     : await acceptInviteAsNewUser(token, str(f, "name"), str(f, "password"));
   if (!r.ok) return { errors: r.errors, values: { name: str(f, "name") } };
   await startSession(r.value.userId);
+  // Someone already at another club lands in the one they've just joined.
+  const joined = (r.value as { clubId?: string }).clubId;
+  if (joined) await chooseClub(joined, r.value.userId).catch(() => {});
+  redirect("/today");
+}
+
+export async function switchClubAction(f: FormData) {
+  await chooseClub(str(f, "clubId"));
   redirect("/today");
 }

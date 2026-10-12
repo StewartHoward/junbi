@@ -118,7 +118,23 @@ export function describeDiscount(percent: number | null | undefined, months: num
   return months ? `${percent}% off for ${months} ${months === 1 ? "month" : "months"}` : `${percent}% off`;
 }
 
+/** Wrong passwords allowed per email from one place before a 15-minute pause. */
 const MAX_FAILURES = 8;
+/** Across everywhere: a much higher bar, so one person can't lock someone else out, but a wide attack still slows down. */
+const MAX_FAILURES_ANYWHERE = 100;
+
+/** Where the sign-in came from, for rate limiting. Netlify gives the real address in its own header. */
+async function clientIp(): Promise<string> {
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    return (h.get("x-nf-client-connection-ip") ?? h.get("x-forwarded-for")?.split(",")[0] ?? "unknown").trim().slice(0, 64);
+  } catch {
+    return "unknown"; // not in a request (tests)
+  }
+}
+
+type LookupRow = { user_id: string | null; password_hash: string | null; recent_failures: number };
 
 /** Checks a password. Returns the user id, or a single vague error so emails can't be probed. */
 export async function checkLogin(emailRaw: string, password: string): Promise<Result<{ userId: string }>> {
@@ -126,20 +142,21 @@ export async function checkLogin(emailRaw: string, password: string): Promise<Re
   if (!email || !password || email.length > 200 || password.length > 200) {
     return { ok: false, errors: { form: "Enter your email and password." } };
   }
-  const [row] = (await db().execute(sql`select * from auth_login_lookup(${email})`)) as unknown as Array<{
-    user_id: string | null;
-    password_hash: string | null;
-    recent_failures: number;
-  }>;
-  if ((row?.recent_failures ?? 0) >= MAX_FAILURES) {
+  // Failures are counted per email and place ("email|ip") and per email overall.
+  const here = `${email}|${await clientIp()}`;
+  const [row] = (await db().execute(sql`select * from auth_login_lookup(${email})`)) as unknown as LookupRow[];
+  const [local] = (await db().execute(sql`select * from auth_login_lookup(${here})`)) as unknown as LookupRow[];
+  if ((local?.recent_failures ?? 0) >= MAX_FAILURES || (row?.recent_failures ?? 0) >= MAX_FAILURES_ANYWHERE) {
     return { ok: false, errors: { form: "Too many attempts. Please wait 15 minutes and try again." } };
   }
   const ok = await verifyPassword(password, row?.password_hash);
   if (!ok || !row?.user_id) {
     await db().execute(sql`select auth_record_failure(${email})`);
+    await db().execute(sql`select auth_record_failure(${here})`);
     return { ok: false, errors: { form: "That email and password don't match." } };
   }
   await db().execute(sql`select auth_clear_failures(${email})`);
+  await db().execute(sql`select auth_clear_failures(${here})`);
   return { ok: true, value: { userId: row.user_id } };
 }
 

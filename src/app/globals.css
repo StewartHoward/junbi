@@ -352,3 +352,6 @@ details:not([open]) > .sp-drawer { display: none; }
   .nav-links a { flex-shrink: 0; min-height: 36px; padding: 0 14px; border-radius: 980px; font-size: 14px; }
   .main { padding: 16px 16px 48px; }
 }
+.club-switch { padding: 0 10px 14px; }
+.club-switch select { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 14px; }
+@media (max-width: 800px) { .club-switch { order: 2; width: 100%; padding: 6px 16px 0; } }

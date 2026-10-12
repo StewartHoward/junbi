@@ -252,51 +252,67 @@ export async function takeOver(actor: Actor, input: z.input<typeof takeoverSchem
         undefined,
         key,
       );
+      const customerId = typeof sub.customer === "object" ? sub.customer.id : sub.customer;
+      // Saves the membership on Junbi's side. Safe to run again: skipped if it's already there.
+      const save = async (newSubId: string, startsAtUnix: number) => {
+        const startsOn = new Date(startsAtUnix * 1000).toISOString().slice(0, 10);
+        await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+          const [have] = await tx.select({ id: s.memberships.id }).from(s.memberships).where(eq(s.memberships.providerSubscriptionId, newSubId));
+          if (have) return;
+          const [existing] = await tx.select({ id: s.mandates.id }).from(s.mandates).where(eq(s.mandates.providerCustomerId, customerId));
+          if (!existing) {
+            await tx.insert(s.mandates).values({ clubId: actor.clubId, householdId: st.householdId, provider: "stripe", providerCustomerId: customerId, providerMandateId: null, status: "active" });
+          }
+          await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, providerSubscriptionId: newSubId, status: "active" });
+          await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+          await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "direct_debit_takeover", entityId: st.id, after: { from: sub.id, to: newSubId, planId: plan.id, startsOn } });
+        });
+      };
       if (sub.metadata?.junbi_replaced_by) {
+        // Taken over on Stripe already. If Junbi's side didn't get saved last time, save it now.
+        await save(sub.metadata.junbi_replaced_by, sub.current_period_end);
         results.push({ subscriptionId: row.subscriptionId, ok: true, message: "Already taken over." });
         continue;
       }
       if (sub.status !== "active") throw new Error("This subscription isn't active any more.");
       const pm = pmOf(sub);
       if (!pm) throw new Error("No saved payment method on this subscription.");
-      const customerId = typeof sub.customer === "object" ? sub.customer.id : sub.customer;
       const startsAt = sub.current_period_end;
       if (startsAt * 1000 < Date.now() + 3600_000) throw new Error("Its next payment is due within the hour. Try again tomorrow.");
 
-      let productId = products.get(plan.id);
-      if (!productId) {
-        const prod = await stripeApi<{ id: string }>("POST", "/products", { name: plan.name, metadata: { junbi_plan_id: plan.id } }, undefined, `junbi-product-${plan.id}`, key);
-        productId = prod.id;
-        products.set(plan.id, productId);
-      }
-      const created = await stripeApi<{ id: string }>(
-        "POST",
-        "/subscriptions",
-        {
-          customer: customerId,
-          default_payment_method: pm.id,
-          items: [{ price_data: { currency: "gbp", product: productId, unit_amount: plan.amountPence, recurring: { interval: plan.interval === "annual" ? "year" : "month" } } }],
-          // Nothing is charged until the old subscription's next payment date; from then on Junbi's subscription bills.
-          trial_end: startsAt,
-          proration_behavior: "none",
-          metadata: { junbi_student_id: st.id, junbi_plan_id: plan.id, junbi_takeover_from: sub.id },
-        },
-        undefined,
-        `junbi-takeover-${sub.id}`,
-        key,
+      // An earlier attempt may have made Junbi's subscription but not stopped the old one. Reuse it rather
+      // than making a second (Stripe only remembers repeat requests for 24 hours).
+      const theirs = await stripeApi<{ data: Array<{ id: string; status: string; metadata?: Record<string, string> }> }>(
+        "GET", "/subscriptions", { customer: customerId, status: "all", limit: 100 }, undefined, undefined, key,
       );
-      await stripeApi("POST", `/subscriptions/${sub.id}`, { cancel_at_period_end: true, metadata: { junbi_replaced_by: created.id } }, undefined, `junbi-takeover-stop-${sub.id}`, key);
-
-      const startsOn = new Date(startsAt * 1000).toISOString().slice(0, 10);
-      await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
-        const [existing] = await tx.select({ id: s.mandates.id }).from(s.mandates).where(eq(s.mandates.providerCustomerId, customerId));
-        if (!existing) {
-          await tx.insert(s.mandates).values({ clubId: actor.clubId, householdId: st.householdId, provider: "stripe", providerCustomerId: customerId, providerMandateId: null, status: "active" });
+      let createdId = theirs.data.find((x) => x.metadata?.junbi_takeover_from === sub.id && x.status !== "canceled" && x.status !== "incomplete_expired")?.id;
+      if (!createdId) {
+        let productId = products.get(plan.id);
+        if (!productId) {
+          const prod = await stripeApi<{ id: string }>("POST", "/products", { name: plan.name, metadata: { junbi_plan_id: plan.id } }, undefined, `junbi-product-${plan.id}`, key);
+          productId = prod.id;
+          products.set(plan.id, productId);
         }
-        await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, providerSubscriptionId: created.id, status: "active" });
-        await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
-        await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "direct_debit_takeover", entityId: st.id, after: { from: sub.id, to: created.id, planId: plan.id, startsOn } });
-      });
+        const created = await stripeApi<{ id: string }>(
+          "POST",
+          "/subscriptions",
+          {
+            customer: customerId,
+            default_payment_method: pm.id,
+            items: [{ price_data: { currency: "gbp", product: productId, unit_amount: plan.amountPence, recurring: { interval: plan.interval === "annual" ? "year" : "month" } } }],
+            // Nothing is charged until the old subscription's next payment date; from then on Junbi's subscription bills.
+            trial_end: startsAt,
+            proration_behavior: "none",
+            metadata: { junbi_student_id: st.id, junbi_plan_id: plan.id, junbi_takeover_from: sub.id },
+          },
+          undefined,
+          `junbi-takeover-${sub.id}`,
+          key,
+        );
+        createdId = created.id;
+      }
+      await stripeApi("POST", `/subscriptions/${sub.id}`, { cancel_at_period_end: true, metadata: { junbi_replaced_by: createdId } }, undefined, `junbi-takeover-stop-${sub.id}`, key);
+      await save(createdId, startsAt);
       results.push({ subscriptionId: row.subscriptionId, ok: true, message: `Taken over. Junbi collects from ${new Date(startsAt * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.` });
     } catch (err) {
       results.push({ subscriptionId: row.subscriptionId, ok: false, message: err instanceof Error ? err.message : "Something went wrong." });

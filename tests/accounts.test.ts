@@ -110,6 +110,12 @@ describe("sign-in", () => {
     expect(!r.ok && r.errors.form).toMatch(/Too many attempts/);
     await adminSql`delete from auth_failures`;
   });
+
+  it("doesn't let wrong guesses from somewhere else lock the real person out", async () => {
+    for (let i = 0; i < 12; i++) await adminSql`insert into auth_failures (email) values ('owner-b@example.test|203.0.113.9'), ('owner-b@example.test')`;
+    expect((await accounts.checkLogin("owner-b@example.test", "a long enough phrase")).ok).toBe(true);
+    await adminSql`delete from auth_failures`;
+  });
 });
 
 describe("the app role and sign-in data", () => {
