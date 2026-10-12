@@ -216,7 +216,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
                 {p.billing.mandateStatus === "active" ? <span className="pill ok">✓ Direct Debit active</span> : <span className="pill bad">! Direct Debit {p.billing.mandateStatus ?? "not set up"}</span>}
               </p>
             )}
-            {can(actor, "students.edit") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={today} signupFee={p.signupFee} />}
+            {can(actor, "payments.manage") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={today} signupFee={p.signupFee} />}
           </section>
 
           {p.medical && (

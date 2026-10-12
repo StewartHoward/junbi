@@ -9,6 +9,7 @@ import { appUrl, sendEmail, templates } from "@/lib/email";
 import type { FieldErrors, Result } from "./accounts";
 import { joinPlans, startJoinPayment } from "./payments";
 import { convertLeads } from "./leads";
+import { isRealDate } from "@/lib/dates";
 
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
@@ -81,7 +82,7 @@ const text = (min: number, max: number, msg: string) => z.string().trim().min(mi
 const dob = z
   .string()
   .trim()
-  .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && v <= new Date().toISOString().slice(0, 10) && v >= "1920-01-01", "Enter their date of birth.");
+  .refine((v) => isRealDate(v) && v <= new Date().toISOString().slice(0, 10) && v >= "1920-01-01", "Enter their date of birth.");
 
 export const MAX_CHILDREN = 6;
 
@@ -182,8 +183,11 @@ export async function submitJoin(
       ...(d.emergencyPhone ? { emergencyPhone: d.emergencyPhone } : {}),
     };
     if (householdId && Object.keys(contact).length) {
-      // A returning family: the newest address and emergency contact they gave wins.
-      await tx.update(s.households).set(contact).where(eq(s.households.id, householdId));
+      // A returning family: fill in anything missing, but never overwrite what the club already has,
+      // because anyone with the link could type this parent's email.
+      const [h] = await tx.select().from(s.households).where(eq(s.households.id, householdId));
+      const blanks = Object.fromEntries(Object.entries(contact).filter(([k]) => !h?.[k as keyof typeof h]));
+      if (Object.keys(blanks).length) await tx.update(s.households).set(blanks).where(eq(s.households.id, householdId));
     }
     if (!householdId) {
       const [h] = await tx.insert(s.households).values({ clubId: club.clubId, name: `${d.parentLastName} family`, ...contact }).returning({ id: s.households.id });

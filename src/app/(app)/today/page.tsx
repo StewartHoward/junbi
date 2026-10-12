@@ -155,7 +155,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
           {stats.plan && (
             <section className="card">
-              <div className="ch"><h2>Income</h2><Link href="/payments">Payments ›</Link></div>
+              <div className="ch"><h2>Income</h2>{site ? <span className="m">Whole club</span> : <Link href="/payments">Payments ›</Link>}</div>
               <div className="tiles">
                 <div className="tile"><p className="l">Memberships, each month</p><p className="v">{pounds(stats.monthlyPence ?? 0)}</p></div>
                 <div className="tile"><p className="l">Collected in {monthName}</p><p className="v">{pounds(stats.plan.collected)}</p></div>
@@ -170,7 +170,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="ch"><h2>Belts</h2><span className="m">{stats.graded} graded</span></div>
               {beltRows.length === 0 && <p className="muted" style={{ marginTop: 12, fontSize: 15 }}>Belts show here once students have a grade.</p>}
               {beltRows.map((b) => (
-                <div className="hbar" key={`${b.name}-${b.belt_colour}`}>
+                <div className="hbar" key={b.id}>
                   <span className="lab"><RankChip grade={{ name: b.name, beltColour: b.belt_colour }} /></span>
                   <span className="trk"><i style={{ width: `${Math.round((b.n / maxBelt) * 100)}%` }} /></span>
                   <span className="num">{b.n}</span>
@@ -198,7 +198,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="narrow anim">
           {stats.plan && (
             <section className="card">
-              <div className="ch"><h2>Payment status</h2><Link href="/payments">Details ›</Link></div>
+              <div className="ch"><h2>Payment status</h2>{site ? <span className="m">Whole club</span> : <Link href="/payments">Details ›</Link>}</div>
               <div className="tiles compact">
                 <div className="tile"><p className="l">✓ Paid</p><p className="v ok-t">{stats.plan.paid}</p></div>
                 <div className="tile"><p className="l">↻ Processing</p><p className="v warn-t">{stats.plan.processing}</p></div>

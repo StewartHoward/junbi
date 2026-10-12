@@ -6,6 +6,8 @@ import * as s from "@/db/schema";
 import { assertCan, canAtSite, ForbiddenError, type Actor } from "@/auth/permissions";
 import type { FieldErrors, Result } from "./accounts";
 import { convertLeads } from "./leads";
+import { isRealDate } from "@/lib/dates";
+import { todayISO } from "./classes";
 
 const uuid = z.string().uuid();
 const optText = (max: number) =>
@@ -20,7 +22,7 @@ const optDate = z
   .string()
   .trim()
   .transform((v) => (v === "" ? null : v))
-  .refine((v) => v === null || (/^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v))), "Use a valid date.")
+  .refine((v) => v === null || isRealDate(v), "Use a valid date.")
   .nullable()
   .optional();
 
@@ -86,6 +88,11 @@ export async function createStudent(actor: Actor, input: NewStudentInput): Promi
     if (householdId) {
       const [h] = await tx.select({ id: s.households.id }).from(s.households).where(eq(s.households.id, householdId));
       if (!h) return { ok: false as const, errors: { form: "That family no longer exists." } };
+      // Staff limited to some sites can only add to families they can already see.
+      if (actor.sites !== "all") {
+        const members = await tx.select({ siteId: s.students.siteId }).from(s.students).where(eq(s.students.householdId, householdId));
+        if (members.length && !members.some((m) => actor.sites.includes(m.siteId))) return { ok: false as const, errors: { form: "That family no longer exists." } };
+      }
     } else {
       const surname = d.guardianLastName || d.lastName;
       const [h] = await tx.insert(s.households).values({ clubId: actor.clubId, name: `${surname} family` }).returning({ id: s.households.id });
@@ -227,7 +234,7 @@ export async function recordBelt(actor: Actor, studentId: string, input: { grade
     .safeParse(input);
   if (!parsed.success || !uuid.safeParse(studentId).success) return { ok: false, errors: { gradeId: "Choose a belt." } };
   const d = parsed.data;
-  if (d.gradedOn > new Date().toISOString().slice(0, 10)) return { ok: false, errors: { gradedOn: "The date can't be in the future." } };
+  if (d.gradedOn > todayISO()) return { ok: false, errors: { gradedOn: "The date can't be in the future." } };
   return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const [st] = await tx.select({ siteId: s.students.siteId }).from(s.students).where(eq(s.students.id, studentId));
     if (!st || !canAtSite(actor, "grading.record", st.siteId)) throw new ForbiddenError("grading.record");

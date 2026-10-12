@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { requireActorForSetup } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { clubBilling } from "@/data/billing";
@@ -21,7 +20,14 @@ const STATUS: Record<string, string> = {
 
 export default async function BillingPage() {
   const actor = await requireActorForSetup();
-  if (!can(actor, "club.manage")) redirect("/today");
+  if (!can(actor, "club.manage")) {
+    return (
+      <div className="m-auth" style={{ maxWidth: 560 }}>
+        <h1>Junbi is paused for {actor.clubName}.</h1>
+        <p className="m-sub" style={{ fontSize: 19 }}>The club&apos;s free trial has ended and no card has been added yet. Please ask the club owner to sign in and add one. Nothing you&apos;ve added has been lost.</p>
+      </div>
+    );
+  }
   const b = await clubBilling(actor);
   const after = b.fee.status === "trial" ? (b.founding || b.discountPercent ? `${formatPounds(Math.round(b.listPence * (100 - Math.max(b.founding ? 50 : 0, b.discountPercent ?? 0)) / 100))} a month` : `${formatPounds(b.listPence)} a month`) : `${formatPounds(b.fee.pence)} a month`;
   const next = actor.onboarded ? "/today" : "/setup";

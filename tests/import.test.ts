@@ -83,3 +83,15 @@ describe("address columns", () => {
     expect(m).toMatchObject({ fullName: 0, address: 1, town: 2, postcode: 3, emergencyName: 4, emergencyPhone: 5, phone: 6 });
   });
 });
+
+describe("dates", () => {
+  it("accepts real dates and rejects ones JavaScript would roll over", async () => {
+    const { isRealDate } = await import("@/lib/dates");
+    expect(isRealDate("2026-02-28")).toBe(true);
+    expect(isRealDate("2028-02-29")).toBe(true);
+    expect(isRealDate("2026-02-31")).toBe(false);
+    expect(isRealDate("2026-13-01")).toBe(false);
+    expect(isRealDate("12/10/2026")).toBe(false);
+    expect(isRealDate(null)).toBe(false);
+  });
+});

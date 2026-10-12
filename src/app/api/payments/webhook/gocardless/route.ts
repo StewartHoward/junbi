@@ -24,22 +24,36 @@ export async function POST(req: Request) {
   if (!verifyGoCardlessSignature(payload, req.headers.get("webhook-signature"))) return NextResponse.json({ error: "Bad signature" }, { status: 498 });
   const { events = [] } = JSON.parse(payload) as { events?: GcEvent[] };
 
+  let failed = 0;
   for (const e of events) {
+    try {
+      await handle(e);
+    } catch (err) {
+      failed++;
+      console.error("gocardless webhook event failed", e.id, e.resource_type, e.action, err);
+    }
+  }
+  // Ask GoCardless to resend if anything failed; every step is safe to repeat.
+  return failed ? NextResponse.json({ error: "Some events failed" }, { status: 500 }) : NextResponse.json({ ok: true });
+}
+
+async function handle(e: GcEvent) {
+  {
     const org = e.links.organisation;
-    if (!org) continue;
+    if (!org) return;
     const clubId = await clubForAccount("gocardless", org);
-    if (!clubId) continue;
+    if (!clubId) return;
     const account = await connectedAccount(clubId);
     const token = account?.accessToken;
-    if (!token) continue;
+    if (!token) return;
 
     if (e.resource_type === "billing_requests" && e.action === "fulfilled") {
       const br = await gcApi<{ billing_requests: { metadata?: Record<string, string>; links: { mandate_request_mandate?: string; customer?: string } } }>(token, "GET", `/billing_requests/${e.links.billing_request}`);
       const setupId = br.billing_requests.metadata?.junbi_setup_id;
       const mandate = br.billing_requests.links.mandate_request_mandate;
-      if (!setupId || !mandate) continue;
+      if (!setupId || !mandate) return;
       const setup = await loadSetup(clubId, setupId);
-      if (!setup || setup.status === "completed") continue;
+      if (!setup || setup.status === "completed") return;
       const subscriptions = [];
       for (const item of setup.items) {
         if (!item.plan) continue;
@@ -82,5 +96,4 @@ export async function POST(req: Request) {
       await cancelMembership(clubId, e.links.subscription);
     }
   }
-  return NextResponse.json({ ok: true });
 }

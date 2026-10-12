@@ -28,12 +28,12 @@ export default async function MessagePage({ params, searchParams }: { params: Pr
       </p>
       {sent && (
         <p className="banner" role="status" style={{ marginTop: 16 }}>
-          {m.failedCount ? `Sent to ${m.sentCount} of ${m.recipientCount} families. ${m.failedCount} couldn't be sent, listed below.` : `Sent to ${m.recipientCount} ${m.recipientCount === 1 ? "family" : "families"}.`}
+          {m.failedCount ? `Sent to ${m.sentCount} of ${m.recipientCount} parents. ${m.failedCount} couldn't be sent, listed below.` : `Sent to ${m.recipientCount} ${m.recipientCount === 1 ? "parent" : "parents"}.`}
         </p>
       )}
       <h1 className="page-title" style={{ marginTop: 12 }}>{m.subject}</h1>
       <p className="muted" style={{ marginTop: 6 }}>
-        {m.audienceLabel} · {m.recipientCount} {m.recipientCount === 1 ? "family" : "families"} ·{" "}
+        {m.audienceLabel} · {m.recipientCount} {m.recipientCount === 1 ? "parent" : "parents"} ·{" "}
         {m.createdAt.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })}
         {m.sender ? ` · by ${m.sender}` : ""}
       </p>

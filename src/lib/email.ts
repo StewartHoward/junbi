@@ -137,6 +137,9 @@ export async function sendBatch(emails: BatchEmail[]): Promise<BatchResult[]> {
 /** The site's own address, for links in emails. */
 export async function appUrl(): Promise<string> {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  // Live, never build links from request headers: a forged Host header could point reset links at another site.
+  // Netlify sets URL to the site's main address.
+  if (process.env.NODE_ENV === "production" && process.env.URL) return process.env.URL.replace(/\/$/, "");
   try {
     const h = await headers();
     const host = h.get("x-forwarded-host") ?? h.get("host");

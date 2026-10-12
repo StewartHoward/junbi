@@ -25,6 +25,8 @@ export function Compose({ sites, classes, allSites, initial }: { sites: Option[]
 
   const n = preview?.emails ?? 0;
   const families = (x: number) => `${x} ${x === 1 ? "family" : "families"}`;
+  // One email per parent, so a family with two parents counts twice.
+  const people = (x: number) => `${x} ${x === 1 ? "parent" : "parents"}`;
 
   return (
     <form action={action} className="card form" style={{ marginTop: 24, maxWidth: 760 }} noValidate onChange={() => setConfirming(false)}>
@@ -64,8 +66,8 @@ export function Compose({ sites, classes, allSites, initial }: { sites: Option[]
           {preview === null
             ? "Counting…"
             : kind === "class"
-              ? `${families(n)} of students who've been to this class in the last 8 weeks.`
-              : `${families(n)} of current students.`}
+              ? `${people(n)} of students who've been to this class in the last 8 weeks.`
+              : `${people(n)} of current students.`}
           {preview && preview.familiesWithoutEmail > 0 ? ` ${families(preview.familiesWithoutEmail)} have no email address, so they won't get it.` : ""}
         </p>
         <FieldError id="audience-err" msg={e?.audience} />
@@ -86,7 +88,7 @@ export function Compose({ sites, classes, allSites, initial }: { sites: Option[]
       <div className="actions">
         {!confirming ? (
           <button key="ask" type="button" className="btn primary" disabled={!n || pending} onClick={(ev) => { ev.preventDefault(); setConfirming(true); }}>
-            {n ? `Send to ${families(n)}` : "Send"}
+            {n ? `Send to ${people(n)}` : "Send"}
           </button>
         ) : (
           <>

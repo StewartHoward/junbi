@@ -59,7 +59,14 @@ async function householdPaymentIssues(tx: Tx, householdIds: string[]) {
     .select({ householdId: s.mandates.householdId })
     .from(s.mandates)
     .where(and(inArray(s.mandates.householdId, householdIds), inArray(s.mandates.status, ["cancelled", "failed", "expired"])));
-  for (const m of cancelled) issues.set(m.householdId, "Direct Debit cancelled");
+  // A family that has since set up a new Direct Debit isn't a problem any more.
+  const working = new Set(
+    (await tx
+      .select({ householdId: s.mandates.householdId })
+      .from(s.mandates)
+      .where(and(inArray(s.mandates.householdId, householdIds), inArray(s.mandates.status, ["active", "submitted", "pending_submission"])))).map((m) => m.householdId),
+  );
+  for (const m of cancelled) if (!working.has(m.householdId)) issues.set(m.householdId, "Direct Debit cancelled");
 
   const late = await tx
     .select({ householdId: s.payments.householdId, status: s.payments.status, amountPence: s.payments.amountPence })
@@ -230,7 +237,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       .where(and(eq(s.memberships.studentId, st.id), ne(s.memberships.status, "cancelled")))
       .orderBy(desc(s.memberships.startsOn));
     const [clubFee] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
-    const planOptions = can(actor, "students.edit")
+    const planOptions = can(actor, "payments.manage")
       ? await tx.select({ id: s.plans.id, name: s.plans.name, amountPence: s.plans.amountPence, interval: s.plans.interval }).from(s.plans).where(eq(s.plans.active, true)).orderBy(asc(s.plans.amountPence))
       : [];
 
@@ -254,7 +261,13 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       payments: Array<{ id: string; chargeDate: string; description: string; amount: string; status: string }>;
     } = null;
     if (can(actor, "payments.view")) {
-      const [mandate] = await tx.select().from(s.mandates).where(eq(s.mandates.householdId, st.householdId)).limit(1);
+      // Show the working mandate if there is one, otherwise the newest.
+      const [mandate] = await tx
+        .select()
+        .from(s.mandates)
+        .where(eq(s.mandates.householdId, st.householdId))
+        .orderBy(sql`case when ${s.mandates.status} in ('active', 'submitted', 'pending_submission') then 0 else 1 end`, desc(s.mandates.createdAt))
+        .limit(1);
       const payments = await tx
         .select()
         .from(s.payments)

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
@@ -245,7 +245,8 @@ export async function addStudentMembership(
   studentId: string,
   input: { planId: string; startsOn?: string; withSignupFee?: boolean },
 ): Promise<Result<{ emailed: string | null }>> {
-  assertCan(actor, "students.edit");
+  // Putting someone on a paid plan (and possibly charging their family) is a payments job.
+  assertCan(actor, "payments.manage");
   if (!z.string().uuid().safeParse(studentId).success) return { ok: false, errors: { form: "Student not found." } };
   if (!z.string().uuid().safeParse(input.planId).success) return { ok: false, errors: { planId: "Choose a membership." } };
   const startsOn = input.startsOn && /^\d{4}-\d{2}-\d{2}$/.test(input.startsOn) ? input.startsOn : new Date().toISOString().slice(0, 10);
@@ -258,8 +259,23 @@ export async function addStudentMembership(
     const account = await accountFor(tx);
     const live = account && provider(account.provider).available() && plan.interval !== "termly";
     const [paying] = live
-      ? await tx.select({ id: s.mandates.id }).from(s.mandates).where(and(eq(s.mandates.householdId, st.householdId), inArray(s.mandates.status, ["active", "submitted", "pending_submission"]))).limit(1)
+      ? await tx
+          .select({ id: s.mandates.id, providerMandateId: s.mandates.providerMandateId, providerCustomerId: s.mandates.providerCustomerId })
+          .from(s.mandates)
+          .where(and(eq(s.mandates.householdId, st.householdId), inArray(s.mandates.status, ["active", "submitted", "pending_submission"])))
+          .orderBy(desc(s.mandates.createdAt))
+          .limit(1)
       : [];
+    // The family already pays by Direct Debit: add this membership to it rather than starting it unpaid.
+    if (live && paying) {
+      const [other] = await tx
+        .select({ subId: s.memberships.providerSubscriptionId })
+        .from(s.memberships)
+        .innerJoin(s.students, eq(s.students.id, s.memberships.studentId))
+        .where(and(eq(s.students.householdId, st.householdId), eq(s.memberships.status, "active"), sql`${s.memberships.providerSubscriptionId} is not null`))
+        .limit(1);
+      return { existing: { st, plan, account, mandate: paying, otherSubscriptionId: other?.subId ?? null } };
+    }
     const [payer] = await tx
       .select({ firstName: s.guardians.firstName, lastName: s.guardians.lastName, email: s.guardians.email })
       .from(s.guardians)
@@ -276,6 +292,28 @@ export async function addStudentMembership(
     return { added: true };
   });
   if ("error" in found) return { ok: false, errors: found.error! };
+  if ("existing" in found && found.existing) {
+    const { st, plan, account, mandate, otherSubscriptionId } = found.existing;
+    let subscriptionId: string;
+    try {
+      subscriptionId = await addToDirectDebit(account, { mandateId: mandate.providerMandateId, customerId: mandate.providerCustomerId, otherSubscriptionId }, {
+        studentId: st.id,
+        planId: plan.id,
+        name: `${plan.name} (${st.firstName})`,
+        amountPence: plan.amountPence,
+        interval: plan.interval === "annual" ? "annual" : "monthly",
+      });
+    } catch (err) {
+      console.error("adding to existing Direct Debit failed", err);
+      return { ok: false, errors: { form: `We couldn't add this to the family's Direct Debit: ${(err as Error).message}` } };
+    }
+    await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+      await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, providerSubscriptionId: subscriptionId, status: "active" });
+      await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+      await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "membership", entityId: st.id, after: { planId: plan.id, subscriptionId } });
+    });
+    return { ok: true, value: { emailed: null } };
+  }
   if (!("send" in found) || !found.send) return { ok: true, value: { emailed: null } };
 
   const { st, plan, payer, club, provider: pid } = found.send;
@@ -295,6 +333,76 @@ export async function addStudentMembership(
   const t = templates.paymentLink(`${payer.firstName} ${payer.lastName}`, club.name, st.firstName, `${plan.name} (${price})`, pid === "stripe" ? "Stripe" : "GoCardless", r.value.url);
   await sendEmail({ to: payer.email, ...t, template: "payment-link", clubId: actor.clubId });
   return { ok: true, value: { emailed: payer.email } };
+}
+
+/**
+ * A new membership on a family's existing Direct Debit. GoCardless: a subscription on their mandate.
+ * Stripe: a subscription on their customer using the payment method their other membership already uses.
+ */
+async function addToDirectDebit(
+  account: ConnectedAccount,
+  dd: { mandateId: string | null; customerId: string | null; otherSubscriptionId: string | null },
+  item: SetupItem,
+): Promise<string> {
+  const key = `add-${item.studentId}-${item.planId}-${new Date().toISOString().slice(0, 10)}`;
+  if (process.env.PAYMENTS_FAKE === "1") return `sub_fake_add_${item.studentId}`;
+  if (account.provider === "gocardless") {
+    if (!dd.mandateId || !account.accessToken) throw new Error("their mandate isn't ready yet");
+    const { gcApi } = await import("@/lib/payments/gocardless");
+    const sub = await gcApi<{ subscriptions: { id: string } }>(account.accessToken, "POST", "/subscriptions", {
+      subscriptions: {
+        amount: item.amountPence,
+        currency: "GBP",
+        interval_unit: item.interval === "annual" ? "yearly" : "monthly",
+        name: item.name.slice(0, 255),
+        metadata: { junbi_student_id: item.studentId },
+        links: { mandate: dd.mandateId },
+      },
+    }, key);
+    return sub.subscriptions.id;
+  }
+  const { stripeApi, stripeAuth } = await import("@/lib/payments/stripe");
+  const auth = stripeAuth(account);
+  const call = <T,>(method: "GET" | "POST", path: string, params: Record<string, unknown> | null, idem?: string) => stripeApi<T>(method, path, params, auth.account, idem, auth.key);
+  if (!dd.customerId) throw new Error("their Stripe customer isn't known yet");
+  let paymentMethod: string | null = null;
+  if (dd.otherSubscriptionId) {
+    const other = await call<{ default_payment_method: string | null }>("GET", `/subscriptions/${dd.otherSubscriptionId}`, null).catch(() => null);
+    paymentMethod = other?.default_payment_method ?? null;
+  }
+  if (!paymentMethod) {
+    const cust = await call<{ invoice_settings?: { default_payment_method?: string | null } }>("GET", `/customers/${dd.customerId}`, null);
+    paymentMethod = cust.invoice_settings?.default_payment_method ?? null;
+  }
+  if (!paymentMethod) {
+    for (const type of ["bacs_debit", "card"]) {
+      const list = await call<{ data: Array<{ id: string }> }>("GET", "/payment_methods", { customer: dd.customerId, type, limit: 1 });
+      if (list.data[0]) { paymentMethod = list.data[0].id; break; }
+    }
+  }
+  if (!paymentMethod) throw new Error("no saved payment method on their Stripe account");
+  const product = await call<{ id: string }>("POST", "/products", { name: item.name, metadata: { junbi_student_id: item.studentId, junbi_plan_id: item.planId } }, `${key}-product`);
+  const sub = await call<{ id: string }>("POST", "/subscriptions", {
+    customer: dd.customerId,
+    default_payment_method: paymentMethod,
+    items: [{ price_data: { currency: "gbp", unit_amount: item.amountPence, recurring: { interval: item.interval === "annual" ? "year" : "month" }, product: product.id } }],
+    metadata: { junbi_student_id: item.studentId, junbi_plan_id: item.planId },
+  }, `${key}-sub`);
+  return sub.id;
+}
+
+/** Closes unfinished Stripe Checkout pages or GoCardless billing requests from earlier links. */
+async function expireOldLinks(account: ConnectedAccount, refs: string[]) {
+  for (const ref of refs) {
+    if (account.provider === "stripe" && ref.startsWith("cs_")) {
+      const { stripeApi, stripeAuth } = await import("@/lib/payments/stripe");
+      const auth = stripeAuth(account);
+      await stripeApi("POST", `/checkout/sessions/${ref}/expire`, {}, auth.account, undefined, auth.key).catch(() => {});
+    } else if (account.provider === "gocardless" && ref.startsWith("BRQ") && account.accessToken) {
+      const { gcApi } = await import("@/lib/payments/gocardless");
+      await gcApi(account.accessToken, "POST", `/billing_requests/${ref}/actions/cancel`, { data: {} }).catch(() => {});
+    }
+  }
 }
 
 /* ---------- Sign-up link ---------- */
@@ -320,7 +428,10 @@ export async function joinPlans(tx: Tx) {
   const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
   const live = a && provider(a.provider as ProviderId).available();
   const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(sql`${s.clubs.id} = current_club_id()`);
-  return { provider: live ? (a.provider as ProviderId) : null, plans, signupFeePence: club?.fee ?? 0 };
+  // Direct Debit can't do termly prices, so they're not offered while it's on.
+  const offered = live ? plans.filter((p) => p.interval !== "termly") : plans;
+  if (!offered.length) return null;
+  return { provider: live ? (a.provider as ProviderId) : null, plans: offered, signupFeePence: club?.fee ?? 0 };
 }
 
 export async function joinPaymentOptions(tx: Tx) {
@@ -351,13 +462,20 @@ export async function startJoinPayment(
     if (!items.length) return null;
     const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, clubId));
     const signupFeePence = input.withSignupFee === false ? 0 : (club?.fee ?? 0) * items.length;
+    // An earlier link for this family that wasn't finished: close it so they can't end up paying twice.
+    const stale = await tx
+      .select({ id: s.paymentSetups.id, ref: s.paymentSetups.providerRef })
+      .from(s.paymentSetups)
+      .where(and(eq(s.paymentSetups.householdId, input.householdId), eq(s.paymentSetups.status, "pending")));
+    if (stale.length) await tx.update(s.paymentSetups).set({ status: "abandoned" }).where(inArray(s.paymentSetups.id, stale.map((x) => x.id)));
     const [setup] = await tx
       .insert(s.paymentSetups)
       .values({ clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })), signupFeePence })
       .returning({ id: s.paymentSetups.id });
-    return { account, items, setupId: setup.id, signupFeePence };
+    return { account, items, setupId: setup.id, signupFeePence, stale: stale.map((x) => x.ref).filter((r): r is string => Boolean(r)) };
   });
   if (!prepared) return { ok: false, errors: { form: "Online payment isn't set up for this club." } };
+  await expireOldLinks(prepared.account, prepared.stale).catch((err) => console.error("expiring old payment links failed", err));
 
   try {
     const r = await provider(prepared.account.provider).startSetup(prepared.account, {
@@ -446,7 +564,13 @@ type PaymentStatus = (typeof s.paymentStatus.enumValues)[number];
 
 export async function updateMandate(clubId: string, match: { mandateId?: string | null; customerId?: string | null }, status: MandateStatus, setMandateId?: string) {
   await withClub({ clubId }, async (tx) => {
-    const where = match.mandateId ? eq(s.mandates.providerMandateId, match.mandateId) : match.customerId ? eq(s.mandates.providerCustomerId, match.customerId) : null;
+    // Stripe mandates are saved at checkout before Stripe tells us the mandate id, so a mandate id with no
+    // match falls back to the customer's mandate that doesn't have an id yet.
+    const byMandate = match.mandateId ? eq(s.mandates.providerMandateId, match.mandateId) : null;
+    const byCustomer = match.customerId
+      ? and(eq(s.mandates.providerCustomerId, match.customerId), match.mandateId ? isNull(s.mandates.providerMandateId) : undefined)
+      : null;
+    const where = byMandate && byCustomer ? or(byMandate, byCustomer) : (byMandate ?? byCustomer);
     if (!where) return;
     await tx.update(s.mandates).set({ status, ...(setMandateId ? { providerMandateId: setMandateId } : {}) }).where(where);
   });
@@ -466,7 +590,9 @@ export async function recordPayment(
     if (existing) {
       await tx.update(s.payments).set({ status: p.status }).where(eq(s.payments.id, existing.id));
     } else {
-      await tx.insert(s.payments).values({ clubId, householdId: m.householdId, mandateId: m.id, description: p.description, amountPence: p.amountPence, chargeDate: p.chargeDate, status: p.status, providerPaymentId: p.providerPaymentId });
+      // Two deliveries at once: the second insert is skipped by the unique index and updates instead.
+      const made = await tx.insert(s.payments).values({ clubId, householdId: m.householdId, mandateId: m.id, description: p.description, amountPence: p.amountPence, chargeDate: p.chargeDate, status: p.status, providerPaymentId: p.providerPaymentId }).onConflictDoNothing().returning({ id: s.payments.id });
+      if (!made.length) await tx.update(s.payments).set({ status: p.status }).where(eq(s.payments.providerPaymentId, p.providerPaymentId));
     }
   });
 }

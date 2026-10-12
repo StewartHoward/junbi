@@ -62,7 +62,7 @@ export async function dashboardStats(actor: Actor, opts: { siteId?: string; peri
     }>(await tx.execute(sql`
       select
         (select count(*)::int from students s where s.status = 'active' and ${S}) as active,
-        (select count(*)::int from students s where s.status in ('active', 'trial') and s.joined_on > current_date - ${N}::int and ${S}) as new_students,
+        (select count(*)::int from students s where s.status in ('active', 'trial') and s.source <> 'import' and s.joined_on > current_date - ${N}::int and ${S}) as new_students,
         (select count(distinct m.student_id)::int from memberships m join students s on s.id = m.student_id
            where m.status = 'active' and (m.ends_on is null or m.ends_on >= current_date) and s.status = 'active' and ${S}) as paying,
         (select count(*)::int from memberships m join students s on s.id = m.student_id
@@ -86,7 +86,7 @@ export async function dashboardStats(actor: Actor, opts: { siteId?: string; peri
            where l.converted_at > now() - make_interval(days => ${N}::int) and ${L}) as days_to_join,
         (select count(*)::int from leads l where l.status = 'new' and ${L}) as leads_new,
         (select count(*)::int from grading_results gr join students s on s.id = gr.student_id
-           where gr.outcome <> 'fail' and gr.graded_on > current_date - ${N}::int and ${S}) as graded
+           where gr.outcome <> 'fail' and coalesce(gr.examiner, '') <> 'Imported into Junbi' and gr.graded_on > current_date - ${N}::int and ${S}) as graded
     `));
 
     // Attendance chart: days for a week or month, weeks for 3 months, months for a year.
@@ -107,8 +107,8 @@ export async function dashboardStats(actor: Actor, opts: { siteId?: string; peri
       group by b.start order by b.start
     `));
 
-    const belts = rows<{ name: string; belt_colour: string; n: number }>(await tx.execute(sql`
-      select g.name, g.belt_colour, count(*)::int as n from (
+    const belts = rows<{ id: string; name: string; belt_colour: string; n: number }>(await tx.execute(sql`
+      select g.id, g.name, g.belt_colour, count(*)::int as n from (
         select distinct on (gr.student_id) gr.student_id, gr.grade_id
         from grading_results gr join grades g2 on g2.id = gr.grade_id join students s on s.id = gr.student_id
         where gr.outcome <> 'fail' and s.status = 'active' and ${S}
@@ -181,7 +181,7 @@ export async function studentsSummary(actor: Actor) {
     const [k] = rows<{ active: number; new_students: number; no_plan: number; absent: number }>(await tx.execute(sql`
       select
         (select count(*)::int from students s where s.status = 'active' and ${S}) as active,
-        (select count(*)::int from students s where s.status in ('active', 'trial') and s.joined_on > current_date - 91 and ${S}) as new_students,
+        (select count(*)::int from students s where s.status in ('active', 'trial') and s.source <> 'import' and s.joined_on > current_date - 91 and ${S}) as new_students,
         (select count(*)::int from students s where s.status = 'active' and ${S}
            and not exists (select 1 from memberships m where m.student_id = s.id and m.status = 'active' and (m.ends_on is null or m.ends_on >= current_date))) as no_plan,
         (select count(*)::int from students s where ${absentWhere(S)}) as absent

@@ -147,7 +147,7 @@ export async function addMembershipAction(id: string, _prev: MembershipState, f:
   return { done: r.value.emailed ? `Direct Debit link emailed to ${r.value.emailed}. The membership starts once they've set it up.` : "Membership added." };
 }
 
-export type ContactState = { errors?: FieldErrors; saved?: boolean };
+export type ContactState = { errors?: FieldErrors; saved?: boolean; values?: Record<string, string> };
 
 export async function updateContactAction(id: string, _prev: ContactState, f: FormData): Promise<ContactState> {
   const actor = await requireActor();
@@ -161,7 +161,7 @@ export async function updateContactAction(id: string, _prev: ContactState, f: Fo
     emergencyName: str(f, "emergencyName"),
     emergencyPhone: str(f, "emergencyPhone"),
   });
-  if (!r.ok) return { errors: r.errors };
+  if (!r.ok) return { errors: r.errors, values: Object.fromEntries([...f.entries()].filter((e): e is [string, string] => typeof e[1] === "string")) };
   revalidatePath("/students");
   return { saved: true };
 }

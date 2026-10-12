@@ -79,7 +79,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const currentQuick = filter ? `filter=${filter}` : status && !site ? `status=${status}` : !filterCount ? "" : null;
 
   const canAdd = can(actor, "students.edit");
-  const link = canAdd ? <JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} payments={await signupPayments(actor)} /> : null;
+  const link = canAdd ? <JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} payments={await signupPayments(actor)} manage={can(actor, "payments.manage")} /> : null;
 
   if (listed.length === 0 && !filtering) {
     return (

@@ -46,7 +46,8 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
   const pick = (key: string) => (id: string) => setChosen((c) => ({ ...c, [key]: id }));
   const keys = who === "me" ? ["myPlanId"] : Array.from({ length: count }, (_, i) => `c${i}_planId`);
   const picked = payment ? keys.map((k) => payment.plans.find((p) => p.id === (chosen[k] ?? v[k]))).filter(Boolean) as Plan[] : [];
-  const monthly = picked.filter((p) => p.interval !== "annual").reduce((n, p) => n + p.amountPence, 0);
+  const monthly = picked.filter((p) => p.interval === "monthly").reduce((n, p) => n + p.amountPence, 0);
+  const termly = picked.filter((p) => p.interval === "termly").reduce((n, p) => n + p.amountPence, 0);
   const yearly = picked.filter((p) => p.interval === "annual").reduce((n, p) => n + p.amountPence, 0);
 
   if (state.done) {
@@ -64,7 +65,7 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
   }
 
   return (
-    <form action={action} className="m-form" noValidate>
+    <form key={JSON.stringify(state.values ?? null)} action={action} className="m-form" noValidate>
       {e?.form && <p className="error" role="alert">{e.form}</p>}
 
       <fieldset>
@@ -213,7 +214,7 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
       {payment && (
         <p className="m-fine" style={{ margin: 0 }}>
           {picked.length
-            ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}${
+            ? `Total: ${[monthly && `£${(monthly / 100).toFixed(2)} a month`, termly && `£${(termly / 100).toFixed(2)} a term`, yearly && `£${(yearly / 100).toFixed(2)} a year`].filter(Boolean).join(" and ")}${
                 payment.signupFeePence ? `, plus a one-off sign-up fee of £${((payment.signupFeePence * picked.length) / 100).toFixed(2)} with the first payment` : ""
               }. `
             : payment.signupFeePence

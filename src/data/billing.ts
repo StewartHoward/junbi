@@ -46,9 +46,11 @@ async function clubRow(clubId: string, userId?: string) {
 
 /** For the app layout: does this owner need sending to /billing first? Cached per request. */
 export const billingGate = cache(async (actor: Actor) => {
-  if (!billingOn() || actor.role !== "owner") return false;
+  if (!billingOn()) return false;
   const c = await clubRow(actor.clubId, actor.userId);
-  return c ? needsCard(c) : false;
+  if (!c || !needsCard(c)) return false;
+  // The owner adds the card straight away. Everyone else carries on until the trial has ended.
+  return actor.role === "owner" || Boolean(c.trialEndsOn && c.trialEndsOn < todayISO());
 });
 
 /** What the billing page shows. */
@@ -96,11 +98,27 @@ async function ensureCoupon(percent: number, months: number | null): Promise<str
   return id;
 }
 
-/** Founding Clubs: 50% off for six months. A code: its % for its months. The bigger one wins. */
+/** Whole months since the trial ended (0 during the trial). */
+function monthsSinceTrial(trialEndsOn: string | null) {
+  if (!trialEndsOn) return 0;
+  const ms = Date.now() - Date.parse(`${trialEndsOn}T23:00:00Z`);
+  return ms > 0 ? Math.floor(ms / (30.44 * 86_400_000)) : 0;
+}
+
+/**
+ * Founding Clubs: 50% off for their first six paid months. A code: its % for its months (or for good).
+ * Only the months still left are given, so starting Checkout again later doesn't restart the discount.
+ * The bigger discount wins.
+ */
 async function couponFor(c: ClubBillingRow): Promise<string | null> {
-  const code = c.discountPercent ? { pct: c.discountPercent, months: c.discountMonths } : null;
-  const founding = c.founding ? { pct: 50, months: 6 } : null;
-  const best = [code, founding].filter(Boolean).sort((a, b) => b!.pct - a!.pct)[0];
+  const used = monthsSinceTrial(c.trialEndsOn);
+  const options: Array<{ pct: number; months: number | null }> = [];
+  if (c.discountPercent) {
+    const left = c.discountMonths == null ? null : c.discountMonths - used;
+    if (left == null || left > 0) options.push({ pct: c.discountPercent, months: left });
+  }
+  if (c.founding && 6 - used > 0) options.push({ pct: 50, months: 6 - used });
+  const best = options.sort((a, b) => b.pct - a.pct)[0];
   if (!best || best.pct <= 0) return null;
   return ensureCoupon(Math.min(best.pct, 100), best.months);
 }
@@ -135,7 +153,7 @@ export async function startBillingCheckout(actor: Actor & { clubName?: string },
     payment_method_collection: "always",
     success_url: `${base}/billing/done?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/billing`,
-  }, undefined, `checkout-${c.id}-${nowSec >> 6}`);
+  }, undefined, `checkout-${c.id}-${nowSec >> 6}-${trial}-${coupon ?? "none"}-${c.plan}`);
   return session.url;
 }
 
@@ -245,6 +263,7 @@ export async function ensureBillingWebhook(base: string): Promise<{ created: boo
     url,
     enabled_events: BILLING_EVENTS,
     description: "Junbi billing (clubs paying Junbi)",
+    api_version: "2024-06-20",
   });
   try {
     await setSetting("billing_webhook", encrypt(JSON.stringify({ id: wh.id, secret: wh.secret })));
@@ -293,16 +312,17 @@ export async function handleBillingEvent(event: { type: string; data: { object: 
     return;
   }
   if (event.type.startsWith("customer.subscription.")) {
-    const sub = o as unknown as Sub;
+    // Read the subscription as it is now (in our API version), so late or out-of-order events can't undo newer changes.
+    const sub = await stripeApi<Sub>("GET", `/subscriptions/${(o as { id: string }).id}`, null);
     const clubId = sub.metadata?.club_id ?? (await clubForCustomer(sub.customer));
     if (clubId) await saveSubscription(clubId, sub);
     return;
   }
   if (event.type.startsWith("invoice.")) {
-    const inv = o as unknown as Invoice;
+    const inv = await stripeApi<Invoice>("GET", `/invoices/${(o as { id: string }).id}`, null);
     const clubId = inv.subscription_details?.metadata?.club_id ?? (await clubForCustomer(inv.customer));
     if (!clubId) return;
-    const status = event.type === "invoice.payment_failed" ? "failed" : inv.status;
+    const status = inv.status === "paid" ? "paid" : event.type === "invoice.payment_failed" ? "failed" : inv.status;
     const paidAt = inv.status_transitions?.paid_at ? new Date(inv.status_transitions.paid_at * 1000) : null;
     const row = {
       clubId,
@@ -317,7 +337,26 @@ export async function handleBillingEvent(event: { type: string; data: { object: 
       tx.insert(s.junbiInvoices).values(row).onConflictDoUpdate({
         target: s.junbiInvoices.stripeInvoiceId,
         set: { amountPence: row.amountPence, status: row.status, hostedUrl: row.hostedUrl, paidAt: row.paidAt },
+        // A paid invoice stays paid.
+        setWhere: sql`${s.junbiInvoices.status} <> 'paid' or ${row.status} = 'paid'`,
       }),
     );
   }
+}
+
+/**
+ * A discount code applied after the card went in: put it on the Stripe subscription too.
+ * Free for good: cancel the subscription so nothing more is taken.
+ */
+export async function applyCodeToSubscription(clubId: string) {
+  if (!billingOn()) return;
+  const c = await clubRow(clubId);
+  if (!c?.billingSubscriptionId || !OK_STATUSES.has(c.billingStatus ?? "")) return;
+  if (isFreeForGood(c)) {
+    const sub = await stripeApi<Sub>("DELETE", `/subscriptions/${c.billingSubscriptionId}`, null);
+    await saveSubscription(clubId, sub);
+    return;
+  }
+  const coupon = await couponFor(c);
+  if (coupon) await stripeApi("POST", `/subscriptions/${c.billingSubscriptionId}`, { discounts: [{ coupon }] });
 }

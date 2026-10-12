@@ -5,6 +5,7 @@ import { withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
 import { assertCan, canAtSite, ForbiddenError, type Actor } from "@/auth/permissions";
 import type { FieldErrors, Result } from "./accounts";
+import { isRealDate } from "@/lib/dates";
 
 export const CLUB_TZ = "Europe/London";
 export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -19,7 +20,7 @@ export function isoWeekday(date: string) {
   return d === 0 ? 7 : d;
 }
 export function validDate(date: string | undefined): string {
-  return date && /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date)) ? date : todayISO();
+  return isRealDate(date) ? date : todayISO();
 }
 export function addDays(date: string, n: number) {
   const d = new Date(`${date}T12:00:00Z`);
@@ -187,7 +188,7 @@ export async function setAttendance(actor: Actor, classId: string, date: string,
   await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
     const c = await classFor(tx, actor, classId, "register.take");
     const [st] = await tx.select({ siteId: s.students.siteId }).from(s.students).where(eq(s.students.id, studentId));
-    if (!st) throw new ForbiddenError("register.take");
+    if (!st || (actor.sites !== "all" && !actor.sites.includes(st.siteId))) throw new ForbiddenError("register.take");
 
     await tx
       .insert(s.sessions)

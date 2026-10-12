@@ -7,6 +7,7 @@ import { assertCan, type Actor } from "@/auth/permissions";
 import { appUrl, sendEmail, templates, type LeadEmail } from "@/lib/email";
 import { phoneDigits } from "@/lib/import";
 import type { FieldErrors, Result } from "./accounts";
+import { isRealDate } from "@/lib/dates";
 
 /*
  * Leads: people interested in joining. Staff add them (with a trial session if one's booked), Junbi emails
@@ -61,7 +62,7 @@ export const leadSchema = z
       .refine((v) => v === null || (Number.isInteger(v) && v >= 2 && v <= 99), "Enter an age from 2 to 99."),
     siteId: optText(40),
     classId: optText(40),
-    sessionDate: optText(10).refine((v) => !v || (isoDate.test(v) && !Number.isNaN(Date.parse(v))), "Enter a date."),
+    sessionDate: optText(10).refine((v) => !v || isRealDate(v), "Enter a date."),
     sessionTime: optText(5).refine((v) => !v || /^\d{2}:\d{2}$/.test(v), "Enter a time."),
     source: optText(40),
     notes: optText(2000),
@@ -190,6 +191,7 @@ export async function bookLeadSession(actor: Actor, leadId: string, input: Pick<
     if (!lead || !inScope(actor, lead.siteId)) return { error: { form: "Lead not found." } as FieldErrors };
     const session = await sessionFor(tx, { ...p.data, siteId: lead.siteId });
     if ("error" in session) return session;
+    if (!inScope(actor, session.siteId)) return { error: { classId: "Choose one of your classes." } as FieldErrors };
     await tx
       .update(s.leads)
       .set({ classId: session.classId, siteId: session.siteId, sessionAt: session.at, reminderSentAt: null, status: lead.status === "new" || lead.status === "lost" ? "booked" : lead.status })

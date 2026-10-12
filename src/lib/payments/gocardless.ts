@@ -24,7 +24,10 @@ export async function gcApi<T>(token: string, method: "GET" | "POST", path: stri
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
+  const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string; errors?: Array<{ reason?: string; links?: { conflicting_resource_id?: string } }> } };
+  // A retried create with the same idempotency key: GoCardless says "already made" and gives the id. Fetch that one.
+  const conflict = json.error?.errors?.find((e) => e.reason === "idempotent_creation_conflict")?.links?.conflicting_resource_id;
+  if (res.status === 409 && method === "POST" && conflict) return gcApi<T>(token, "GET", `${path}/${conflict}`);
   if (!res.ok) throw new Error(json.error?.message ?? `GoCardless error ${res.status}`);
   return json;
 }

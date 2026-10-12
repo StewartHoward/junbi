@@ -166,6 +166,12 @@ export async function applyPromoCode(actor: Actor, code: string): Promise<Result
     if (r?.pct == null) return { ok: false as const, errors: { promoCode: "That code isn't valid or has expired." } };
     await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "club_promo", entityId: actor.clubId, after: { code: c.toUpperCase() } });
     return { ok: true as const, value: { percentOff: Number(r.pct) } };
+  }).then(async (res) => {
+    if (res.ok) {
+      const { applyCodeToSubscription } = await import("./billing");
+      await applyCodeToSubscription(actor.clubId).catch((err) => console.error("applying code to Junbi subscription failed", err));
+    }
+    return res;
   });
 }
 

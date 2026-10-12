@@ -24,6 +24,7 @@ export function SessionFields({ classes, siteId, values, errors, sites }: { clas
         </select>
         <FieldError id="classId-err" msg={errors?.classId} />
       </div>
+      {!cls && <FieldError id="sessionDate-err" msg={errors?.sessionDate ? "Choose a class or session first." : undefined} />}
       {cls && (
         <div className="row" style={{ gap: 12 }}>
           <div style={{ flex: "1 1 160px" }}>

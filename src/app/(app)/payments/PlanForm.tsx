@@ -9,7 +9,7 @@ export function PlanForm() {
   const e = state.errors;
   const v = state.values ?? {};
   return (
-    <form action={action} className="form" noValidate key={state.saved ? Date.now() : "form"} style={{ maxWidth: "none" }}>
+    <form action={action} className="form" noValidate key={state.saved ? Date.now() : JSON.stringify(state.values ?? null)} style={{ maxWidth: "none" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "start" }}>
         <div>
           <label htmlFor="plan-name">Name</label>

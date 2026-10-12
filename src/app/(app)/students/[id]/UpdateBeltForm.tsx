@@ -18,7 +18,7 @@ export function UpdateBeltForm({
   const e = state.errors;
   if (!grades.length) return <p className="muted" style={{ fontSize: 13 }}>Add belts for your arts in Settings to track them here.</p>;
   return (
-    <form action={formAction} className="form" noValidate style={{ maxWidth: "none" }}>
+    <form key={JSON.stringify(state.values ?? null)} action={formAction} className="form" noValidate style={{ maxWidth: "none" }}>
       <div className="grid2">
         <div>
           <label htmlFor="gradeId">New belt</label>

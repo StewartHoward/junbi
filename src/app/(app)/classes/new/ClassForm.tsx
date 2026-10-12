@@ -12,7 +12,7 @@ export function ClassForm({ sites, arts }: { sites: Array<{ id: string; name: st
   const e = state.errors;
   const v = state.values ?? {};
   return (
-    <form action={action} className="form" noValidate>
+    <form key={JSON.stringify(state.values ?? null)} action={action} className="form" noValidate>
       {e?.form && <p className="error" role="alert">{e.form}</p>}
       <div>
         <label htmlFor="name">Class name</label>

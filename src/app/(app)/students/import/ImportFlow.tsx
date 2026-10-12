@@ -77,7 +77,7 @@ export function ImportFlow({ sites, arts }: { sites: Option[]; arts: Option[] })
   const s = p.summary;
   const sorted = [...p.rows].sort((a, b) => Number(!!b.skip) - Number(!!a.skip) || b.warnings.length - a.warnings.length || a.line - b.line);
   return (
-    <form action={action} style={{ marginTop: 24 }} noValidate>
+    <form key={`${JSON.stringify(p.mapping)}|${state.siteId}|${state.discipline}`} action={action} style={{ marginTop: 24 }} noValidate>
       <input type="hidden" name="csv" value={state.csv} />
       <input type="hidden" name="fileName" value={state.fileName} />
 

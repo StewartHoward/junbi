@@ -14,7 +14,7 @@ export type PlanState = { errors?: FieldErrors; values?: Record<string, string>;
 
 export async function addPlanAction(_prev: PlanState, f: FormData): Promise<PlanState> {
   const actor = await requireActor();
-  const values = { name: str(f, "name"), amount: str(f, "amount"), interval: str(f, "interval") };
+  const values = { name: str(f, "name"), amount: str(f, "amount"), interval: str(f, "interval"), showOnSignup: f.get("showOnSignup") === "on" ? "on" : "" };
   const r = await addPlan(actor, { ...values, showOnSignup: f.get("showOnSignup") === "on" } as never);
   if (!r.ok) return { errors: r.errors, values };
   revalidatePath("/payments");

@@ -766,7 +766,10 @@ describe("club payments and paying at sign-up", () => {
     const [ivy] = await adminSql`select id from students where club_id = ${p.clubId} and first_name = 'Ivy'`;
     const r2 = await pay.addStudentMembership(p, ivy.id, { planId: kids });
     expect(r2.ok && r2.value.emailed).toBeNull();
+    const [added] = await adminSql`select provider_subscription_id from memberships where student_id = ${ivy.id} order by created_at desc limit 1`;
+    expect(added.provider_subscription_id).toBe(`sub_fake_add_${ivy.id}`); // charged on their existing Direct Debit
     await expect(pay.addStudentMembership({ ...p, role: "assistant" }, ivy.id, { planId: kids })).rejects.toThrow(/Not allowed/);
+    await expect(pay.addStudentMembership({ ...p, role: "instructor" }, ivy.id, { planId: kids })).rejects.toThrow(/Not allowed/);
   });
 
   it("adds the club's sign-up fee to the first payment, once per member", async () => {
@@ -1131,6 +1134,8 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
   const calls: Array<{ method: string; path: string; body: string }> = [];
   let c: Actor;
   const prevKey = process.env.STRIPE_SECRET_KEY;
+  // What Stripe would return when asked for the subscription or an invoice right now.
+  const stripeNow: { sub: Record<string, unknown>; invoices: Record<string, Record<string, unknown>> } = { sub: {}, invoices: {} };
 
   beforeAll(async () => {
     const r = await accounts.createClubAccount({ clubName: "Billing Club", name: "Bea Owner", email: "bill-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
@@ -1153,6 +1158,8 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
       if (method === "GET" && url.pathname === "/v1/webhook_endpoints") return json({ data: [{ id: "we_old", url: "https://junbi.test/api/billing/webhook" }, { id: "we_other", url: "https://elsewhere.test/hook" }] });
       if (method === "DELETE" && url.pathname.startsWith("/v1/webhook_endpoints/")) return json({ deleted: true });
       if (method === "POST" && url.pathname === "/v1/webhook_endpoints") return json({ id: "we_bill", secret: "whsec_bill" });
+      if (method === "GET" && url.pathname === "/v1/subscriptions/sub_b1") return json(stripeNow.sub);
+      if (method === "GET" && url.pathname.startsWith("/v1/invoices/")) return json(stripeNow.invoices[url.pathname.split("/").pop()!]);
       return json({ error: { message: `unexpected ${method} ${url.pathname}` } }, 400);
     }) as typeof fetch;
   });
@@ -1183,19 +1190,38 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
   });
 
   it("follows the subscription and records what the club pays Junbi", async () => {
-    await billing.handleBillingEvent({ type: "customer.subscription.updated", data: { object: { id: "sub_b1", status: "active", customer: "cus_b1", current_period_end: 1893456000, metadata: {} } } });
+    const subEvent = async (status: string, type = "customer.subscription.updated") => {
+      stripeNow.sub = { id: "sub_b1", status, customer: "cus_b1", current_period_end: 1893456000, metadata: { club_id: c.clubId } };
+      // The event body may be stale or in another API version: the handler reads the subscription from Stripe.
+      await billing.handleBillingEvent({ type, data: { object: { id: "sub_b1", status: "something-old" } } });
+    };
+    await subEvent("active");
     expect((await billing.clubBilling(c)).status).toBe("active");
-    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1", customer: "cus_b1", status: "paid", amount_paid: 1950, amount_due: 1950, hosted_invoice_url: "https://invoice.stripe.com/i/1", status_transitions: { paid_at: 1760000000 } } } });
-    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1", customer: "cus_b1", status: "paid", amount_paid: 1950, amount_due: 1950 } } }); // repeats are harmless
+    stripeNow.invoices.in_1 = { id: "in_1", customer: "cus_b1", status: "paid", amount_paid: 1950, amount_due: 1950, hosted_invoice_url: "https://invoice.stripe.com/i/1", status_transitions: { paid_at: 1760000000 }, subscription_details: { metadata: { club_id: c.clubId } } };
+    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1" } } });
+    await billing.handleBillingEvent({ type: "invoice.paid", data: { object: { id: "in_1" } } }); // repeats are harmless
+    // A late "finalized" event can't turn a paid invoice back to open.
+    stripeNow.invoices.in_1 = { ...stripeNow.invoices.in_1, status: "open" };
+    await billing.handleBillingEvent({ type: "invoice.finalized", data: { object: { id: "in_1" } } });
     const bb = await billing.clubBilling(c);
     expect(bb.invoices.map((i) => [i.amountPence, i.status])).toEqual([[1950, "paid"]]);
     const [row] = (await appSql`select junbi_paid_total_pence, billing_status from admin_clubs() where club_id = ${c.clubId}`) as unknown as Array<{ junbi_paid_total_pence: number; billing_status: string }>;
     expect(row).toMatchObject({ junbi_paid_total_pence: 1950, billing_status: "active" });
     // A failed payment still lets the club in, with the status showing.
-    await billing.handleBillingEvent({ type: "customer.subscription.updated", data: { object: { id: "sub_b1", status: "past_due", customer: "cus_b1" } } });
+    await subEvent("past_due");
     expect(await billing.billingGate(c)).toBe(false);
-    await billing.handleBillingEvent({ type: "customer.subscription.deleted", data: { object: { id: "sub_b1", status: "canceled", customer: "cus_b1" } } });
+    await subEvent("canceled", "customer.subscription.deleted");
     expect(await billing.billingGate(c)).toBe(true);
+  });
+
+  it("only gives the discount months that are left, and puts a later code on the Stripe subscription", async () => {
+    // Trial ended about two months ago: a Founding Club has four discounted months left, not six.
+    await adminSql`update clubs set trial_ends_on = current_date - 65 where id = ${c.clubId}`;
+    calls.length = 0;
+    await billing.startBillingCheckout(c, "https://junbi.test", "bill-owner@example.test");
+    const co = calls.find((x) => x.path === "/v1/checkout/sessions")!;
+    expect(co.body).toContain("discounts[0][coupon]=junbi-50-4m");
+    expect(co.body).not.toContain("trial_end"); // trial's over, so the first month is taken now
   });
 
   it("never asks a free-for-good club for a card, and keeps the webhook secret encrypted", async () => {

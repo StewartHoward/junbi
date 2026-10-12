@@ -50,7 +50,7 @@ export function StudentForm({
   const checked = (k: string) => (state.values ? state.values[k] === "on" : Boolean(initial[k]));
 
   return (
-    <form action={formAction} className="form" noValidate>
+    <form key={JSON.stringify(state.values ?? null)} action={formAction} className="form" noValidate>
       {e?.form && <p className="error" role="alert">{e.form}</p>}
 
       <fieldset>
