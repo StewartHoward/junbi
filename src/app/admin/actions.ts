@@ -32,6 +32,8 @@ export async function adminLogoutAction() {
 /** First time in, or forgotten password: email a link to choose one. Same answer for any email. */
 export async function adminSetupAction(_prev: FormState, f: FormData): Promise<FormState> {
   const email = str(f, "email");
+  const { rateLimited } = await import("@/data/accounts");
+  if (await rateLimited("admin-setup", 5)) return { values: { email, sent: "1" } };
   await requestAdminSetup(email).catch((err) => console.error("admin set-up email failed", err));
   return { values: { email, sent: "1" } };
 }

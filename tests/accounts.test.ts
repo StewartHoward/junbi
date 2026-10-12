@@ -111,6 +111,13 @@ describe("sign-in", () => {
     await adminSql`delete from auth_failures`;
   });
 
+  it("limits how often a public form can be used from one place", async () => {
+    const results = [];
+    for (let i = 0; i < 4; i++) results.push(await accounts.rateLimited("test-form", 3));
+    expect(results).toEqual([false, false, false, true]);
+    await adminSql`delete from auth_failures`;
+  });
+
   it("doesn't let wrong guesses from somewhere else lock the real person out", async () => {
     for (let i = 0; i < 12; i++) await adminSql`insert into auth_failures (email) values ('owner-b@example.test|203.0.113.9'), ('owner-b@example.test')`;
     expect((await accounts.checkLogin("owner-b@example.test", "a long enough phrase")).ok).toBe(true);

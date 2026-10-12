@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { checkLogin, completeSetup, createClubAccount, type FieldErrors } from "@/data/accounts";
+import { checkLogin, completeSetup, createClubAccount, rateLimited, type FieldErrors } from "@/data/accounts";
 import { chooseClub, endSession, requireActorForSetup, startSession } from "@/auth/session";
 import { appUrl } from "@/lib/email";
 import {
@@ -18,6 +18,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "");
 
 export async function signupAction(_prev: FormState, f: FormData): Promise<FormState> {
   if (str(f, "website")) redirect("/"); // honeypot
+  if (await rateLimited("signup", 5)) return { errors: { form: "Too many sign-ups from here. Please wait 15 minutes and try again." } };
   const values = { clubName: str(f, "clubName"), name: str(f, "name"), email: str(f, "email"), plan: str(f, "plan"), promoCode: str(f, "promoCode"), terms: str(f, "terms") };
   const r = await createClubAccount({
     ...values,
@@ -76,7 +77,7 @@ export async function setupAction(_prev: FormState, f: FormData): Promise<FormSt
 
 export async function forgotPasswordAction(_prev: FormState, f: FormData): Promise<FormState> {
   const email = str(f, "email");
-  await requestPasswordReset(email).catch((err) => console.error("password reset email failed", err));
+  if (!(await rateLimited("reset", 10))) await requestPasswordReset(email).catch((err) => console.error("password reset email failed", err));
   // Same answer whether or not the email has an account.
   return { values: { email, sent: "1" } };
 }

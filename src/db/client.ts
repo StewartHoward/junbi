@@ -20,7 +20,10 @@ function appUrl(): string {
 
 export function connect(url = appUrl()): Db {
   // prepare: false keeps us compatible with transaction-mode poolers such as Supabase's.
-  const client = globalThis.__junbiSql ?? postgres(url, { max: 10, prepare: false });
+  // Live, the connection to the database is always encrypted (local databases don't need it).
+  const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+  const ssl = process.env.NODE_ENV === "production" && !local ? ("require" as const) : undefined;
+  const client = globalThis.__junbiSql ?? postgres(url, { max: 10, prepare: false, ...(ssl ? { ssl } : {}) });
   if (process.env.NODE_ENV !== "production") globalThis.__junbiSql = client;
   return drizzle(client, { schema });
 }

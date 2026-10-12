@@ -136,6 +136,18 @@ async function clientIp(): Promise<string> {
 
 type LookupRow = { user_id: string | null; password_hash: string | null; recent_failures: number };
 
+/**
+ * Simple limit on public forms (sign-up, family sign-up, password reset) per place: true when someone
+ * has used `action` more than `max` times in 15 minutes. Uses the same counter as sign-in failures.
+ */
+export async function rateLimited(action: string, max: number): Promise<boolean> {
+  const key = `rl:${action}|${await clientIp()}`;
+  const [row] = (await db().execute(sql`select * from auth_login_lookup(${key})`)) as unknown as LookupRow[];
+  if ((row?.recent_failures ?? 0) >= max) return true;
+  await db().execute(sql`select auth_record_failure(${key})`);
+  return false;
+}
+
 /** Checks a password. Returns the user id, or a single vague error so emails can't be probed. */
 export async function checkLogin(emailRaw: string, password: string): Promise<Result<{ userId: string }>> {
   const email = emailRaw.trim().toLowerCase();
