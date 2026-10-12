@@ -218,6 +218,13 @@
       "when": 1791667567924,
       "tag": "0030_review_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791667568924,
+      "tag": "0031_pin_current_club_id",
+      "breakpoints": true
     }
   ]
 }
