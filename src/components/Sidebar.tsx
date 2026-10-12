@@ -20,12 +20,14 @@ export function Sidebar({ clubName, sites, userName, role, links }: { clubName: 
     <nav className="sidebar" aria-label="App">
       <span className="wordmark">{clubName}</span>
       <span className="brand-sub">{sites.length ? sites.join(" · ") : "Junbi"}</span>
+      <div className="nav-links">
       {links.map((l) => (
         <Link key={l.href} href={l.href} aria-current={path.startsWith(l.href) ? "page" : undefined}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICON[l.href]}</svg>
           {l.label}
         </Link>
       ))}
+      </div>
       <div className="who">
         <div style={{ color: "var(--ink)", fontWeight: 500 }}>{userName}</div>
         <div>{role[0].toUpperCase() + role.slice(1)} · on Junbi</div>

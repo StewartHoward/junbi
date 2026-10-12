@@ -9,7 +9,11 @@ describe("payment helpers", () => {
     const blob = encrypt("live_token_123");
     expect(blob).not.toContain("live_token_123");
     expect(decrypt(blob)).toBe("live_token_123");
-    expect(() => decrypt(blob.replace(/.$/, (c) => (c === "A" ? "B" : "A")))).toThrow();
+    // Flip a whole byte of the ciphertext (changing only the last base64 letter can hit padding bits and change nothing).
+    const [iv, tag, enc] = blob.split(".");
+    const bytes = Buffer.from(enc, "base64url");
+    bytes[0] ^= 0xff;
+    expect(() => decrypt([iv, tag, bytes.toString("base64url")].join("."))).toThrow();
   });
 
   it("signs the connect state and rejects tampering or expiry", () => {

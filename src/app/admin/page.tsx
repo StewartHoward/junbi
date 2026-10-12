@@ -133,16 +133,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <section className="card anim" style={{ marginTop: 24 }}>
         <div className="ch">
           <h2>Clubs</h2>
-          <form action="/admin" role="search" style={{ display: "flex", gap: 8 }}>
+          <form action="/admin" role="search" style={{ display: "flex", gap: 8, flex: "1 1 220px", justifyContent: "flex-end" }}>
             {show && <input type="hidden" name="show" value={show} />}
             <label htmlFor="q" className="sr-only">Search clubs</label>
-            <input id="q" name="q" type="search" defaultValue={q ?? ""} placeholder="Search club, owner or email" style={{ minHeight: 40, width: 260 }} />
+            <input id="q" name="q" type="search" defaultValue={q ?? ""} placeholder="Search club, owner or email" style={{ minHeight: 40, width: "100%", maxWidth: 300 }} />
           </form>
         </div>
         <nav className="seg" aria-label="Show" style={{ marginTop: 16 }}>
           {SHOW.map(([k, l]) => <Link key={k} href={href(k)} aria-current={(show ?? "") === k ? "true" : undefined}>{l}</Link>)}
         </nav>
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap admin-table" style={{ marginTop: 12 }}>
           <table className="data" style={{ minWidth: 1100 }}>
             <thead>
               <tr>
@@ -172,6 +172,29 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               {shown.length === 0 && <tr><td colSpan={10} className="muted">No clubs match.</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="admin-cards">
+          {shown.map((c) => (
+            <div className="admin-club" key={c.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ minWidth: 0 }}>
+                  <b>{c.name}</b>{c.founding && <span className="pill hong" style={{ marginLeft: 6, fontSize: 11 }}>Founding</span>}
+                  <span className="sub" style={{ overflowWrap: "anywhere" }}>{c.ownerName ?? "No owner"}{c.ownerEmail ? <> · <a href={`mailto:${c.ownerEmail}`}>{c.ownerEmail}</a></> : null}</span>
+                </div>
+                <span className={`pill ${BILL_PILL[c.billingStatus ?? ""] ?? "neutral"}`}>{BILL_LABEL[c.billingStatus ?? ""] ?? (c.fee.status === "free" ? "Free" : "No card")}</span>
+              </div>
+              <div className="tiles compact" style={{ marginTop: 12 }}>
+                <div className="tile"><p className="l">Students</p><p className="v">{c.studentsActive}</p></div>
+                <div className="tile"><p className="l">Junbi fee</p><p className="v sm">{c.fee.status === "trial" ? "Trial" : pounds(c.fee.pence)}</p></div>
+                <div className="tile"><p className="l">Paid</p><p className="v sm">{pounds(c.paidTotalPence)}</p></div>
+              </div>
+              <p className="sub" style={{ marginTop: 10 }}>
+                {c.planName} · {c.fee.note} · {c.sites} {c.sites === 1 ? "site" : "sites"} · {c.paymentProvider ? (c.paymentProvider === "stripe" ? "Stripe" : "GoCardless") : "No family payments"} · last in {ago(c.lastSignIn).toLowerCase()} · joined {day(c.createdAt)}
+              </p>
+              {!c.setUp && <p className="sub warn-t">Hasn&apos;t finished set-up</p>}
+            </div>
+          ))}
+          {shown.length === 0 && <p className="muted" style={{ marginTop: 12 }}>No clubs match.</p>}
         </div>
       </section>
     </div>

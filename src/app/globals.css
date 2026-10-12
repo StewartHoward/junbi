@@ -329,3 +329,26 @@ details:not([open]) > .sp-drawer { display: none; }
 @media (max-width: 1100px) { .kpis.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .cols.tight > .wide { flex-basis: 360px; }
 .cols.tight > .narrow { flex-basis: 290px; }
+/* Admin clubs: a table on wide screens, cards on a phone */
+.admin-cards { display: none; }
+.admin-club { padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
+.admin-club:last-child { border-bottom: none; }
+@media (max-width: 800px) {
+  .admin-table { display: none; }
+  .admin-cards { display: block; margin-top: 8px; }
+  .seg { max-width: 100%; }
+  .seg a { padding: 0 12px; font-size: 13px; }
+}
+.nav-links { display: flex; flex-direction: column; gap: 2px; }
+/* Phone: a slim bar with the club name and sign out, and the menu as one swipeable row */
+@media (max-width: 800px) {
+  .sidebar { min-width: 0; width: 100%; position: sticky; top: 0; z-index: 20; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0; padding: 10px 0 0; background: color-mix(in srgb, var(--surface-raised) 88%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+  .sidebar .wordmark { width: auto; flex: 1; min-width: 0; padding: 0 16px; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar .brand-sub { display: none; }
+  .sidebar .who { width: auto; margin: 0; padding: 0 16px 0 0; border: 0; font-size: 13px; }
+  .sidebar .who > div { display: none; }
+  .nav-links { order: 3; width: 100%; flex-direction: row; gap: 4px; overflow-x: auto; padding: 8px 12px 10px; scrollbar-width: none; }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a { flex-shrink: 0; min-height: 36px; padding: 0 14px; border-radius: 980px; font-size: 14px; }
+  .main { padding: 16px 16px 48px; }
+}

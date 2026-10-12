@@ -12,6 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <nav className="sidebar" aria-label="Admin">
         <span className="wordmark">junbi</span>
         <span className="brand-sub">Admin</span>
+        <div className="nav-links">
         <Link href="/admin" aria-current="page">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
           Clubs
@@ -20,6 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10l8-6 8 6v10H4zM10 20v-6h4v6" /></svg>
           My club
         </Link>
+        </div>
         <div className="who">
           <div style={{ color: "var(--ink)", fontWeight: 500 }}>{user.name}</div>
           <div>Junbi admin</div>

@@ -1150,6 +1150,8 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
       if (method === "POST" && url.pathname === "/v1/checkout/sessions") return json({ id: "cs_test_1", url: "https://checkout.stripe.com/c/pay/cs_test_1" });
       if (method === "GET" && url.pathname === "/v1/checkout/sessions/cs_test_1")
         return json({ metadata: { club_id: c.clubId }, subscription: { id: "sub_b1", status: "trialing", customer: "cus_b1", current_period_end: 1893456000 } });
+      if (method === "GET" && url.pathname === "/v1/webhook_endpoints") return json({ data: [{ id: "we_old", url: "https://junbi.test/api/billing/webhook" }, { id: "we_other", url: "https://elsewhere.test/hook" }] });
+      if (method === "DELETE" && url.pathname.startsWith("/v1/webhook_endpoints/")) return json({ deleted: true });
       if (method === "POST" && url.pathname === "/v1/webhook_endpoints") return json({ id: "we_bill", secret: "whsec_bill" });
       return json({ error: { message: `unexpected ${method} ${url.pathname}` } }, 400);
     }) as typeof fetch;
@@ -1201,6 +1203,9 @@ describe("Junbi billing: card at sign-up, nothing taken until the trial ends", (
     expect(billing.needsCard({ plan: "club", founding: false, trialEndsOn: null, discountPercent: 100, discountMonths: 3, billingStatus: null })).toBe(true);
     expect(await billing.billingWebhookReady()).toBe(false);
     expect((await billing.ensureBillingWebhook("https://junbi.test")).created).toBe(true);
+    // A half-made endpoint from an earlier failed attempt is removed; other endpoints are left alone.
+    expect(calls.some((x) => x.method === "DELETE" && x.path === "/v1/webhook_endpoints/we_old")).toBe(true);
+    expect(calls.some((x) => x.path === "/v1/webhook_endpoints/we_other")).toBe(false);
     expect((await billing.ensureBillingWebhook("https://junbi.test")).created).toBe(false);
     expect(await billing.billingWebhookSecret()).toBe("whsec_bill");
     const [stored] = await adminSql`select value from platform_settings where key = 'billing_webhook'`;

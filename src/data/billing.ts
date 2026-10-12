@@ -237,12 +237,22 @@ export const BILLING_EVENTS = [
 export async function ensureBillingWebhook(base: string): Promise<{ created: boolean }> {
   const existing = await getSetting("billing_webhook");
   if (existing) return { created: false };
+  const url = `${base}/api/billing/webhook`;
+  // An earlier attempt may have made an endpoint whose secret was never saved: remove it first.
+  const list = await stripeApi<{ data: Array<{ id: string; url: string }> }>("GET", "/webhook_endpoints", { limit: 100 });
+  for (const w of list.data.filter((w) => w.url === url)) await stripeApi("DELETE", `/webhook_endpoints/${w.id}`, null);
   const wh = await stripeApi<{ id: string; secret: string }>("POST", "/webhook_endpoints", {
-    url: `${base}/api/billing/webhook`,
+    url,
     enabled_events: BILLING_EVENTS,
     description: "Junbi billing (clubs paying Junbi)",
   });
-  await setSetting("billing_webhook", encrypt(JSON.stringify({ id: wh.id, secret: wh.secret })));
+  try {
+    await setSetting("billing_webhook", encrypt(JSON.stringify({ id: wh.id, secret: wh.secret })));
+  } catch (err) {
+    await stripeApi("DELETE", `/webhook_endpoints/${wh.id}`, null).catch(() => {});
+    const cause = (err as { cause?: { message?: string } }).cause?.message;
+    throw new Error(`Couldn't save the billing setting${cause ? `: ${cause}` : ""}`);
+  }
   return { created: true };
 }
 

@@ -50,6 +50,6 @@ export async function switchOnBillingAction(): Promise<SwitchState> {
     revalidatePath("/admin");
     return { ok: r.created ? "Connected. Club payments will now show here." : "Already connected." };
   } catch (err) {
-    return { error: `Stripe said: ${(err as Error).message}` };
+    return { error: (err as Error).message };
   }
 }
