@@ -50,3 +50,29 @@ export function safeEqual(a: string, b: string) {
   const y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
+
+/**
+ * A signed link token for one purpose (e.g. "pay"), so a token made for one job can't be used for another.
+ * Output: body.signature, both base64url.
+ */
+export function signLink<T extends Record<string, string>>(purpose: string, data: T, ttlSeconds: number): string {
+  const body = Buffer.from(JSON.stringify({ ...data, p: purpose, exp: Math.floor(Date.now() / 1000) + ttlSeconds })).toString("base64url");
+  const sig = createHmac("sha256", key()).update(`link:${body}`).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+export function verifyLink<T extends Record<string, string>>(purpose: string, token: unknown): T | null {
+  if (typeof token !== "string" || token.length > 1000) return null;
+  const [body, sig, extra] = token.split(".");
+  if (!body || !sig || extra !== undefined) return null;
+  const expected = createHmac("sha256", key()).update(`link:${body}`).digest("base64url");
+  if (!safeEqual(sig, expected)) return null;
+  try {
+    const d = JSON.parse(Buffer.from(body, "base64url").toString()) as T & { p: string; exp: number };
+    if (d.p !== purpose || !(d.exp > Date.now() / 1000)) return null;
+    const { p: _p, exp: _e, ...rest } = d;
+    return rest as unknown as T;
+  } catch {
+    return null;
+  }
+}

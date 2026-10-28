@@ -5,7 +5,9 @@ import { getStudentProfile } from "@/data/students";
 import { ForbiddenError, can } from "@/auth/permissions";
 import { disciplineName } from "@/lib/disciplines";
 import { todayISO } from "@/data/classes";
-import { addMembershipAction, recordBeltAction, updateContactAction } from "../actions";
+import { addMembershipAction, recordBeltAction, sendPayLinkAction, updateContactAction } from "../actions";
+import { SendPayLinkButton } from "./SendPayLinkButton";
+import { canSendPayLink } from "@/data/paylink";
 import { ContactCard } from "./ContactCard";
 import { AddMembershipForm } from "./AddMembershipForm";
 import { UpdateBeltForm } from "./UpdateBeltForm";
@@ -52,6 +54,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
     throw e;
   });
   if (!p) notFound();
+  const payLink = p.memberships.length === 0 && (await canSendPayLink(actor, p.id));
 
   const today = todayISO();
   const multiArt = new Set(p.gradeOptions.map((g) => g.discipline)).size > 1 || p.belts.length > 1;
@@ -205,7 +208,9 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
           <section className="card">
             <div className="ch"><h2>Billing plan</h2></div>
             {p.memberships.length === 0 ? (
-              <p className="muted" style={{ marginTop: 10, fontSize: 15 }}>No plan yet.</p>
+              <p className="muted" style={{ marginTop: 10, fontSize: 15 }}>
+                {p.status === "pending" && p.billing ? "Signed up, but their Direct Debit isn't set up yet, so they're not a member." : "No plan yet."}
+              </p>
             ) : (
               p.memberships.map((m) => (
                 <p key={m.id} style={{ marginTop: 10, fontSize: 15 }}><b>{m.plan}</b>{m.price ? `, ${m.price}` : ""}. Started {fmtDate(m.startsOn)}.</p>
@@ -216,6 +221,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
                 {p.billing.mandateStatus === "active" ? <span className="pill ok">✓ Direct Debit active</span> : <span className="pill bad">! Direct Debit {p.billing.mandateStatus ?? "not set up"}</span>}
               </p>
             )}
+            {payLink && <SendPayLinkButton action={sendPayLinkAction.bind(null, p.id)} />}
             {can(actor, "payments.manage") && <AddMembershipForm action={addMembershipAction.bind(null, p.id)} options={p.planOptions} today={today} signupFee={p.signupFee} />}
           </section>
 

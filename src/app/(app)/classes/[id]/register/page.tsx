@@ -67,6 +67,7 @@ export default async function RegisterPage({ params, searchParams }: { params: P
                 <span>
                   <strong>{st.firstName} {st.lastName}</strong>
                   {st.status === "trial" && <span className="pill neutral" style={{ marginLeft: 8 }}>Trial</span>}
+                  {st.status === "pending" && <span className="pill warn" style={{ marginLeft: 8 }}>Sign-up unfinished</span>}
                 </span>
                 <button type="submit" className={`btn tick ${st.present ? "on" : "secondary"}`} aria-pressed={st.present} aria-label={`${st.firstName} ${st.lastName}: ${st.present ? "here, tap to undo" : "mark as here"}`}>
                   {st.present ? "✓ Here" : "Mark here"}

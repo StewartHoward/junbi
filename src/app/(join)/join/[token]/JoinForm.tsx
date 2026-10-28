@@ -54,12 +54,17 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
     const n = state.done.names;
     return (
       <div style={{ marginTop: 32 }}>
-        <h2 className="m-h2" style={{ fontSize: 32 }}>Thanks, you&apos;re signed up.</h2>
-        <p className="m-sub" style={{ fontSize: 19 }}>
-          {n.length ? `${n.join(" and ")} ${n.length === 1 ? "is" : "are"} registered with ${state.done.clubName}. ` : ""}
-          The club will be in touch about classes. We&apos;ve emailed you a copy.
-        </p>
-        {state.done.paymentError && <p className="m-sub" style={{ fontSize: 17, marginTop: 12 }}>{state.done.paymentError}</p>}
+        <h2 className="m-h2" style={{ fontSize: 32 }}>{state.done.paymentError ? "Almost there." : "Thanks, you're signed up."}</h2>
+        {state.done.paymentError ? (
+          <p className="m-sub" style={{ fontSize: 19 }}>
+            We&apos;ve got your details, but your Direct Debit isn&apos;t set up yet, so your place isn&apos;t confirmed. The club will email you a link to finish it.
+          </p>
+        ) : (
+          <p className="m-sub" style={{ fontSize: 19 }}>
+            {n.length ? `${n.join(" and ")} ${n.length === 1 ? "is" : "are"} registered with ${state.done.clubName}. ` : ""}
+            The club will be in touch about classes. We&apos;ve emailed you a copy.
+          </p>
+        )}
       </div>
     );
   }

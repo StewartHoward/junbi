@@ -287,7 +287,7 @@ export async function addStudentMembership(
       return { send: { st, plan, payer: { ...payer, email: payer.email }, club, provider: account.provider } };
     }
     await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, status: "active" });
-    await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+    await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), inArray(s.students.status, ["trial", "pending"])));
     await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "membership", entityId: st.id, after: { planId: plan.id } });
     return { added: true };
   });
@@ -309,7 +309,7 @@ export async function addStudentMembership(
     }
     await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
       await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, providerSubscriptionId: subscriptionId, status: "active" });
-      await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+      await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), inArray(s.students.status, ["trial", "pending"])));
       await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "membership", entityId: st.id, after: { planId: plan.id, subscriptionId } });
     });
     return { ok: true, value: { emailed: null } };
@@ -553,7 +553,7 @@ export async function completeSetup(
       await tx.insert(s.memberships).values({ clubId, studentId: sub.studentId, planId: sub.planId, startsOn: today, providerSubscriptionId: sub.subscriptionId, status: "active" });
     }
     const ids = r.subscriptions.map((x) => x.studentId);
-    if (ids.length) await tx.update(s.students).set({ status: "active" }).where(and(inArray(s.students.id, ids), eq(s.students.status, "trial")));
+    if (ids.length) await tx.update(s.students).set({ status: "active" }).where(and(inArray(s.students.id, ids), inArray(s.students.status, ["trial", "pending"])));
     await tx.update(s.paymentSetups).set({ status: "completed", completedAt: new Date() }).where(eq(s.paymentSetups.id, setupId));
     await tx.insert(s.auditLog).values({ clubId, action: "create", entity: "payment_setup", entityId: setupId, after: { provider: setup.provider, students: ids.length } });
   });

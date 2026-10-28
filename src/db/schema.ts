@@ -31,7 +31,7 @@ const clubId = () =>
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
 export const staffRole = pgEnum("staff_role", ["owner", "admin", "instructor", "assistant"]);
-export const studentStatus = pgEnum("student_status", ["trial", "active", "paused", "frozen", "cancelled"]);
+export const studentStatus = pgEnum("student_status", ["trial", "active", "paused", "frozen", "cancelled", "pending"]);
 export const gradeKind = pgEnum("grade_kind", ["kup", "poom", "dan", "kyu", "grade"]);
 export const gradingOutcome = pgEnum("grading_outcome", ["pass", "merit", "distinction", "fail"]);
 export const billingInterval = pgEnum("billing_interval", ["monthly", "termly", "annual"]);

@@ -275,22 +275,42 @@ export const templates = {
       { label: "Set up Direct Debit", url },
       "If you weren't expecting this, contact the club before setting anything up.",
     ),
-  joinConfirm: (parentName: string, clubName: string, names: string[]) =>
+  joinConfirm: (parentName: string, clubName: string, names: string[], awaitingDebit = false) =>
     build(
       `You're signed up to ${clubName}`,
       "Thanks, you're signed up.",
       [
         `Hi ${first(parentName)},`,
-        `${list(names)} ${names.length === 1 ? "is" : "are"} now registered with ${clubName}. The club will be in touch about classes.`,
+        awaitingDebit
+          ? `We've got ${list(names)}'s details. Your place at ${clubName} is confirmed once your Direct Debit is set up. If you didn't finish it, the club can send you a link.`
+          : `${list(names)} ${names.length === 1 ? "is" : "are"} now registered with ${clubName}. The club will be in touch about classes.`,
         "If anything changes, like medical details or contact numbers, just let the club know.",
       ],
     ),
-  newSignup: (clubName: string, parentName: string, names: string[], url: string) =>
+  newSignup: (clubName: string, parentName: string, names: string[], url: string, awaitingDebit = false) =>
     build(
       `New sign-up: ${list(names)}`,
       `New sign-up for ${clubName}.`,
-      [`${parentName} has signed up ${list(names)} using your sign-up link.`, "They're on your student list as members."],
+      [
+        `${parentName} has signed up ${list(names)} using your sign-up link.`,
+        awaitingDebit
+          ? "They become members once their Direct Debit is set up. Until then they show as Sign-up unfinished, and you can send them a payment link from their profile."
+          : "They're on your student list as members.",
+      ],
       { label: "See them in Junbi", url },
+    ),
+  /** Sent from a student's profile: the family picks a membership and sets up Direct Debit. */
+  choosePlanLink: (parentName: string, clubName: string, names: string[], url: string) =>
+    build(
+      `Finish joining ${clubName}`,
+      "Choose a membership and set up your Direct Debit.",
+      [
+        `Hi ${first(parentName)},`,
+        `To finish ${list(names)}'s place at ${clubName}, please choose a membership and set up your Direct Debit. It takes about two minutes and is protected by the Direct Debit Guarantee.`,
+        "The link works for 14 days. If it runs out, just ask the club for a new one.",
+      ],
+      { label: "Choose a membership", url },
+      "If you weren't expecting this, contact the club before setting anything up.",
     ),
   /** A message from a club to its families. Body paragraphs are split on blank lines. */
   clubMessage: (clubName: string, senderName: string | null, subject: string, body: string) => {

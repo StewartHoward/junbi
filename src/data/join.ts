@@ -14,7 +14,8 @@ import { isRealDate } from "@/lib/dates";
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
  * Parents fill in their details and their children's, pick a membership, and join the club as members.
- * When the club takes Direct Debit, they go straight on to set it up with Stripe or GoCardless.
+ * When the club takes Direct Debit, they go straight on to set it up with Stripe or GoCardless, and only
+ * become members (Active, with their membership) once it's set up. Until then they're "pending".
  */
 
 export async function joinLink(actor: Actor): Promise<string> {
@@ -238,7 +239,8 @@ export async function submitJoin(
           firstName: p.firstName,
           lastName: p.lastName,
           dateOfBirth: p.dateOfBirth,
-          status: "active",
+          // With Direct Debit, they're members once it's set up. Until then they show as "Sign-up unfinished".
+          status: payment?.provider ? "pending" : "active",
           medicalNotes: p.medical || null,
           firstAidConsent: d.firstAidConsent,
           photoConsent: d.photoConsent,
@@ -264,8 +266,9 @@ export async function submitJoin(
 
   const url = await appUrl();
   const parentName = `${d.parentFirstName} ${d.parentLastName}`;
-  const confirm = templates.joinConfirm(parentName, club.clubName, out.names);
-  const alert = templates.newSignup(club.clubName, parentName, out.names, `${url}/students`);
+  const awaitingDebit = out.items.length > 0;
+  const confirm = templates.joinConfirm(parentName, club.clubName, out.names, awaitingDebit);
+  const alert = templates.newSignup(club.clubName, parentName, out.names, `${url}/students`, awaitingDebit);
   // Never let email trouble undo a sign-up.
   await Promise.allSettled([
     sendEmail({ to: d.email, ...confirm, template: "join-confirm", clubId: club.clubId }),

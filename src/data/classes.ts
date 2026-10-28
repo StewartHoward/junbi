@@ -170,7 +170,7 @@ export async function getRegister(actor: Actor, classId: string, date: string) {
     const students = await tx
       .select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName, status: s.students.status })
       .from(s.students)
-      .where(and(eq(s.students.siteId, c.siteId), inArray(s.students.status, ["trial", "active"])))
+      .where(and(eq(s.students.siteId, c.siteId), inArray(s.students.status, ["trial", "active", "pending"])))
       .orderBy(asc(s.students.firstName), asc(s.students.lastName));
     return {
       cls: c,

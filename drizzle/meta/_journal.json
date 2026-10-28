@@ -225,6 +225,13 @@
       "when": 1791667568924,
       "tag": "0031_pin_current_club_id",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791667569924,
+      "tag": "0032_student_pending",
+      "breakpoints": true
     }
   ]
 }

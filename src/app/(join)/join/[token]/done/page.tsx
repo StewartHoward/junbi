@@ -10,9 +10,9 @@ export default async function JoinDone({ params, searchParams }: { params: Promi
   if (cancelled || !st) {
     return (
       <div className="m-auth">
-        <h1>You&apos;re signed up.</h1>
+        <h1>Almost there.</h1>
         <p className="m-sub" style={{ fontSize: 19 }}>
-          Your Direct Debit isn&apos;t set up yet. That&apos;s fine: the club has your details and will send you a link to finish it.
+          Your Direct Debit isn&apos;t set up yet, so your place isn&apos;t confirmed. Go back to finish it, or the club can email you a link.
         </p>
       </div>
     );

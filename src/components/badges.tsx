@@ -46,6 +46,7 @@ const STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "neu
   paused: { label: "Paused", tone: "warn" },
   frozen: { label: "Frozen", tone: "warn" },
   cancelled: { label: "Cancelled", tone: "neutral" },
+  pending: { label: "Sign-up unfinished", tone: "warn" },
 };
 
 export function StatusPill({ status }: { status: string }) {

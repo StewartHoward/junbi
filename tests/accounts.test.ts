@@ -26,6 +26,8 @@ const importer = await import("@/data/student-import");
 const join = await import("@/data/join");
 const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
+const paylink = await import("@/data/paylink");
+const { signLink } = await import("@/lib/payments/crypto");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
 const dash = await import("@/data/dashboard");
@@ -723,6 +725,9 @@ describe("club payments and paying at sign-up", () => {
     expect(setup?.status).toBe("pending");
     expect(setup?.items.map((i) => [i.firstName, i.plan?.amountPence])).toEqual([["Ivy", 3500], ["Jay", 3500]]);
     expect((await join.joinSetupStatus(token, setupId))?.status).toBe("pending");
+    // Not members until the Direct Debit is set up.
+    const before = await adminSql`select status from students where club_id = ${p.clubId} and first_name in ('Ivy', 'Jay')`;
+    expect(before.map((x) => x.status)).toEqual(["pending", "pending"]);
 
     // The provider says it's done: memberships start, students become Active, mandate saved. Twice is harmless.
     const subs = setup!.items.map((i) => ({ studentId: i.studentId, planId: i.planId, subscriptionId: `SB_${i.firstName}` }));
@@ -805,6 +810,42 @@ describe("club payments and paying at sign-up", () => {
     expect(setup?.signupFeePence).toBe(5000);
     expect((await pay.setSignupFee(p, "")).ok).toBe(true);
     expect((await pay.listPlans(p)).signupFeePence).toBe(0);
+  });
+
+  it("staff send a plan and payment link to a family who didn't finish, and they become members", async () => {
+    const kids = (await pay.listPlans(p)).plans.find((x) => x.name === "Kids monthly")!.id;
+    const [al] = await adminSql`select id, household_id, status from students where club_id = ${p.clubId} and first_name = 'Al'`;
+    expect(al.status).toBe("pending"); // signed up above but never finished the Direct Debit
+    expect(await paylink.canSendPayLink(p, al.id)).toBe(true);
+    expect(await paylink.canSendPayLink({ ...p, role: "instructor" }, al.id)).toBe(false);
+    await expect(paylink.sendPayLink({ ...p, role: "instructor" }, al.id)).rejects.toThrow(/Not allowed/);
+    const spy = quiet();
+    const sent = await paylink.sendPayLink(p, al.id);
+    expect(sent.ok && sent.value.email).toBe("fay@example.test");
+
+    // Links are signed, for one family and one purpose, and run out.
+    const token = signLink("pay", { c: p.clubId, h: al.household_id }, 3600);
+    expect(await paylink.payPage(token.slice(0, -2) + "xx")).toBeNull();
+    expect(await paylink.payPage(signLink("other", { c: p.clubId, h: al.household_id }, 3600))).toBeNull();
+    expect(await paylink.payPage(signLink("pay", { c: p.clubId, h: al.household_id }, -10))).toBeNull();
+    expect(await paylink.payPage(signLink("pay", { c: a.clubId, h: al.household_id }, 3600))).toBeNull(); // another club can't see this family
+
+    const page = await paylink.payPage(token);
+    expect(page?.people.map((x) => [x.name, x.suggestedPlanId])).toEqual([["Al Fee", kids], ["Bo Fee", kids]]); // what they picked at sign-up
+    const bo = page!.people[1].id;
+    const missing = await paylink.submitPay(token, { [al.id]: kids });
+    expect(!missing.ok && missing.errors[bo]).toMatch(/membership/);
+    const r = await paylink.submitPay(token, { [al.id]: kids, [bo]: "none" });
+    spy.mockRestore();
+    expect(r.ok && r.value.url).toMatch(/\/join\/[a-f0-9]+\/done\?setup=[0-9a-f-]{36}&fake=1$/);
+    const setupId = r.ok ? new URL(r.value.url).searchParams.get("setup")! : "";
+    const setup = await pay.loadSetup(p.clubId, setupId);
+    expect(setup?.items.map((i) => i.firstName)).toEqual(["Al"]);
+    await pay.completeSetup(p.clubId, setupId, { customerId: "CU9", mandateId: "MD9", subscriptions: setup!.items.map((i) => ({ studentId: i.studentId, planId: i.planId, subscriptionId: "SB_Al" })) });
+    const [after] = await adminSql`select status from students where id = ${al.id}`;
+    expect(after.status).toBe("active");
+    expect(await paylink.canSendPayLink(p, al.id)).toBe(false); // on a plan now
+    expect((await paylink.payPage(token))?.people.map((x) => x.name)).toEqual(["Bo Fee"]); // only Bo left
   });
 
   it("without Direct Debit, families still pick a price and join as members", async () => {

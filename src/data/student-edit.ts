@@ -37,7 +37,7 @@ const studentFields = {
   lastName: z.string().trim().min(1, "Enter a last name.").max(80),
   dateOfBirth: optDate,
   siteId: uuid,
-  status: z.enum(["trial", "active", "paused", "frozen", "cancelled"]),
+  status: z.enum(["trial", "active", "paused", "frozen", "cancelled", "pending"]),
   medicalNotes: optText(2000),
   firstAidConsent: z.boolean(),
   photoConsent: z.boolean(),

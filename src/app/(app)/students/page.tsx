@@ -19,6 +19,7 @@ const STATUSES = [
   ["", "Any status"],
   ["active", "Active"],
   ["trial", "Trial"],
+  ["pending", "Sign-up unfinished"],
   ["paused", "Paused"],
   ["frozen", "Frozen"],
   ["cancelled", "Left"],

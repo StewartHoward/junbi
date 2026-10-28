@@ -87,6 +87,7 @@ export function StudentForm({
               <option value="paused">Paused</option>
               <option value="frozen">Frozen</option>
               <option value="cancelled">Cancelled</option>
+              <option value="pending">Sign-up unfinished</option>
             </select>
           </div>
           {mode === "new" && (

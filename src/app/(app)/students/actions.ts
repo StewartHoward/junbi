@@ -6,6 +6,7 @@ import { requireActor } from "@/auth/session";
 import { createStudent, recordBelt, updateFamilyContact, updateStudent } from "@/data/student-edit";
 import type { FieldErrors } from "@/data/accounts";
 import { addStudentMembership } from "@/data/payments";
+import { sendPayLink } from "@/data/paylink";
 
 export type StudentFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -164,4 +165,11 @@ export async function updateContactAction(id: string, _prev: ContactState, f: Fo
   if (!r.ok) return { errors: r.errors, values: Object.fromEntries([...f.entries()].filter((e): e is [string, string] => typeof e[1] === "string")) };
   revalidatePath("/students");
   return { saved: true };
+}
+
+export async function sendPayLinkAction(id: string, _prev: MembershipState, _f: FormData): Promise<MembershipState> {
+  const actor = await requireActor();
+  const r = await sendPayLink(actor, id);
+  if (!r.ok) return { errors: r.errors };
+  return { done: `Sent to ${r.value.email}. They choose a membership and set up their Direct Debit, then they become members.` };
 }

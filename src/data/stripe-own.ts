@@ -264,7 +264,7 @@ export async function takeOver(actor: Actor, input: z.input<typeof takeoverSchem
             await tx.insert(s.mandates).values({ clubId: actor.clubId, householdId: st.householdId, provider: "stripe", providerCustomerId: customerId, providerMandateId: null, status: "active" });
           }
           await tx.insert(s.memberships).values({ clubId: actor.clubId, studentId: st.id, planId: plan.id, startsOn, providerSubscriptionId: newSubId, status: "active" });
-          await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), eq(s.students.status, "trial")));
+          await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, st.id), inArray(s.students.status, ["trial", "pending"])));
           await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "create", entity: "direct_debit_takeover", entityId: st.id, after: { from: sub.id, to: newSubId, planId: plan.id, startsOn } });
         });
       };
