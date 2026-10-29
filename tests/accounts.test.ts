@@ -27,6 +27,7 @@ const join = await import("@/data/join");
 const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
 const paylink = await import("@/data/paylink");
+const timetable = await import("@/data/timetable");
 const { signLink } = await import("@/lib/payments/crypto");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
@@ -260,6 +261,22 @@ describe("students, classes and registers", () => {
     const bSite = (await club.getClubOverview(b)).sites[0].id;
     const bad = await studentsEdit.updateStudent(b, studentId, { firstName: "X", lastName: "Y", siteId: bSite, status: "active", firstAidConsent: false, photoConsent: false }).catch((e) => e);
     expect(String(bad)).toMatch(/Not allowed/);
+  });
+
+  it("shows the live timetable on the club's own website, and nothing else", async () => {
+    const { token } = await timetable.timetableEmbed(a);
+    await expect(timetable.timetableEmbed({ ...a, role: "instructor" })).rejects.toThrow(/Not allowed/);
+    const t = await timetable.publicTimetable(token);
+    expect(t?.classes.map((c) => [c.name, c.weekday, c.start, c.end])).toEqual([["Juniors", 1, "17:45", "18:45"]]);
+    expect(t?.signupUrl).toBeNull(); // only when the club asks for a Sign up button
+    expect((await timetable.publicTimetable(token, { signup: true }))?.signupUrl).toMatch(/\/join\/[a-f0-9]+$/);
+    expect(JSON.stringify(t)).not.toMatch(/student|capacity/i);
+    // Wrong, tampered or other-purpose tokens open nothing.
+    expect(await timetable.publicTimetable(token.slice(0, -2) + "xx")).toBeNull();
+    expect(await timetable.publicTimetable("nonsense")).toBeNull();
+    expect(await timetable.publicTimetable(signLink("pay", { c: a.clubId }, 3600))).toBeNull();
+    // Club B's timetable doesn't show club A's classes.
+    expect((await timetable.publicTimetable((await timetable.timetableEmbed(b)).token))?.classes).toEqual([]);
   });
 
   it("stops an assistant adding students", async () => {

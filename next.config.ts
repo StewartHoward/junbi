@@ -26,10 +26,23 @@ const securityHeaders = [
   },
 ];
 
+/**
+ * The timetable clubs show on their own websites (/embed/...) is the one thing allowed inside another
+ * site's frame. It's read-only and has no sign-in, so click-jacking isn't a risk there.
+ */
+const embedHeaders = securityHeaders
+  .filter((h) => h.key !== "X-Frame-Options")
+  .map((h) => (h.key === "Content-Security-Policy" ? { ...h, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors *") } : h));
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/((?!embed/).*)", headers: securityHeaders },
+      { source: "/embed/:path*", headers: embedHeaders },
+      // The script clubs paste into their sites: cache it for an hour so it's quick, but changes still reach everyone.
+      { source: "/embed.js", headers: [{ key: "Cache-Control", value: "public, max-age=3600" }] },
+    ];
   },
   // Student import posts a whole spreadsheet to a server action.
   experimental: { serverActions: { bodySizeLimit: "8mb" } },

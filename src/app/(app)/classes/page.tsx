@@ -7,6 +7,8 @@ import { clubArts } from "@/data/club";
 import { ArtFilter } from "@/components/ArtFilter";
 import { disciplineName } from "@/lib/disciplines";
 import { archiveClassAction } from "../actions";
+import { timetableEmbed } from "@/data/timetable";
+import { TimetableEmbedCard } from "./TimetableEmbedCard";
 
 export const metadata: Metadata = { title: "Classes" };
 
@@ -24,6 +26,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
   const filter = art && arts.includes(art) ? art : undefined;
   const classes = await listClasses(actor, { discipline: filter });
   const manage = can(actor, "classes.manage");
+  const embed = manage && classes.length > 0 ? await timetableEmbed(actor) : null;
 
   return (
     <>
@@ -76,6 +79,8 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
           );
         })
       )}
+
+      {embed && <TimetableEmbedCard token={embed.token} base={embed.base} />}
     </>
   );
 }
