@@ -3,7 +3,8 @@
  * Paste this where the timetable should go (Junbi gives you the exact code under Classes):
  *   <div class="junbi-timetable" data-token="..."></div>
  *   <script src="https://junbi.co.uk/embed.js" async></script>
- * Optional: data-theme="dark", data-accent="c8102e" (your colour, no #), data-signup="1" (adds a Sign up button).
+ * Optional colours (hex, no #): data-accent (buttons), data-card (boxes), data-text, data-bg (behind it all;
+ * leave out to use your website's own background). data-theme="dark" for dark defaults, data-signup="1" for a Sign up button.
  */
 (function () {
   var scripts = document.getElementsByTagName("script");
@@ -25,9 +26,11 @@
     var id = "jt" + Math.random().toString(36).slice(2, 10);
     var q = "frame=" + id;
     var theme = el.getAttribute("data-theme");
-    var accent = (el.getAttribute("data-accent") || "").replace("#", "");
     if (theme === "dark") q += "&theme=dark";
-    if (/^[0-9a-fA-F]{6}$/.test(accent)) q += "&accent=" + accent;
+    ["accent", "card", "text", "bg"].forEach(function (k) {
+      var v = (el.getAttribute("data-" + k) || "").replace("#", "");
+      if (/^[0-9a-fA-F]{6}$/.test(v)) q += "&" + k + "=" + v;
+    });
     if (el.getAttribute("data-signup") === "1") q += "&signup=1";
     var f = document.createElement("iframe");
     f.src = origin + "/embed/timetable/" + token + "?" + q;

@@ -12,6 +12,8 @@ import { listPendingInvites } from "@/data/email-flows";
 import { emailConfigured } from "@/lib/email";
 import { listPlans } from "@/data/payments";
 import { PricesCard } from "../payments/PricesCard";
+import { timetableEmbed } from "@/data/timetable";
+import { TimetableCard } from "./TimetableCard";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -20,7 +22,12 @@ export default async function SettingsPage() {
   const owner = can(actor, "club.manage");
   if (!owner && !can(actor, "classes.manage")) redirect("/today");
   const seePrices = can(actor, "payments.view");
-  const [o, invites, prices] = await Promise.all([getClubOverview(actor), listPendingInvites(actor), seePrices ? listPlans(actor) : null]);
+  const [o, invites, prices, embed] = await Promise.all([
+    getClubOverview(actor),
+    listPendingInvites(actor),
+    seePrices ? listPlans(actor) : null,
+    can(actor, "classes.manage") ? timetableEmbed(actor) : null,
+  ]);
   const plan = PLANS.find((p) => p.id === o.club.plan);
   const discount = describeDiscount(o.club.discountPercent, o.club.discountMonths);
   const freeForGood = (o.club.discountPercent ?? 0) >= 100 && o.club.discountMonths == null;
@@ -94,6 +101,8 @@ export default async function SettingsPage() {
           </form>
         </section>
       )}
+
+      {embed && <TimetableCard token={embed.token} base={embed.base} />}
 
       {owner && (
         <section className="card" style={{ marginTop: 20 }}>

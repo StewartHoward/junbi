@@ -5,10 +5,16 @@ import { WEEKDAYS, isoWeekday, todayISO } from "@/data/classes";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Class timetable", robots: { index: false, follow: false } };
 
-type Params = { site?: string; theme?: string; accent?: string; signup?: string; frame?: string };
+type Params = { site?: string; theme?: string; accent?: string; card?: string; text?: string; bg?: string; signup?: string; frame?: string };
 
 /** Only plain hex colours are accepted, so nothing else can be slipped into the page's styles. */
-const hex = (v?: string) => (v && /^[0-9a-f]{6}$/i.test(v) ? `#${v}` : null);
+const hex = (v?: string) => (v && /^[0-9a-f]{6}$/i.test(v) ? `#${v.toLowerCase()}` : null);
+/** White or near-black, whichever reads better on the given colour. */
+function onColour(h: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.4 ? "#1d1d1f" : "#ffffff";
+}
 
 /**
  * The club's live timetable, shown inside its own website (see public/embed.js for the code clubs paste).
@@ -19,23 +25,27 @@ export default async function EmbedTimetable({ params, searchParams }: { params:
   const t = await publicTimetable(token, { signup: q.signup === "1" });
   const dark = q.theme === "dark";
   const accent = hex(q.accent) ?? (dark ? "#2997ff" : "#0066cc");
+  const card = hex(q.card) ?? (dark ? "#1c1c1e" : "#ffffff");
+  const ink = hex(q.text) ?? (dark ? "#f5f5f7" : "#1d1d1f");
+  const bg = hex(q.bg);
+  const darkish = onColour(card) === "#ffffff";
   const frame = q.frame && /^[a-z0-9-]{1,40}$/i.test(q.frame) ? q.frame : "";
   const keep = (extra: Record<string, string | undefined>) => {
     const u = new URLSearchParams();
-    for (const [k, v] of Object.entries({ theme: q.theme, accent: q.accent, signup: q.signup, frame, ...extra })) if (v) u.set(k, v);
+    for (const [k, v] of Object.entries({ theme: q.theme, accent: q.accent, card: q.card, text: q.text, bg: q.bg, signup: q.signup, frame, ...extra })) if (v) u.set(k, v);
     const s = u.toString();
     return s ? `?${s}` : "?";
   };
 
   const css = `
-    :root { color-scheme: ${dark ? "dark" : "light"}; }
-    html, body { background: transparent !important; margin: 0; }
-    .jt { --ink: ${dark ? "#f5f5f7" : "#1d1d1f"}; --muted: ${dark ? "#a1a1a6" : "#6e6e73"}; --line: ${dark ? "#38383a" : "#e5e5ea"};
-      --card: ${dark ? "#1c1c1e" : "#ffffff"}; --accent: ${accent};
+    :root { color-scheme: ${darkish ? "dark" : "light"}; }
+    html, body { background: ${bg ?? "transparent"} !important; margin: 0; }
+    .jt { --ink: ${ink}; --muted: color-mix(in srgb, ${ink} 62%, ${card}); --line: color-mix(in srgb, ${ink} 14%, ${card});
+      --card: ${card}; --accent: ${accent}; --on-accent: ${onColour(accent)};
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; color: var(--ink); padding: 4px; }
     .jt-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .jt-tab { padding: 8px 14px; min-height: 36px; box-sizing: border-box; border-radius: 980px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; }
-    .jt-tab[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .jt-tab { background: var(--card); padding: 8px 14px; min-height: 36px; box-sizing: border-box; border-radius: 980px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; }
+    .jt-tab[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .jt-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; align-items: start; }
     .jt-day { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
     .jt-day h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
@@ -46,14 +56,15 @@ export default async function EmbedTimetable({ params, searchParams }: { params:
     .jt-name { font-weight: 600; font-size: 15px; margin-top: 1px; }
     .jt-sub { font-size: 13px; color: var(--muted); }
     .jt-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 14px; }
-    .jt-btn { background: var(--accent); color: #fff; text-decoration: none; border-radius: 980px; padding: 11px 20px; font-weight: 600; font-size: 15px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; }
-    .jt-by { font-size: 12px; color: var(--muted); text-decoration: none; }
-    .jt-empty { color: var(--muted); font-size: 15px; padding: 12px 0; }
+    .jt-btn { background: var(--accent); color: var(--on-accent); text-decoration: none; border-radius: 980px; padding: 11px 20px; font-weight: 600; font-size: 15px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; }
+    .jt-by { font-size: 12px; color: ${bg ? `color-mix(in srgb, ${onColour(bg)} 60%, ${bg})` : "var(--muted)"}; text-decoration: none; }
+    .jt-empty { color: ${bg ? onColour(bg) : "var(--muted)"}; font-size: 15px; padding: 12px 0; }
   `;
   // Tells the club's page how tall the timetable is, so the frame grows to fit with no scroll bar.
   const resize = frame
-    ? `(function(){var f=${JSON.stringify(frame)};function send(){parent.postMessage({junbiTimetable:f,height:document.documentElement.scrollHeight},"*")}
-       send();window.addEventListener("load",send);if(window.ResizeObserver){new ResizeObserver(send).observe(document.body)}})();`
+    ? `(function(){var f=${JSON.stringify(frame)};var el=document.querySelector(".jt");
+       function send(){parent.postMessage({junbiTimetable:f,height:Math.ceil(el.getBoundingClientRect().height)+2},"*")}
+       send();window.addEventListener("load",send);if(window.ResizeObserver){new ResizeObserver(send).observe(el)}})();`
     : "";
 
   if (!t) {
