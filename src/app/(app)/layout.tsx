@@ -19,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(canSeeEvents(actor) ? [{ href: "/events", label: "Gradings" }] : []),
     ...(can(actor, "messages.send") ? [{ href: "/messages", label: "Messages" }] : []),
     ...(can(actor, "payments.view") ? [{ href: "/payments", label: "Payments" }] : []),
+    ...(can(actor, "payments.manage") ? [{ href: "/shop", label: "Shop" }] : []),
     ...(can(actor, "club.manage") || can(actor, "classes.manage") ? [{ href: "/settings", label: "Settings" }] : []),
   ];
   const sites = await visibleSiteList(actor);

@@ -4,13 +4,13 @@ import { z } from "zod";
 import { withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
 import { assertCan, can, canAtSite, ForbiddenError, type Actor } from "@/auth/permissions";
-import { signLink, verifyLink, decrypt } from "@/lib/payments/crypto";
+import { signLink, verifyLink } from "@/lib/payments/crypto";
+import { accountFor, cardAccount, cardSessionPaid, startCardCheckout, validSessionId } from "./card";
 import { appUrl, sendEmail, templates } from "@/lib/email";
 import { disciplineName } from "@/lib/disciplines";
 import { isRealDate } from "@/lib/dates";
 import type { FieldErrors, Result } from "./accounts";
 import { CLUB_TZ, todayISO } from "./classes";
-import type { ConnectedAccount, ProviderId } from "@/lib/payments/types";
 
 /*
  * Gradings and events. Staff set one up, invite families (for a grading, the students ready for their
@@ -448,20 +448,6 @@ async function releaseStale(tx: Tx, eventId: string) {
     .where(and(eq(s.eventBookings.eventId, eventId), eq(s.eventBookings.status, "pending"), sql`${s.eventBookings.pendingSince} < now() - interval '65 minutes'`));
 }
 
-async function accountFor(tx: Tx): Promise<ConnectedAccount | null> {
-  const [a] = await tx.select().from(s.clubPaymentAccounts);
-  if (!a) return null;
-  return { provider: a.provider as ProviderId, accountId: a.accountId, accessToken: a.accessTokenEnc ? decrypt(a.accessTokenEnc) : undefined };
-}
-/** Card payments go through the club's own Stripe. GoCardless clubs (and clubs with no payments) take payment at the club. */
-async function cardAccount(tx: Tx) {
-  const a = await accountFor(tx);
-  if (!a || a.provider !== "stripe") return null;
-  if (process.env.PAYMENTS_FAKE === "1") return a;
-  const { ownStripe } = await import("@/lib/payments/stripe");
-  return ownStripe(a) || process.env.STRIPE_SECRET_KEY ? a : null;
-}
-
 export type BookingPage = {
   clubName: string;
   kind: "grading" | "event";
@@ -559,33 +545,15 @@ export async function submitBooking(token: unknown, chosen: string[], declined: 
   const base = await appUrl();
   const ids = items.map((b) => b.id);
   try {
-    let session: { id: string; url: string };
-    if (process.env.PAYMENTS_FAKE === "1") {
-      session = { id: `cs_fake_${ids[0]}`, url: `${base}/book/${token}/done?session=cs_fake_${ids[0]}&fake=1` };
-    } else {
-      const { stripeApi, stripeAuth } = await import("@/lib/payments/stripe");
-      const auth = stripeAuth(account);
-      session = await stripeApi<{ id: string; url: string }>(
-        "POST",
-        "/checkout/sessions",
-        {
-          mode: "payment",
-          ...(email ? { customer_email: email } : {}),
-          line_items: items.map((b) => ({
-            quantity: 1,
-            price_data: { currency: "gbp", unit_amount: event.feePence, product_data: { name: `${event.title}: ${b.firstName}${b.grade ? ` (${b.grade})` : ""}` } },
-          })),
-          success_url: `${base}/book/${token}/done?session={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${base}/book/${token}`,
-          metadata: { junbi_event_id: event.id, junbi_bookings: ids.join(",") },
-          payment_intent_data: { metadata: { junbi_event_id: event.id }, description: event.title },
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
-        },
-        auth.account,
-        undefined,
-        auth.key,
-      );
-    }
+    const session = await startCardCheckout(account, {
+      lines: items.map((b) => ({ name: `${event.title}: ${b.firstName}${b.grade ? ` (${b.grade})` : ""}`, unitPence: event.feePence, quantity: 1 })),
+      email,
+      successUrl: `${base}/book/${token}/done?session={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${base}/book/${token}`,
+      metadata: { junbi_event_id: event.id, junbi_bookings: ids.join(",") },
+      description: event.title,
+      fakeKey: ids[0],
+    });
     await withClub({ clubId: c.c }, (tx) => tx.update(s.eventBookings).set({ checkoutRef: session.id }).where(inArray(s.eventBookings.id, ids)));
     return { ok: true, value: { url: session.url, confirmed: 0 } };
   } catch (err) {
@@ -600,17 +568,9 @@ export async function submitBooking(token: unknown, chosen: string[], declined: 
  * from the page families come back to (whichever is first). Safe to call twice.
  */
 export async function confirmCardPayment(clubId: string, sessionId: string): Promise<number> {
-  if (!/^cs_[A-Za-z0-9_-]{1,200}$/.test(sessionId)) return 0;
+  if (!validSessionId(sessionId)) return 0;
   const account = await withClub({ clubId }, accountFor);
-  if (!account) return 0;
-  let paid = process.env.PAYMENTS_FAKE === "1" && sessionId.startsWith("cs_fake_");
-  if (!paid) {
-    const { stripeApi, stripeAuth } = await import("@/lib/payments/stripe");
-    const auth = stripeAuth(account);
-    const session = await stripeApi<{ payment_status: string; metadata?: Record<string, string> }>("GET", `/checkout/sessions/${sessionId}`, null, auth.account, undefined, auth.key).catch(() => null);
-    paid = session?.payment_status === "paid";
-  }
-  if (!paid) return 0;
+  if (!account || !(await cardSessionPaid(account, sessionId))) return 0;
   return withClub({ clubId }, async (tx) => {
     const done = await tx
       .update(s.eventBookings)

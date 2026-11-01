@@ -14,6 +14,8 @@ import { listPlans } from "@/data/payments";
 import { PricesCard } from "../payments/PricesCard";
 import { timetableEmbed } from "@/data/timetable";
 import { TimetableCard } from "./TimetableCard";
+import { websiteSettings } from "@/data/website";
+import { WebsiteCard } from "./WebsiteCard";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -28,6 +30,7 @@ export default async function SettingsPage() {
     seePrices ? listPlans(actor) : null,
     can(actor, "classes.manage") ? timetableEmbed(actor) : null,
   ]);
+  const website = owner ? await websiteSettings(actor) : null;
   const plan = PLANS.find((p) => p.id === o.club.plan);
   const discount = describeDiscount(o.club.discountPercent, o.club.discountMonths);
   const freeForGood = (o.club.discountPercent ?? 0) >= 100 && o.club.discountMonths == null;
@@ -101,6 +104,8 @@ export default async function SettingsPage() {
           </form>
         </section>
       )}
+
+      {website && <WebsiteCard slug={website.slug} published={website.published} settings={website.settings} base={website.base} />}
 
       {embed && <TimetableCard token={embed.token} base={embed.base} />}
 

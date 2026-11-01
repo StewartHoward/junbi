@@ -299,6 +299,33 @@ export const templates = {
       ],
       { label: "See them in Junbi", url },
     ),
+  /** A free-trial request from the club's website. */
+  websiteLead: (clubName: string, who: string, when: string | null, url: string) =>
+    build(
+      `New trial request: ${who}`,
+      `New trial request for ${clubName}.`,
+      [`${who} asked for a free trial on your website.`, when ? `They've picked ${when}. We've emailed them the details.` : "They didn't pick a class yet. Give them a call or email to book one."],
+      { label: "See the lead", url },
+    ),
+  /** Shop: the buyer's confirmation. */
+  orderConfirm: (name: string, clubName: string, lines: string[], total: string, paid: boolean) =>
+    build(
+      `Your order from ${clubName}`,
+      paid ? "Thanks, your order is paid." : "Thanks for your order.",
+      [
+        `Hi ${first(name)},`,
+        `Here's what you ordered: ${lines.join(", ")}. Total ${total}${paid ? ", paid by card" : ""}.`,
+        paid ? "The club will let you know when it's ready, or hand it over at your next class." : "Please pay at the club. They'll hand it over once it's paid.",
+      ],
+    ),
+  /** Shop: tells the club about a new order. */
+  newOrder: (clubName: string, name: string, lines: string[], total: string, paid: boolean, url: string) =>
+    build(
+      `New shop order: ${total}`,
+      `New order for ${clubName}.`,
+      [`${name} ordered ${lines.join(", ")}.`, paid ? `${total}, paid by card.` : `${total}, to pay at the club.`],
+      { label: "See orders", url },
+    ),
   /** Parent login: a one-time sign-in link. */
   familyLogin: (firstName: string, clubNames: string[], url: string) =>
     build(

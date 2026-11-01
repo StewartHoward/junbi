@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ownStripe, stripeApi, verifyStripeSignature } from "@/lib/payments/stripe";
 import { cancelMembership, clubForAccount, completeSetup, connectedAccount, recordPayment, updateMandate } from "@/data/payments";
 import { confirmCardPayment } from "@/data/events";
+import { confirmOrderPayment } from "@/data/shop";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,11 @@ export async function POST(req: Request) {
       // A grading or event paid by card.
       if (meta.junbi_bookings) {
         await confirmCardPayment(clubId, o.id);
+        break;
+      }
+      // A shop order paid by card.
+      if (meta.junbi_order) {
+        await confirmOrderPayment(clubId, o.id);
         break;
       }
       const setupId = meta.junbi_setup_id;

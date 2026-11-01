@@ -178,6 +178,36 @@ export async function addLead(actor: Actor, input: LeadInput): Promise<Result<{ 
   return { ok: true, value: { id: made.id, emailed } };
 }
 
+/**
+ * A free-trial request from the club's website (no one signed in). Needs an email, picks a real class on a
+ * future date, emails the family their welcome and tells the club's owners and admins.
+ */
+export async function addWebsiteLead(clubId: string, input: LeadInput): Promise<Result<{ id: string }>> {
+  const p = leadSchema.safeParse({ ...input, source: "Website" });
+  if (!p.success) return { ok: false, errors: errorsOf(p.error) };
+  const d = p.data;
+  if (!d.email) return { ok: false, errors: { email: "Enter your email so the club can confirm your trial." } };
+  if (d.sessionDate && d.sessionDate < new Date().toISOString().slice(0, 10)) return { ok: false, errors: { sessionDate: "Choose a date from today onwards." } };
+  const made = await withClub({ clubId }, async (tx) => {
+    const session = await sessionFor(tx, { ...d, sessionTime: d.classId ? d.sessionTime : null, sessionDate: d.classId ? d.sessionDate : null });
+    if ("error" in session) return session;
+    const [row] = await tx
+      .insert(s.leads)
+      .values({ clubId, siteId: session.siteId, firstName: d.firstName, lastName: d.lastName, email: d.email, phone: d.phone, studentName: d.studentName, studentAge: d.studentAge, classId: session.classId, sessionAt: session.at, source: "Website", notes: d.notes, status: session.at ? "booked" : "new" })
+      .returning({ id: s.leads.id });
+    await tx.insert(s.auditLog).values({ clubId, action: "create", entity: "lead", entityId: row.id, after: { via: "website" } });
+    const staff = (await tx.execute(sql`select u.email from club_staff cs join users u on u.id = cs.user_id where cs.role in ('owner', 'admin')`)) as unknown as Array<{ email: string }>;
+    const [club] = await tx.select({ name: s.clubs.name }).from(s.clubs).where(eq(s.clubs.id, clubId));
+    return { id: row.id, staff: staff.map((x) => x.email), clubName: club.name, at: session.at };
+  });
+  if ("error" in made) return { ok: false, errors: made.error as FieldErrors };
+  await sendWelcome(clubId, made.id);
+  const who = d.studentName ? `${d.firstName} ${d.lastName} for ${d.studentName}` : `${d.firstName} ${d.lastName}`;
+  const t = templates.websiteLead(made.clubName, who.trim(), made.at ? made.at.toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" }) : null, `${await appUrl()}/leads/${made.id}`);
+  await Promise.allSettled(made.staff.map((to) => sendEmail({ to, ...t, template: "website-lead", clubId })));
+  return { ok: true, value: { id: made.id } };
+}
+
 /** Books (or moves) a lead's trial session and emails them the details. */
 export async function bookLeadSession(actor: Actor, leadId: string, input: Pick<LeadInput, "classId" | "sessionDate" | "sessionTime">): Promise<Result<{ emailed: boolean }>> {
   assertCan(actor, "students.edit");

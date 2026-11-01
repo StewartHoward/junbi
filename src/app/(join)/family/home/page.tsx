@@ -88,6 +88,13 @@ export default async function FamilyHome() {
             </div>
           )}
 
+          {c.shopUrl && (
+            <a href={c.shopUrl} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+              <span><b style={{ fontSize: 18 }}>Club shop</b><span style={{ display: "block", opacity: 0.75 }}>Uniforms, kit and more</span></span>
+              <span aria-hidden="true">›</span>
+            </a>
+          )}
+
           <details style={card}>
             <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 18 }}>Your details</summary>
             <DetailsForm action={familyDetailsAction.bind(null, c.clubId, c.householdId)} phone={c.me.phone} contact={c.contact} children={c.children.map((k) => ({ id: k.id, firstName: k.firstName, medicalNotes: k.medicalNotes }))} />

@@ -9,6 +9,7 @@ import { appUrl, sendEmail, templates } from "@/lib/email";
 import { formatPence } from "./students";
 import { CLUB_TZ, WEEKDAYS } from "./classes";
 import type { FieldErrors, Result } from "./accounts";
+import { shopLinkFor } from "./website";
 
 /*
  * Parent login. Parents sign in with a link emailed to the address the club has for them (no password to
@@ -163,6 +164,7 @@ export async function familyOverview(email: string) {
         return {
           clubId: h.club_id,
           clubName: h.club_name,
+          shopUrl: await shopLinkFor(h.club_id),
           householdId: h.household_id,
           me: { firstName: me?.firstName ?? h.first_name, phone: me?.phone ?? "" },
           contact: {

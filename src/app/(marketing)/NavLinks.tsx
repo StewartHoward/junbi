@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/#payments", label: "Direct Debit" },
   { href: "/#switching", label: "Switching" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/guides", label: "Guides" },
   { href: "/login", label: "Sign in" },
 ];
 

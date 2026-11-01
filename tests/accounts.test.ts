@@ -30,6 +30,8 @@ const paylink = await import("@/data/paylink");
 const timetable = await import("@/data/timetable");
 const events = await import("@/data/events");
 const family = await import("@/data/family");
+const shop = await import("@/data/shop");
+const website = await import("@/data/website");
 const { signLink } = await import("@/lib/payments/crypto");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
@@ -1487,5 +1489,97 @@ describe("gradings and events", () => {
     expect(await events.bookingPage(signLink("book", { c: a.clubId, e: ids.grading, h: households.Ava }, 3600))).toBeNull();
     await events.cancelEvent(g, ids.grading);
     expect(await events.bookingPage(signLink("book", { c: g.clubId, e: ids.grading, h: households.Ava }, 3600))).toBeNull();
+  });
+});
+
+describe("club shop and club website", () => {
+  let k: Actor;
+  let slug = "";
+  const quiet = () => vi.spyOn(console, "log").mockImplementation(() => {});
+
+  beforeAll(async () => {
+    process.env.PAYMENTS_FAKE = "1";
+    const r0 = await accounts.createClubAccount({ clubName: "Shop Club", name: "Sid Owner", email: "shop-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    k = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(k, { disciplines: ["taekwondo"], siteName: "Main Hall", siteAddress: "1 High Street", syllabus: { taekwondo: "wt" } });
+    slug = (await club.getClubOverview(k)).club.slug;
+  });
+
+  it("staff add products, with sensible checks", async () => {
+    expect((await shop.saveProduct(k, null, { name: "", price: "35" })).ok).toBe(false);
+    expect((await shop.saveProduct(k, null, { name: "Dobok", price: "free" })).ok).toBe(false);
+    await expect(shop.saveProduct({ ...k, role: "instructor" }, null, { name: "X", price: "1" })).rejects.toThrow(/Not allowed/);
+    expect(await shop.shopPage(slug)).toBeNull(); // nothing for sale yet
+    expect((await shop.saveProduct(k, null, { name: "Dobok", price: "35", options: "110cm, 120cm, 120cm , 130cm" })).ok).toBe(true);
+    expect((await shop.saveProduct(k, null, { name: "Sparring gloves", price: "£22.50" })).ok).toBe(true);
+    const products = await shop.listProducts(k);
+    expect(products.find((p) => p.name === "Dobok")?.options).toEqual(["110cm", "120cm", "130cm"]);
+    const page = await shop.shopPage(slug);
+    expect(page?.products.map((p) => p.name)).toEqual(["Dobok", "Sparring gloves"]);
+    expect(page?.card).toBe(false);
+  });
+
+  it("families order: pay at the club without Stripe, by card with it", async () => {
+    const page = (await shop.shopPage(slug))!;
+    const dobok = page.products.find((p) => p.name === "Dobok")!;
+    const gloves = page.products.find((p) => p.name === "Sparring gloves")!;
+    const order = { name: "Pat Buyer", email: "PAT@example.test", items: [{ productId: dobok.id, option: "120cm", quantity: 1 }, { productId: gloves.id, quantity: 2 }] };
+    expect((await shop.submitOrder(slug, { ...order, items: [{ productId: dobok.id, quantity: 1 }] })).ok).toBe(false); // needs a size
+    expect((await shop.submitOrder("no-such-club", order)).ok).toBe(false);
+    const spy = quiet();
+    const r = await shop.submitOrder(slug, order);
+    expect(r.ok && r.value.url).toBeNull();
+    let orders = await shop.listOrders(k);
+    expect(orders[0]).toMatchObject({ status: "to_pay", totalPence: 8000, email: "pat@example.test", paid: false });
+    expect(orders[0].items).toEqual(expect.arrayContaining(["1 × Dobok (120cm)", "2 × Sparring gloves"]));
+    await shop.setOrderStatus(k, orders[0].id, "paid");
+    await shop.setOrderStatus(k, orders[0].id, "handed_over");
+    expect((await shop.listOrders(k))[0]).toMatchObject({ status: "handed_over", paid: true });
+
+    // With Stripe connected: card page, then paid.
+    await adminSql`insert into club_payment_accounts (club_id, provider, account_id) values (${k.clubId}, 'stripe', 'acct_fake_shop')`;
+    const r2 = await shop.submitOrder(slug, { ...order, items: [{ productId: gloves.id, quantity: 1 }] });
+    expect(r2.ok && r2.value.url).toMatch(/\/c\/.+\/shop\/done\?session=cs_fake_/);
+    const session = r2.ok ? new URL(r2.value.url!).searchParams.get("session")! : "";
+    expect((await shop.orderDone(slug, session))?.paid).toBe(true);
+    expect(await shop.confirmOrderPayment(k.clubId, session)).toBe(false); // twice is harmless
+    spy.mockRestore();
+    orders = await shop.listOrders(k);
+    expect(orders[0]).toMatchObject({ status: "paid", paid: true, totalPence: 2250 });
+    const mails = await adminSql`select template, count(*)::int as n from email_log where club_id = ${k.clubId} and template in ('order-confirm', 'new-order') group by template order by template`;
+    expect(mails.map((m) => [m.template, m.n])).toEqual([["new-order", 2], ["order-confirm", 2]]);
+    // Other clubs can't see these orders.
+    expect((await shop.listOrders(a)).find((o) => o.email === "pat@example.test")).toBeUndefined();
+  });
+
+  it("publishes a club website, and its free-trial form adds a lead", async () => {
+    expect(await website.clubWebsite(slug)).toBeNull(); // not published yet
+    expect((await website.clubWebsite(slug, { preview: k }))?.clubName).toBe("Shop Club"); // the owner can preview
+    await expect(website.saveWebsite({ ...k, role: "admin" }, { slug: "x-y-z" })).rejects.toThrow(/Not allowed/);
+    expect((await website.saveWebsite(k, { slug: "A!" })).ok).toBe(false);
+    expect((await website.saveWebsite(k, { slug: "admin" })).ok).toBe(false);
+    const takenSlug = (await club.getClubOverview(a)).club.slug;
+    expect((await website.saveWebsite(k, { slug: takenSlug })).ok).toBe(false); // another club's address
+    const saved = await website.saveWebsite(k, { slug: "shop-club-southport", tagline: "Kicks for all ages", about: "Friendly club.", colour: "#c8102e", showPrices: true, published: true });
+    expect(saved.ok).toBe(true);
+    const site = await website.clubWebsite("shop-club-southport");
+    expect(site).toMatchObject({ clubName: "Shop Club", tagline: "Kicks for all ages", colour: "#c8102e" });
+    expect(site?.sites[0].address).toBe("1 High Street");
+    expect(site?.shopUrl).toMatch(/\/c\/shop-club-southport\/shop$/);
+    expect(await shop.shopPage("shop-club-southport")).not.toBeNull(); // the shop follows the new address
+
+    const spy = quiet();
+    expect((await website.websiteTrial("shop-club-southport", { firstName: "Tia", lastName: "New", email: "", phone: "", studentName: "", studentAge: "", classId: "", sessionDate: "" })).ok).toBe(false);
+    const t = await website.websiteTrial("shop-club-southport", { firstName: "Tia", lastName: "New", email: "tia@example.test", phone: "07700 900321", studentName: "Max", studentAge: "8", classId: "", sessionDate: "" });
+    spy.mockRestore();
+    expect(t.ok).toBe(true);
+    const lead = (await leads.listLeads(k)).leads.find((l) => l.firstName === "Tia");
+    expect(lead).toBeTruthy();
+    expect(lead!.source).toBe("Website");
+    // Unpublishing takes the page (and its form) down.
+    await website.saveWebsite(k, { slug: "shop-club-southport", published: false });
+    expect(await website.clubWebsite("shop-club-southport")).toBeNull();
+    expect((await website.websiteTrial("shop-club-southport", { firstName: "Z", lastName: "", email: "z@example.test", phone: "", studentName: "", studentAge: "", classId: "", sessionDate: "" })).ok).toBe(false);
   });
 });

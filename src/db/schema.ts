@@ -90,6 +90,10 @@ export const clubs = pgTable(
     /** Stripe subscription status: trialing, active, past_due, unpaid, canceled, incomplete. Null = no card yet. */
     billingStatus: text("billing_status"),
     billingPeriodEnd: timestamp("billing_period_end", { withTimezone: true }),
+    /** The club's public page at junbi.co.uk/c/<slug>. */
+    websitePublished: boolean("website_published").notNull().default(false),
+    /** What the club page shows: tagline, about, contact, colour. See src/data/website.ts. */
+    website: jsonb("website").notNull().default({}),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clubs_slug_key").on(t.slug), uniqueIndex("clubs_join_token_key").on(t.joinToken)],
@@ -595,6 +599,49 @@ export const junbiInvoices = pgTable(
   (t) => [uniqueIndex("junbi_invoices_stripe_key").on(t.stripeInvoiceId)],
 );
 
+/* ---------- Shop ---------- */
+
+export const products = pgTable("products", {
+  id: id(),
+  clubId: clubId(),
+  name: text("name").notNull(),
+  description: text("description"),
+  pricePence: integer("price_pence").notNull(),
+  /** Sizes or other choices. Empty = no choice. */
+  options: text("options").array().notNull().default(sql`'{}'::text[]`),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const orders = pgTable("orders", {
+  id: id(),
+  clubId: clubId(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  note: text("note"),
+  totalPence: integer("total_pence").notNull(),
+  /** pending (paying now), paid, to_pay (pay at the club), handed_over, cancelled */
+  status: text("status").notNull().default("pending"),
+  paid: boolean("paid").notNull().default(false),
+  checkoutRef: text("checkout_ref"),
+  createdAt: createdAt(),
+});
+
+export const orderItems = pgTable("order_items", {
+  id: id(),
+  clubId: clubId(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  option: text("option"),
+  quantity: integer("quantity").notNull(),
+  unitPence: integer("unit_pence").notNull(),
+});
+
 /* ---------- Gradings and events ---------- */
 
 export const events = pgTable("events", {
@@ -651,6 +698,9 @@ export const platformSettings = pgTable("platform_settings", {
 });
 
 export const TENANT_TABLES = [
+  "products",
+  "orders",
+  "order_items",
   "events",
   "event_bookings",
   "club_disciplines",

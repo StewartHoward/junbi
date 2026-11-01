@@ -12,6 +12,7 @@ const ICON: Record<string, React.ReactNode> = {
   "/events": <><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></>,
   "/messages": <path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5" />,
   "/payments": <path d="M3 7h18v12H3zM3 11h18M7 15h4" />,
+  "/shop": <path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8zM9 8V6a3 3 0 0 1 6 0v2" />,
   "/settings": <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
 };
 
