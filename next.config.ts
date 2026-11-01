@@ -34,12 +34,18 @@ const embedHeaders = securityHeaders
   .filter((h) => h.key !== "X-Frame-Options")
   .map((h) => (h.key === "Content-Security-Policy" ? { ...h, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors *") } : h));
 
+const clubSiteHeaders = securityHeaders.map((h) =>
+  h.key === "X-Frame-Options" ? { ...h, value: "SAMEORIGIN" } : h.key === "Content-Security-Policy" ? { ...h, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors 'self'") } : h,
+);
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [
-      { source: "/((?!embed/).*)", headers: securityHeaders },
+      { source: "/((?!embed/|c/).*)", headers: securityHeaders },
       { source: "/embed/:path*", headers: embedHeaders },
+      // Club websites: shown in the website editor's preview (Junbi's own pages only), never inside other sites.
+      { source: "/c/:path*", headers: clubSiteHeaders },
       // The script clubs paste into their sites: cache it for an hour so it's quick, but changes still reach everyone.
       { source: "/embed.js", headers: [{ key: "Cache-Control", value: "public, max-age=3600" }] },
     ];

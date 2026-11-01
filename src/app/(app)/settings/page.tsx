@@ -15,7 +15,6 @@ import { PricesCard } from "../payments/PricesCard";
 import { timetableEmbed } from "@/data/timetable";
 import { TimetableCard } from "./TimetableCard";
 import { websiteSettings } from "@/data/website";
-import { WebsiteCard } from "./WebsiteCard";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -105,7 +104,14 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {website && <WebsiteCard slug={website.slug} published={website.published} settings={website.settings} base={website.base} />}
+      {website && (
+        <section className="card" style={{ marginTop: 20 }}>
+          <h2 className="section-title">Your club website</h2>
+          <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
+            {website.published ? "Your website is live." : "Build a website for your club, with your photos, timetable, prices and a free-trial form."} Edit it, and connect your own domain, under <a href="/website">Website</a>.
+          </p>
+        </section>
+      )}
 
       {embed && <TimetableCard token={embed.token} base={embed.base} />}
 

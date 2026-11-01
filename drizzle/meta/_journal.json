@@ -253,6 +253,13 @@
       "when": 1791667572924,
       "tag": "0035_shop_and_website",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791667573924,
+      "tag": "0036_website_editor",
+      "breakpoints": true
     }
   ]
 }

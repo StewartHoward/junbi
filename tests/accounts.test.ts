@@ -1577,9 +1577,49 @@ describe("club shop and club website", () => {
     const lead = (await leads.listLeads(k)).leads.find((l) => l.firstName === "Tia");
     expect(lead).toBeTruthy();
     expect(lead!.source).toBe("Website");
+    // The editor: sections save as a draft the owner can preview; Publish puts them live.
+    const ed = await website.websiteEditor(k);
+    expect(ed.sections.map((x) => x.type)).toEqual(["hero", "text", "timetable", "prices", "trial", "findUs"]); // built from the tagline and about
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    expect((await website.uploadWebsiteImage(k, "data:image/png;base64,aGVsbG8=")).ok).toBe(false); // not really a picture
+    expect((await website.uploadWebsiteImage(k, "data:text/html;base64,PGgxPg==")).ok).toBe(false);
+    await expect(website.uploadWebsiteImage({ ...k, role: "admin" }, png)).rejects.toThrow(/Not allowed/);
+    const up = await website.uploadWebsiteImage(k, png, { width: 1, height: 1 });
+    if (!up.ok) throw new Error("upload failed");
+    expect((await website.websiteImage(up.value.id))?.mime).toBe("image/png");
+    const gallery = { ...website.newSection("gallery"), images: [up.value.id] };
+    const draft = [{ ...ed.sections[0], heading: "New heading" }, gallery, ed.sections[4]];
+    expect((await website.saveSections(k, draft, false)).ok).toBe(true);
+    expect((await website.clubWebsite("shop-club-southport"))?.sections.map((x) => x.type)).toEqual(["hero", "text", "timetable", "prices", "trial", "findUs"]); // live page unchanged
+    expect((await website.clubWebsite("shop-club-southport", { preview: k, draft: true }))?.sections[0].heading).toBe("New heading");
+    expect((await website.clubWebsite("shop-club-southport", { preview: a, draft: true }))?.sections[0].heading).not.toBe("New heading"); // only the owner's club sees the draft
+    expect((await website.websiteEditor(k)).unpublishedChanges).toBe(true);
+    expect((await website.saveSections(k, draft, true)).ok).toBe(true);
+    expect((await website.clubWebsite("shop-club-southport"))?.sections.map((x) => x.type)).toEqual(["hero", "gallery", "trial"]);
+    expect((await website.saveSections(k, [{ type: "hero", id: "x", heading: "<script>", nonsense: 1 }, { type: "made-up" }], false)).ok).toBe(false);
+    // Another club's photo can't be used.
+    const otherUp = await website.uploadWebsiteImage(a, png);
+    if (!otherUp.ok) throw new Error("upload failed");
+    expect((await website.saveSections(k, [{ ...gallery, images: [otherUp.value.id] }], false)).ok).toBe(false);
+
+    // Own domain: checked, unique, and only shows the site once it's published.
+    expect((await website.setCustomDomain(k, "not a domain")).ok).toBe(false);
+    expect((await website.setCustomDomain(k, "evil.junbi.co.uk")).ok).toBe(false);
+    const spy2 = quiet();
+    const dom = await website.setCustomDomain(k, "https://www.ShopClub.co.uk/home");
+    spy2.mockRestore();
+    expect(dom.ok && dom.value).toEqual({ domain: "shopclub.co.uk", automatic: false }); // Junbi is told to add it by hand
+    expect(await website.slugForDomain("shopclub.co.uk")).toBe("shop-club-southport");
+    expect(await website.slugForDomain("www.shopclub.co.uk")).toBe("shop-club-southport");
+    expect((await website.setCustomDomain(a, "shopclub.co.uk")).ok).toBe(false); // taken
+    const [alert] = await adminSql`select count(*)::int as n from email_log where template = 'alert-domain'`;
+    expect(alert.n).toBe(1);
+
     // Unpublishing takes the page (and its form) down.
     await website.saveWebsite(k, { slug: "shop-club-southport", published: false });
     expect(await website.clubWebsite("shop-club-southport")).toBeNull();
     expect((await website.websiteTrial("shop-club-southport", { firstName: "Z", lastName: "", email: "z@example.test", phone: "", studentName: "", studentAge: "", classId: "", sessionDate: "" })).ok).toBe(false);
+    expect(await website.slugForDomain("shopclub.co.uk")).toBeNull(); // the domain stops too
+    expect((await website.setCustomDomain(k, "")).ok).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import {
+  customType,
   pgTable,
   pgEnum,
   uuid,
@@ -94,6 +95,8 @@ export const clubs = pgTable(
     websitePublished: boolean("website_published").notNull().default(false),
     /** What the club page shows: tagline, about, contact, colour. See src/data/website.ts. */
     website: jsonb("website").notNull().default({}),
+    /** The club's own domain for its website, e.g. totalcombat.co.uk. */
+    customDomain: text("custom_domain"),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clubs_slug_key").on(t.slug), uniqueIndex("clubs_join_token_key").on(t.joinToken)],
@@ -599,6 +602,20 @@ export const junbiInvoices = pgTable(
   (t) => [uniqueIndex("junbi_invoices_stripe_key").on(t.stripeInvoiceId)],
 );
 
+/* ---------- Website photos ---------- */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+export const websiteImages = pgTable("website_images", {
+  id: id(),
+  clubId: clubId(),
+  mime: text("mime").notNull(),
+  data: bytea("data").notNull(),
+  width: integer("width"),
+  height: integer("height"),
+  createdAt: createdAt(),
+});
+
 /* ---------- Shop ---------- */
 
 export const products = pgTable("products", {
@@ -698,6 +715,7 @@ export const platformSettings = pgTable("platform_settings", {
 });
 
 export const TENANT_TABLES = [
+  "website_images",
   "products",
   "orders",
   "order_items",
