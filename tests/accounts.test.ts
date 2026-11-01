@@ -29,6 +29,7 @@ const pay = await import("@/data/payments");
 const paylink = await import("@/data/paylink");
 const timetable = await import("@/data/timetable");
 const events = await import("@/data/events");
+const family = await import("@/data/family");
 const { signLink } = await import("@/lib/payments/crypto");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
@@ -1451,6 +1452,33 @@ describe("gradings and events", () => {
     expect((await students.getStudentProfile(g, ids.Ava))!.belts[0].current.grade.name).toBe(before);
     // Results can't be added before the day.
     expect((await events.recordResults(g, ids.grading, {})).ok).toBe(false);
+  });
+
+  it("parents sign in by email and see only their own family", async () => {
+    const spy = quiet();
+    expect((await family.sendFamilyLink("not an email")).ok).toBe(false);
+    expect((await family.sendFamilyLink("nobody@example.test")).ok).toBe(true); // same answer, but nothing sent
+    expect((await family.sendFamilyLink("AVA-PARENT@example.test")).ok).toBe(true);
+    spy.mockRestore();
+    const sent = await adminSql`select to_email from email_log where template = 'family-login' order by sent_at`;
+    expect(sent.map((r) => r.to_email)).toEqual(["ava-parent@example.test"]);
+
+    const clubs = await family.familyOverview("ava-parent@example.test");
+    expect(clubs).toHaveLength(1);
+    expect(clubs[0].clubName).toBe("Grade Club");
+    expect(clubs[0].children.map((k) => k.name)).toEqual(["Ava Kim"]); // not Ben or Cal
+    expect(clubs[0].children[0].belts.length).toBe(1);
+    expect(await family.familyOverview("nobody@example.test")).toEqual([]);
+
+    const r = await family.updateFamilyDetails("ava-parent@example.test", g.clubId, households.Ava, { phone: "07700 900888", postcode: "pr9 0sf", emergencyName: "Gran", emergencyPhone: "07700 900999", medical: { [ids.Ava]: "Asthma inhaler in bag" } });
+    expect(r.ok).toBe(true);
+    const [h] = await adminSql`select postcode, emergency_name from households where id = ${households.Ava}`;
+    expect(h).toMatchObject({ postcode: "PR9 0SF", emergency_name: "Gran" });
+    const [st] = await adminSql`select medical_notes from students where id = ${ids.Ava}`;
+    expect(st.medical_notes).toBe("Asthma inhaler in bag");
+    // Someone else's family can't be changed, even knowing its id.
+    expect((await family.updateFamilyDetails("ava-parent@example.test", g.clubId, households.Ben, { phone: "07700 900000" })).ok).toBe(false);
+    expect((await family.updateFamilyDetails("ava-parent@example.test", g.clubId, households.Ava, { phone: "1" })).ok).toBe(false);
   });
 
   it("keeps clubs apart", async () => {

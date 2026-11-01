@@ -239,6 +239,13 @@
       "when": 1791667570924,
       "tag": "0033_events",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791667571924,
+      "tag": "0034_family_login",
+      "breakpoints": true
     }
   ]
 }

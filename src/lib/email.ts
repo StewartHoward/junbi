@@ -284,7 +284,7 @@ export const templates = {
         awaitingDebit
           ? `We've got ${list(names)}'s details. Your place at ${clubName} is confirmed once your Direct Debit is set up. If you didn't finish it, the club can send you a link.`
           : `${list(names)} ${names.length === 1 ? "is" : "are"} now registered with ${clubName}. The club will be in touch about classes.`,
-        "If anything changes, like medical details or contact numbers, just let the club know.",
+        "If anything changes, like medical details or contact numbers, you can update them yourself by signing in with this email address at junbi.co.uk/family.",
       ],
     ),
   newSignup: (clubName: string, parentName: string, names: string[], url: string, awaitingDebit = false) =>
@@ -298,6 +298,19 @@ export const templates = {
           : "They're on your student list as members.",
       ],
       { label: "See them in Junbi", url },
+    ),
+  /** Parent login: a one-time sign-in link. */
+  familyLogin: (firstName: string, clubNames: string[], url: string) =>
+    build(
+      `Sign in to ${clubNames.length === 1 ? clubNames[0] : "your clubs"}`,
+      "Your sign-in link.",
+      [
+        `Hi ${first(firstName)},`,
+        `Here's your link to sign in and see your family's classes, belts, bookings and payments with ${list(clubNames)}.`,
+        "It works for 30 minutes. After that, just ask for a new one.",
+      ],
+      { label: "Sign in", url },
+      "If you didn't ask for this, you can ignore it. Nobody can sign in without this email.",
     ),
   /** A grading or event invitation, with one link to book (and pay for) everyone invited in the family. */
   eventInvite: (parentName: string, clubName: string, grading: boolean, title: string, when: string, names: string[], fee: string | null, url: string) =>

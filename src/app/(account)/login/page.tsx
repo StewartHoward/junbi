@@ -11,7 +11,8 @@ export default async function LoginPage() {
     <div className="m-auth">
       <h1>Sign in to Junbi.</h1>
       <LoginForm />
-      <p style={{ marginTop: 40, fontSize: 14 }}><a href="/admin/login" className="m-link">Admin login</a></p>
+      <p style={{ marginTop: 40, fontSize: 14 }}>Parent or member? <a href="/family" className="m-link">Sign in here</a></p>
+      <p style={{ marginTop: 12, fontSize: 14 }}><a href="/admin/login" className="m-link">Admin login</a></p>
     </div>
   );
 }
