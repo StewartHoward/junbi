@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { redirect } from "next/navigation";
 import { currentActor } from "@/auth/session";
 import { LoginForm } from "./LoginForm";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = pageMeta({ title: "Sign in", description: "Sign in to Junbi to run your martial arts club: students, classes, payments and more.", path: "/login" });
 
 export default async function LoginPage() {
   if (await currentActor()) redirect("/today");

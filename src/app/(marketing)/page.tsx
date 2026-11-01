@@ -1,4 +1,29 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { PLANS } from "@/lib/plans";
+import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
+
+export const metadata: Metadata = pageMeta({
+  title: "Martial Arts Club Management Software · Junbi",
+  absoluteTitle: true,
+  description: "Club management software for UK martial arts clubs: classes, attendance, Direct Debit, gradings and your club website, for one flat price. Your fees stay yours.",
+  path: "/",
+});
+
+const prices = PLANS.map((p) => p.monthlyPence / 100);
+const STRUCTURED = [
+  { "@context": "https://schema.org", "@type": "Organization", name: "Junbi", url: SITE_URL, logo: `${SITE_URL}/apple-icon`, email: "hello@junbi.co.uk", areaServed: "GB" },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Junbi",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: SITE_URL,
+    description: "Club management software for UK martial arts clubs: students and families, classes and registers, Direct Debit, gradings, a club shop and a club website.",
+    offers: { "@type": "AggregateOffer", priceCurrency: "GBP", lowPrice: Math.min(...prices), highPrice: Math.max(...prices), offerCount: prices.length },
+  },
+];
 
 const BELT: Record<string, { bg: string; fg: string }> = {
   yellow: { bg: "#f5c400", fg: "#1d1d1f" },
@@ -44,6 +69,7 @@ const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu"
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(STRUCTURED)} />
       <section className="m-hero">
         <p className="m-eyebrow">Martial arts club management</p>
         <h1 className="m-hero-title">Your club, ready.</h1>

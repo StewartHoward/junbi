@@ -110,7 +110,7 @@ export function ClubSite({ w }: { w: Site }) {
                     <a className="cw-link" href={w.signupUrl}>Join now ›</a>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {x.image && <img className="cw-hero-img" src={img(x.image)} alt="" />}
+                  {x.image && <img className="cw-hero-img" src={img(x.image)} alt={`${w.clubName}${w.arts.length ? `, ${w.arts.join(" and ")} classes` : ""}`} />}
                 </div>
               </header>
             );
@@ -132,7 +132,7 @@ export function ClubSite({ w }: { w: Site }) {
                     {paras(x.text).map((p, i) => <p key={i} className="cw-p">{p}</p>)}
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <div className="cw-split-img">{x.image ? <img src={img(x.image)} alt="" /> : null}</div>
+                  <div className="cw-split-img">{x.image ? <img src={img(x.image)} alt={x.heading || w.clubName} loading="lazy" /> : null}</div>
                 </div>
               </section>
             );
@@ -142,7 +142,7 @@ export function ClubSite({ w }: { w: Site }) {
                 <div className="cw-in">
                   {x.heading && <h2 className="cw-h2 cw-c">{x.heading}</h2>}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <div className="cw-gallery">{x.images.map((id) => <img key={id} src={img(id)} alt="" loading="lazy" />)}</div>
+                  <div className="cw-gallery">{x.images.map((id, i) => <img key={id} src={img(id)} alt={`${x.heading || w.clubName}, photo ${i + 1}`} loading="lazy" />)}</div>
                 </div>
               </section>
             ) : null;

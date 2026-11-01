@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { jsonLd, pageMeta } from "@/lib/seo";
 import { PricingPlans } from "./PricingPlans";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Pricing",
-  description: "Simple, flat pricing for UK martial arts clubs from £19 a month. Every feature on every plan, and no percentage of your membership fees, ever.",
-};
+  description: "Flat pricing for UK martial arts clubs from £19 a month. Every feature on every plan, and no percentage of your membership fees, ever.",
+  path: "/pricing",
+});
 
 const SAVINGS = [
   { club: "40 students, 1 site", junbi: "£19", martialytics: "£29", nest: "£84 to £112" },
@@ -24,8 +26,10 @@ const FAQ = [
 ];
 
 export default function PricingPage() {
+  const faq = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) };
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faq)} />
       <section className="m-section m-center" style={{ paddingBottom: 48 }}>
         <h1 className="m-hero-title" style={{ fontSize: "clamp(44px, 6vw, 72px)", maxWidth: 860 }}>
           Simple pricing.

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { FOUNDING_PLACES, foundingPlacesLeft } from "@/data/accounts";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Become a Founding Club",
-  description: "Join the first 10 clubs on Junbi: 50% off for six months, free migration, and your price locked for two years.",
-};
+  description: "Join the first 10 clubs on Junbi: 50% off for six months, free migration from your current system, and your price locked for two years.",
+  path: "/founding-clubs",
+});
 
 const PERKS = [
   { title: "50% off for six months", text: "Once your trial ends, pay half price for your first six months." },

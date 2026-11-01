@@ -1,0 +1,9 @@
+import { OG_SIZE, OG_TYPE, shareImage } from "@/lib/og";
+
+export const alt = "Guides for martial arts club owners";
+export const size = OG_SIZE;
+export const contentType = OG_TYPE;
+
+export default function Image() {
+  return shareImage({ eyebrow: "Guides", title: "Help for running a club.", subtitle: "Free, practical guides for martial arts club owners: switching systems, gradings, trials and pricing." });
+}

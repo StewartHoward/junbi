@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GUIDES, guideBySlug } from "@/lib/guides";
+import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 
 export function generateStaticParams() {
   return GUIDES.map((g) => ({ slug: g.slug }));
@@ -9,15 +10,23 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const g = guideBySlug((await params).slug);
-  return g ? { title: g.title, description: g.summary } : { title: "Guide" };
+  if (!g) return { title: "Guide" };
+  const m = pageMeta({ title: g.title, description: g.summary, path: `/guides/${g.slug}` });
+  return { ...m, openGraph: { ...m.openGraph, type: "article" } };
 }
 
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const g = guideBySlug((await params).slug);
   if (!g) notFound();
   const others = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 3);
+  const url = `${SITE_URL}/guides/${g.slug}`;
+  const structured = [
+    { "@context": "https://schema.org", "@type": "Article", headline: g.title, description: g.summary, url, mainEntityOfPage: url, author: { "@type": "Organization", name: "Junbi", url: SITE_URL }, publisher: { "@type": "Organization", name: "Junbi", logo: { "@type": "ImageObject", url: `${SITE_URL}/apple-icon` } }, inLanguage: "en-GB" },
+    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Guides", item: `${SITE_URL}/guides` }, { "@type": "ListItem", position: 2, name: g.title, item: url }] },
+  ];
   return (
     <article style={{ maxWidth: 720, margin: "0 auto", padding: "72px 22px 96px" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(structured)} />
       <p className="m-fine" style={{ margin: 0 }}><Link href="/guides" className="m-link">Guides</Link></p>
       <h1 style={{ fontSize: "clamp(34px, 5vw, 50px)", lineHeight: 1.08, letterSpacing: "-0.03em", margin: "14px 0 0" }}>{g.title}</h1>
       <p className="m-sub" style={{ textAlign: "left", fontSize: 21, margin: "16px 0 0", maxWidth: "none" }}>{g.summary}</p>

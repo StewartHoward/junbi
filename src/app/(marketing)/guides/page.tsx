@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { GUIDES } from "@/lib/guides";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Guides for club owners",
-  description: "Practical help with running and growing a martial arts club: switching systems, gradings, trial classes and pricing.",
-};
+  description: "Free, practical guides for martial arts club owners: switching club software, running gradings, turning trials into members and setting prices.",
+  path: "/guides",
+});
 
 export default function GuidesPage() {
   return (

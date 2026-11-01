@@ -4,15 +4,7 @@ import "./marketing.css";
 import { NavLinks } from "./NavLinks";
 
 export const metadata: Metadata = {
-  title: { absolute: "Junbi · Martial arts club management", template: "%s · Junbi" },
-  description:
-    "Junbi is simple club management software for UK martial arts clubs. Classes, attendance, Direct Debit and messages to parents, for one flat monthly price. Your fees stay yours.",
-  openGraph: {
-    title: "Junbi · Your club, ready.",
-    description: "Martial arts club management. Classes, attendance, Direct Debit and messages, set up in an evening.",
-    type: "website",
-    locale: "en_GB",
-  },
+  title: { default: "Junbi", template: "%s · Junbi" },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

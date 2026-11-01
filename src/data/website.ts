@@ -322,7 +322,7 @@ export async function clubWebsite(slug: unknown, opts: { preview?: Actor; draft?
   if (!club.published && !owner) return null;
   const base = await appUrl();
   return withClub({ clubId: club.clubId }, async (tx) => {
-    const [c] = await tx.select({ website: s.clubs.website, joinToken: s.clubs.joinToken, slug: s.clubs.slug }).from(s.clubs).where(eq(s.clubs.id, club.clubId));
+    const [c] = await tx.select({ website: s.clubs.website, joinToken: s.clubs.joinToken, slug: s.clubs.slug, domain: s.clubs.customDomain }).from(s.clubs).where(eq(s.clubs.id, club.clubId));
     const settings = (c.website ?? {}) as Stored;
     const sections = (owner && opts.draft ? parseSections(settings.draft) : null) ?? parseSections(settings.live) ?? defaultSections(club.clubName, settings);
     const sites = await tx.select({ id: s.sites.id, name: s.sites.name, address: s.sites.address }).from(s.sites).orderBy(asc(s.sites.name));
@@ -342,6 +342,7 @@ export async function clubWebsite(slug: unknown, opts: { preview?: Actor; draft?
     return {
       clubName: club.clubName,
       slug: c.slug,
+      domain: c.domain,
       published: club.published,
       draft: owner && Boolean(opts.draft),
       sections,

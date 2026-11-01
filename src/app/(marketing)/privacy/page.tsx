@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Privacy policy",
   description: "How Junbi collects, uses and protects personal information for martial arts clubs, their staff, members and families.",
-};
+  path: "/privacy",
+});
 
 const UPDATED = "11 October 2026";
 

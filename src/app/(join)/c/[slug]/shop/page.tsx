@@ -4,7 +4,9 @@ import { ShopForm } from "./ShopForm";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const p = await shopPage((await params).slug);
-  return { title: p ? `${p.clubName} shop` : "Shop" };
+  if (!p) return { title: "Shop", robots: { index: false, follow: false } };
+  const description = `Uniforms, kit and more from ${p.clubName}. Order online${p.card ? " and pay by card" : ""}.`;
+  return { title: { absolute: `${p.clubName} shop` }, description, alternates: { canonical: `/c/${(await params).slug}/shop` }, openGraph: { title: `${p.clubName} shop`, description, siteName: p.clubName, type: "website", locale: "en_GB" } };
 }
 
 export default async function ClubShop({ params }: { params: Promise<{ slug: string }> }) {
