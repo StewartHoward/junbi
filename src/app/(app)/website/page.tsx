@@ -41,7 +41,7 @@ export default async function WebsitePage() {
             <SettingsPanel slug={w.slug} colour={w.colour} phone={w.phone} email={w.email} published={w.published} base={w.base} />
           </div>
         </section>
-        <section className="card" id="domain">
+        <section className="card" id="own-domain">
           <h2 className="section-title">Use your own domain</h2>
           <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Show your website at your own address, like totalcombat.co.uk, instead of {w.base.replace(/^https?:\/\//, "")}/c/{w.slug}.</p>
           <div style={{ marginTop: 12 }}>
