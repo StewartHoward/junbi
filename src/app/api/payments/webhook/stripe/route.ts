@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ownStripe, stripeApi, verifyStripeSignature } from "@/lib/payments/stripe";
 import { cancelMembership, clubForAccount, completeSetup, connectedAccount, recordPayment, updateMandate } from "@/data/payments";
+import { confirmCardPayment } from "@/data/events";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,11 @@ export async function POST(req: Request) {
   switch (event.type) {
     case "checkout.session.completed": {
       const meta = (o.metadata ?? {}) as Record<string, string>;
+      // A grading or event paid by card.
+      if (meta.junbi_bookings) {
+        await confirmCardPayment(clubId, o.id);
+        break;
+      }
       const setupId = meta.junbi_setup_id;
       if (!setupId || !o.subscription) break;
       const sub = await stripeApi<{ items: { data: Array<{ id: string; price: { product: { metadata?: Record<string, string> } } }> } }>(

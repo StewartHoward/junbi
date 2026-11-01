@@ -28,6 +28,7 @@ const msgs = await import("@/data/messages");
 const pay = await import("@/data/payments");
 const paylink = await import("@/data/paylink");
 const timetable = await import("@/data/timetable");
+const events = await import("@/data/events");
 const { signLink } = await import("@/lib/payments/crypto");
 const leads = await import("@/data/leads");
 const ownStripe = await import("@/data/stripe-own");
@@ -1323,5 +1324,142 @@ describe("alerts to the Junbi team", () => {
     quiet.mockRestore();
     const rows = await adminSql`select template, count(*)::int as n from email_log where template like 'alert-%' and template <> 'alert-card-added' group by template order by template`;
     expect(rows.map((r) => [r.template, r.n])).toEqual([["alert-error", 1], ["alert-new-club", 1]]);
+  });
+});
+
+describe("gradings and events", () => {
+  let g: Actor;
+  let site = "";
+  const ids: Record<string, string> = {};
+  const households: Record<string, string> = {};
+  const quiet = () => vi.spyOn(console, "log").mockImplementation(() => {});
+  const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+
+  beforeAll(async () => {
+    process.env.PAYMENTS_FAKE = "1";
+    const r0 = await accounts.createClubAccount({ clubName: "Grade Club", name: "Gail Owner", email: "grade-owner@example.test", password: "a long enough phrase", plan: "club", founding: false, terms: true });
+    if (!r0.ok) throw new Error(JSON.stringify(r0.errors));
+    g = owner(r0.value.userId, r0.value.clubId);
+    await accounts.completeSetup(g, { disciplines: ["taekwondo"], siteName: "Dojang", siteAddress: "", syllabus: { taekwondo: "wt" } });
+    site = (await club.getClubOverview(g)).sites[0].id;
+    for (const [first, email] of [["Ava", "ava-parent@example.test"], ["Ben", "ben-parent@example.test"], ["Cal", "cal-parent@example.test"]]) {
+      const r = await studentsEdit.createStudent(g, { firstName: first, lastName: "Kim", siteId: site, status: "active", firstAidConsent: true, photoConsent: true, relationship: "parent", guardianFirstName: "Pat", guardianLastName: "Kim", guardianEmail: email, guardianPhone: "07700 900777" });
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      ids[first] = r.value.id;
+      const [row] = await adminSql`select household_id from students where id = ${r.value.id}`;
+      households[first] = row.household_id;
+    }
+    // Ava already has her first belt; Ben and Cal have none yet.
+    const first = (await students.getStudentProfile(g, ids.Ava))!.gradeOptions[0];
+    await studentsEdit.recordBelt(g, ids.Ava, { gradeId: first.id, gradedOn: inDays(-60) });
+    // Card payments go through the club's own Stripe.
+    await adminSql`insert into club_payment_accounts (club_id, provider, account_id) values (${g.clubId}, 'stripe', 'acct_fake_events')`;
+  });
+
+  it("sets up a grading, with sensible checks", async () => {
+    const base = { kind: "grading" as const, title: "Kup grading", discipline: "taekwondo", siteId: site, date: inDays(14), time: "10:00", fee: "25", capacity: "2", examiner: "Master Lee" };
+    expect((await events.createEvent(g, { ...base, discipline: "" })).ok).toBe(false);
+    expect((await events.createEvent(g, { ...base, date: inDays(-1) })).ok).toBe(false);
+    expect((await events.createEvent(g, { ...base, fee: "lots" })).ok).toBe(false);
+    expect((await events.createEvent(g, { ...base, discipline: "judo" })).ok).toBe(false); // not an art this club teaches
+    await expect(events.createEvent({ ...g, role: "instructor" }, base)).rejects.toThrow(/Not allowed/);
+    const r = await events.createEvent(g, base);
+    expect(r.ok).toBe(true);
+    ids.grading = r.ok ? r.value.id : "";
+    const ev = await events.getEvent(g, ids.grading);
+    expect(ev).toMatchObject({ kind: "grading", fee: "£25", capacity: 2, art: "Taekwondo" });
+    const ava = ev!.candidates.find((c) => c.name === "Ava Kim")!;
+    expect(ava.detail).toMatch(/→/); // her current belt and the next one
+    expect(ev!.candidates.map((c) => c.name).sort()).toEqual(["Ava Kim", "Ben Kim", "Cal Kim"]);
+    expect((await events.listEvents(g)).upcoming.map((e) => e.title)).toEqual(["Kup grading"]);
+  });
+
+  it("invites families, who book and pay by card, and the place limit holds", async () => {
+    await expect(events.inviteToEvent({ ...g, role: "instructor" }, ids.grading, [ids.Ava])).rejects.toThrow(/Not allowed/);
+    const spy = quiet();
+    const inv = await events.inviteToEvent(g, ids.grading, [ids.Ava, ids.Ben, ids.Cal]);
+    expect(inv.ok && inv.value.families).toBe(3);
+    const token = (h: string) => signLink("book", { c: g.clubId, e: ids.grading, h }, 3600);
+
+    const page = await events.bookingPage(token(households.Ava));
+    expect(page).toMatchObject({ kind: "grading", feePence: 2500, card: true, full: false });
+    expect(page!.people).toHaveLength(1); // only her own family
+    expect(page!.people[0].grade).toBeTruthy(); // the belt she's going for
+    expect(await events.bookingPage(token(households.Ava).slice(0, -2) + "xx")).toBeNull();
+    expect(await events.bookingPage(signLink("pay", { c: g.clubId, e: ids.grading, h: households.Ava }, 3600))).toBeNull();
+
+    const r = await events.submitBooking(token(households.Ava), [page!.people[0].bookingId], []);
+    expect(r.ok && r.value.url).toMatch(/\/book\/.+\/done\?session=cs_fake_/);
+    const session = r.ok ? new URL(r.value.url!).searchParams.get("session")! : "";
+    expect((await events.bookingDone(token(households.Ava), session))?.people[0].status).toBe("paid");
+    expect(await events.confirmCardPayment(g.clubId, session)).toBe(0); // twice is harmless
+
+    // Ben goes to the card page (holding the second of two places), so Cal finds it full.
+    const ben = await events.bookingPage(token(households.Ben));
+    expect((await events.submitBooking(token(households.Ben), [ben!.people[0].bookingId], [])).ok).toBe(true);
+    const cal = await events.bookingPage(token(households.Cal));
+    expect(cal?.full).toBe(true);
+    const full = await events.submitBooking(token(households.Cal), [cal!.people[0].bookingId], []);
+    expect(!full.ok && full.errors.form).toMatch(/full/);
+    // Ben never pays: after an hour his place goes back, and Cal can book.
+    await adminSql`update event_bookings set pending_since = now() - interval '2 hours' where student_id = ${ids.Ben}`;
+    expect((await events.bookingPage(token(households.Cal)))?.full).toBe(false);
+    // Cal says no instead.
+    expect((await events.submitBooking(token(households.Cal), [], [cal!.people[0].bookingId])).ok).toBe(true);
+    spy.mockRestore();
+
+    const ev = await events.getEvent(g, ids.grading);
+    expect(ev!.bookings.map((b) => [b.name, b.status])).toEqual([["Ava Kim", "paid"], ["Ben Kim", "invited"], ["Cal Kim", "declined"]]);
+    expect(ev!.collectedPence).toBe(2500);
+    // Instructors see who's coming, not who's paid.
+    const asInstructor = await events.getEvent({ ...g, role: "instructor" }, ids.grading);
+    expect(asInstructor!.bookings[0].status).toBe("booked");
+    expect(asInstructor!.collectedPence).toBeNull();
+  });
+
+  it("free events are confirmed straight away", async () => {
+    const r = await events.createEvent(g, { kind: "event", title: "Summer barbecue", siteId: site, date: inDays(20), time: "13:00" });
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const spy = quiet();
+    await events.inviteToEvent(g, r.value.id, [ids.Ben]);
+    spy.mockRestore();
+    const t = signLink("book", { c: g.clubId, e: r.value.id, h: households.Ben }, 3600);
+    const page = await events.bookingPage(t);
+    expect(page?.card).toBe(false);
+    const b = await events.submitBooking(t, [page!.people[0].bookingId], []);
+    expect(b.ok && b.value).toEqual({ url: null, confirmed: 1 });
+  });
+
+  it("records results: passes become belts, and certificates list who passed", async () => {
+    const r = await events.createEvent(g, { kind: "grading", title: "Today's grading", discipline: "taekwondo", siteId: site, date: inDays(0), time: "00:00", examiner: "Master Lee" });
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect((await events.addBooking(g, r.value.id, ids.Ava, true)).ok).toBe(true);
+    expect((await events.addBooking(g, r.value.id, ids.Ben, false)).ok).toBe(true);
+    const ev = await events.getEvent(g, r.value.id);
+    const [ava, ben] = ev!.bookings;
+    const before = (await students.getStudentProfile(g, ids.Ava))!.belts[0].current.grade.name;
+    expect(ava.grade).not.toBe(before);
+
+    await expect(events.recordResults({ ...g, role: "assistant" }, r.value.id, { [ava.id]: "pass" })).rejects.toThrow(/Not allowed/);
+    const saved = await events.recordResults({ ...g, role: "instructor" }, r.value.id, { [ava.id]: "merit", [ben.id]: "fail" });
+    expect(saved.ok && saved.value.saved).toBe(2);
+    expect((await students.getStudentProfile(g, ids.Ava))!.belts[0].current.grade.name).toBe(ava.grade); // new belt
+    expect((await students.getStudentProfile(g, ids.Ben))!.belts).toEqual([]); // a fail isn't a belt
+    const certs = await events.certificates(g, r.value.id);
+    expect(certs?.people.map((p) => [p.name, p.outcome])).toEqual([["Ava Kim", "merit"]]);
+
+    // Taking a result back off removes the belt again.
+    await events.recordResults(g, r.value.id, { [ava.id]: "" });
+    expect((await students.getStudentProfile(g, ids.Ava))!.belts[0].current.grade.name).toBe(before);
+    // Results can't be added before the day.
+    expect((await events.recordResults(g, ids.grading, {})).ok).toBe(false);
+  });
+
+  it("keeps clubs apart", async () => {
+    expect(await events.getEvent(a, ids.grading)).toBeNull();
+    expect((await events.listEvents(a)).upcoming.find((e) => e.id === ids.grading)).toBeUndefined();
+    expect(await events.bookingPage(signLink("book", { c: a.clubId, e: ids.grading, h: households.Ava }, 3600))).toBeNull();
+    await events.cancelEvent(g, ids.grading);
+    expect(await events.bookingPage(signLink("book", { c: g.clubId, e: ids.grading, h: households.Ava }, 3600))).toBeNull();
   });
 });

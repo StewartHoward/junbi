@@ -595,6 +595,54 @@ export const junbiInvoices = pgTable(
   (t) => [uniqueIndex("junbi_invoices_stripe_key").on(t.stripeInvoiceId)],
 );
 
+/* ---------- Gradings and events ---------- */
+
+export const events = pgTable("events", {
+  id: id(),
+  clubId: clubId(),
+  /** grading or event */
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  /** Gradings: the art being graded. */
+  discipline: text("discipline"),
+  siteId: uuid("site_id").references(() => sites.id, { onDelete: "set null" }),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  location: text("location"),
+  feePence: integer("fee_pence").notNull().default(0),
+  capacity: integer("capacity"),
+  examiner: text("examiner"),
+  notes: text("notes"),
+  cancelled: boolean("cancelled").notNull().default(false),
+  createdAt: createdAt(),
+});
+
+export const eventBookings = pgTable(
+  "event_bookings",
+  {
+    id: id(),
+    clubId: clubId(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    /** Gradings: the belt they're going for. */
+    gradeId: uuid("grade_id").references(() => grades.id, { onDelete: "set null" }),
+    /** invited, pending (paying now), booked (confirmed, nothing to pay online), paid, declined, cancelled */
+    status: text("status").notNull().default("invited"),
+    amountPence: integer("amount_pence").notNull().default(0),
+    checkoutRef: text("checkout_ref"),
+    /** When they went to the card page. The place is released if they don't pay within the hour. */
+    pendingSince: timestamp("pending_since", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    outcome: gradingOutcome("outcome"),
+    gradingResultId: uuid("grading_result_id").references(() => gradingResults.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("event_bookings_event_student_key").on(t.eventId, t.studentId)],
+);
+
 /** Junbi-wide settings, e.g. the billing webhook's signing secret (encrypted). Not club data. */
 export const platformSettings = pgTable("platform_settings", {
   key: text("key").primaryKey(),
@@ -603,6 +651,8 @@ export const platformSettings = pgTable("platform_settings", {
 });
 
 export const TENANT_TABLES = [
+  "events",
+  "event_bookings",
   "club_disciplines",
   "staff_invites",
   "sites",

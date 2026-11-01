@@ -1,3 +1,4 @@
+import { canSeeEvents } from "@/data/events";
 import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { Sidebar } from "@/components/Sidebar";
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/today", label: "Dashboard" },
     ...(can(actor, "students.view") ? [{ href: "/students", label: "Students" }, { href: "/leads", label: "Leads" }] : []),
     { href: "/classes", label: "Classes" },
+    ...(canSeeEvents(actor) ? [{ href: "/events", label: "Gradings" }] : []),
     ...(can(actor, "messages.send") ? [{ href: "/messages", label: "Messages" }] : []),
     ...(can(actor, "payments.view") ? [{ href: "/payments", label: "Payments" }] : []),
     ...(can(actor, "club.manage") || can(actor, "classes.manage") ? [{ href: "/settings", label: "Settings" }] : []),

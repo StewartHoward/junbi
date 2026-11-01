@@ -299,6 +299,21 @@ export const templates = {
       ],
       { label: "See them in Junbi", url },
     ),
+  /** A grading or event invitation, with one link to book (and pay for) everyone invited in the family. */
+  eventInvite: (parentName: string, clubName: string, grading: boolean, title: string, when: string, names: string[], fee: string | null, url: string) =>
+    build(
+      grading ? `${list(names)}: invited to grade` : `You're invited: ${title}`,
+      grading ? `${list(names)} ${names.length === 1 ? "is" : "are"} invited to grade.` : `You're invited to ${title}.`,
+      [
+        `Hi ${first(parentName)},`,
+        grading
+          ? `${clubName} has invited ${list(names)} to the ${title} on ${when}.`
+          : `${clubName} would love ${list(names)} to come to ${title} on ${when}.`,
+        fee ? `It's ${fee} each. Book and pay online to save a place.` : "Please let the club know who's coming using the link.",
+      ],
+      { label: grading ? "Book their grading" : "Book a place", url },
+      "If you weren't expecting this, contact the club.",
+    ),
   /** Sent from a student's profile: the family picks a membership and sets up Direct Debit. */
   choosePlanLink: (parentName: string, clubName: string, names: string[], url: string) =>
     build(

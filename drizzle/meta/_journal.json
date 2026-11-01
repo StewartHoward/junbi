@@ -232,6 +232,13 @@
       "when": 1791667569924,
       "tag": "0032_student_pending",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791667570924,
+      "tag": "0033_events",
+      "breakpoints": true
     }
   ]
 }
