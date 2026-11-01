@@ -11,7 +11,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const g = guideBySlug((await params).slug);
   if (!g) return { title: "Guide" };
-  const m = pageMeta({ title: g.title, description: g.summary, path: `/guides/${g.slug}` });
+  const m = pageMeta({ ownImage: true, title: g.title, description: g.summary, path: `/guides/${g.slug}` });
   return { ...m, openGraph: { ...m.openGraph, type: "article" } };
 }
 

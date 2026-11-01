@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 import { GUIDES } from "@/lib/guides";
 
-export const metadata: Metadata = pageMeta({
+export const metadata: Metadata = pageMeta({ ownImage: true,
   title: "Guides for club owners",
   description: "Free, practical guides for martial arts club owners: switching club software, running gradings, turning trials into members and setting prices.",
   path: "/guides",

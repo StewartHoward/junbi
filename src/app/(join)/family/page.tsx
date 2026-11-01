@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { familyEmail } from "@/data/family";
 import { FamilyLinkForm } from "./FamilyLinkForm";
 
-export const metadata: Metadata = pageMeta({ title: "Parent and member login", description: "Parents and members: see classes, belts, bookings and payments, and keep your details up to date. Sign in with your email.", path: "/family" });
+export const metadata: Metadata = pageMeta({ ownImage: true, title: "Parent and member login", description: "Parents and members: see classes, belts, bookings and payments, and keep your details up to date. Sign in with your email.", path: "/family" });
 
 export default async function FamilyLogin({ searchParams }: { searchParams: Promise<{ expired?: string }> }) {
   if (await familyEmail()) redirect("/family/home");

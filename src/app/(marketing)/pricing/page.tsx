@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { jsonLd, pageMeta } from "@/lib/seo";
 import { PricingPlans } from "./PricingPlans";
 
-export const metadata: Metadata = pageMeta({
+export const metadata: Metadata = pageMeta({ ownImage: true,
   title: "Pricing",
   description: "Flat pricing for UK martial arts clubs from £19 a month. Every feature on every plan, and no percentage of your membership fees, ever.",
   path: "/pricing",
