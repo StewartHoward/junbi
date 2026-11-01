@@ -41,7 +41,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             {e.when}{e.site ? ` · ${e.site}` : ""}{grading && e.art ? ` · ${e.art}` : ""}{e.location ? ` · ${e.location}` : ""}
           </p>
         </div>
-        {grading && passed > 0 && <Link className="btn secondary" href={`/print/certificates/${e.id}`} target="_blank">Print certificates ({passed})</Link>}
       </div>
       {e.cancelled && <p className="banner" role="status" style={{ marginTop: 16 }}>This has been cancelled. Booking links no longer work.</p>}
 

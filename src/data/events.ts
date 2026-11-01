@@ -15,7 +15,7 @@ import type { ConnectedAccount, ProviderId } from "@/lib/payments/types";
 /*
  * Gradings and events. Staff set one up, invite families (for a grading, the students ready for their
  * next belt are picked out for them), families book from the emailed link and pay by card on the club's
- * own Stripe, then for gradings the results become belts and certificates.
+ * own Stripe, then for gradings the results become belts.
  *
  * Booking statuses: invited, pending (on the card page now), booked (confirmed, nothing to pay online),
  * paid, declined, cancelled. A place is taken by pending, booked and paid.
@@ -435,31 +435,6 @@ export async function recordResults(actor: Actor, eventId: string, results: Reco
     }
     if (saved) await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "grading_results", entityId: e.id, after: { saved } });
     return { ok: true as const, value: { saved } };
-  });
-}
-
-/** Everyone who passed, for printing certificates. */
-export async function certificates(actor: Actor, eventId: string) {
-  assertCan(actor, "grading.record");
-  if (!z.string().uuid().safeParse(eventId).success) return null;
-  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
-    const [e] = await tx.select().from(s.events).where(eq(s.events.id, eventId));
-    if (!e || e.kind !== "grading" || !siteOk(actor, e.siteId)) return null;
-    const [club] = await tx.select({ name: s.clubs.name }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
-    const rows = await tx
-      .select({ firstName: s.students.firstName, lastName: s.students.lastName, grade: s.grades.name, beltColour: s.grades.beltColour, outcome: s.eventBookings.outcome })
-      .from(s.eventBookings)
-      .innerJoin(s.students, eq(s.students.id, s.eventBookings.studentId))
-      .innerJoin(s.grades, eq(s.grades.id, s.eventBookings.gradeId))
-      .where(and(eq(s.eventBookings.eventId, e.id), inArray(s.eventBookings.outcome, ["pass", "merit", "distinction"])))
-      .orderBy(asc(s.students.firstName), asc(s.students.lastName));
-    return {
-      clubName: club.name,
-      art: e.discipline ? disciplineName(e.discipline) : "",
-      date: e.startsAt.toLocaleDateString("en-GB", { timeZone: CLUB_TZ, day: "numeric", month: "long", year: "numeric" }),
-      examiner: e.examiner,
-      people: rows.map((r) => ({ name: `${r.firstName} ${r.lastName}`, grade: r.grade, beltColour: r.beltColour, outcome: r.outcome! })),
-    };
   });
 }
 

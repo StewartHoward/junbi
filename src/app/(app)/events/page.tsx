@@ -45,7 +45,7 @@ export default async function EventsPage() {
       {upcoming.length === 0 && past.length === 0 ? (
         <div className="card empty" style={{ marginTop: 24 }}>
           <h2>Run your gradings here.</h2>
-          <p>Set up a grading and Junbi picks out who&apos;s ready for their next belt. Families book and pay online, you record the results, and the new belts and certificates are done for you.</p>
+          <p>Set up a grading and Junbi picks out who&apos;s ready for their next belt. Families book and pay online, you record the results, and their new belts are added for you.</p>
           {manage && <Link className="btn primary" href="/events/new?kind=grading">Set up a grading</Link>}
         </div>
       ) : (

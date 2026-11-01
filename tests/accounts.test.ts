@@ -1430,7 +1430,7 @@ describe("gradings and events", () => {
     expect(b.ok && b.value).toEqual({ url: null, confirmed: 1 });
   });
 
-  it("records results: passes become belts, and certificates list who passed", async () => {
+  it("records results: passes become belts", async () => {
     const r = await events.createEvent(g, { kind: "grading", title: "Today's grading", discipline: "taekwondo", siteId: site, date: inDays(0), time: "00:00", examiner: "Master Lee" });
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     expect((await events.addBooking(g, r.value.id, ids.Ava, true)).ok).toBe(true);
@@ -1445,8 +1445,6 @@ describe("gradings and events", () => {
     expect(saved.ok && saved.value.saved).toBe(2);
     expect((await students.getStudentProfile(g, ids.Ava))!.belts[0].current.grade.name).toBe(ava.grade); // new belt
     expect((await students.getStudentProfile(g, ids.Ben))!.belts).toEqual([]); // a fail isn't a belt
-    const certs = await events.certificates(g, r.value.id);
-    expect(certs?.people.map((p) => [p.name, p.outcome])).toEqual([["Ava Kim", "merit"]]);
 
     // Taking a result back off removes the belt again.
     await events.recordResults(g, r.value.id, { [ava.id]: "" });

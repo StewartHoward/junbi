@@ -62,7 +62,7 @@ export function EventForm({ kind, sites, arts, allSites, today }: { kind: "gradi
         {grading && (
           <div>
             <label htmlFor="examiner">Examiner (optional)</label>
-            <input id="examiner" name="examiner" placeholder="Printed on the certificates" defaultValue={v.examiner} />
+            <input id="examiner" name="examiner" placeholder="Shown with the results" defaultValue={v.examiner} />
           </div>
         )}
       </div>
