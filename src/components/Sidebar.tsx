@@ -40,6 +40,7 @@ export function Sidebar({ clubName, clubId, clubs = [], sites, userName, role, l
         </Link>
       ))}
       </div>
+      <a href="/guides" target="_blank" rel="noopener" style={{ fontSize: 13, color: "var(--ink-muted)", padding: "0 12px 10px", display: "block" }}>Help for running a club ›</a>
       <div className="who">
         <div style={{ color: "var(--ink)", fontWeight: 500 }}>{userName}</div>
         <div>{role[0].toUpperCase() + role.slice(1)} · on Junbi</div>
