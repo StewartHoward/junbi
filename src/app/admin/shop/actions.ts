@@ -33,7 +33,7 @@ export async function deleteEbookAction(id: string, _prev: EbookFormState): Prom
   const r = await deleteEbook(id);
   if (!r.ok) return { errors: r.errors };
   refresh();
-  redirect("/admin/shop");
+  redirect("/admin/shop/ebooks");
 }
 
 export async function removeCoverAction(id: string) {

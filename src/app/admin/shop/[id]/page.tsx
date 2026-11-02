@@ -17,7 +17,7 @@ export default async function EditEbookPage({ params, searchParams }: { params: 
   const s = (await ebookStats()).find((x) => x.slug === book.slug) ?? { people: 0, waiting: 0, revenue: 0, downloads: 0 };
   return (
     <>
-      <p style={{ margin: 0, fontSize: 14 }}><Link href="/admin/shop">‹ Shop</Link></p>
+      <p style={{ margin: 0, fontSize: 14 }}><Link href="/admin/shop/ebooks">‹ Ebooks</Link></p>
       <div className="phead" style={{ marginTop: 8 }}>
         <div><p className="eyebrow">{STATUS_LABEL[book.status]}</p><h1 className="ptitle">{book.title}</h1></div>
         <div className="acts">{book.status !== "draft" && <Link href={`/library/${book.slug}`} className="btn ghost sm" target="_blank">View in shop</Link>}</div>

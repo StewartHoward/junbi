@@ -114,3 +114,26 @@ describe("selling", () => {
     expect(fresh.ok && (await lib.deleteEbook(fresh.value.id)).ok).toBe(true);
   });
 });
+
+describe("shop dashboard", () => {
+  it("counts free, paid and abandoned orders and the money taken", async () => {
+    const crm = await import("@/data/crm");
+    const shop = await import("@/data/shop-admin");
+    const r = await crm.placeLibraryOrder(buyer("left@example.test", ["test-book"]));
+    expect(r.ok).toBe(true);
+    await adminSql`update crm_orders set created_at = now() - interval '2 hours' where status = 'pending'`;
+    const d = await shop.shopDashboard();
+    expect(d.ready).toBe(true);
+    expect(d.kpi).toMatchObject({ free: 1, paid: 1, abandoned: 1, revenue: 999, orders: 2 });
+    expect(d.days).toHaveLength(30);
+    expect(d.sellers[0]).toMatchObject({ slug: "test-book", orders: 2 });
+    const all = await shop.shopOrders({});
+    expect(all.counts).toMatchObject({ all: 3, paid: 1, free: 1, abandoned: 1, pending: 0 });
+    expect((await shop.shopOrders({ status: "abandoned" })).orders.map((o) => o.email)).toEqual(["left@example.test"]);
+    expect((await shop.shopOrders({ q: "paid@" })).orders).toHaveLength(1);
+    const csv = await shop.ordersCsv();
+    expect(csv.split("\n")).toHaveLength(4);
+    expect(csv).toContain("Abandoned");
+  });
+});
+
