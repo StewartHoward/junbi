@@ -1,11 +1,13 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
 import type { FieldErrors } from "@/data/accounts";
 import { saveSections, saveWebsite, setCustomDomain, uploadWebsiteImage } from "@/data/website";
 
 export async function saveSectionsAction(json: string, publish: boolean): Promise<{ ok: boolean; error?: string }> {
+  await requireFeature("website");
   const actor = await requireActor();
   let raw: unknown;
   try {
@@ -20,6 +22,7 @@ export async function saveSectionsAction(json: string, publish: boolean): Promis
 }
 
 export async function uploadImageAction(dataUrl: string, width: number, height: number): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  await requireFeature("website");
   const actor = await requireActor();
   const r = await uploadWebsiteImage(actor, dataUrl, { width, height });
   return r.ok ? { ok: true, id: r.value.id } : { ok: false, error: r.errors.form ?? "Couldn't upload that photo." };
@@ -28,6 +31,7 @@ export async function uploadImageAction(dataUrl: string, width: number, height: 
 export type SettingsState = { errors?: FieldErrors; saved?: boolean; values?: Record<string, string> };
 
 export async function websiteSettingsAction(_prev: SettingsState, f: FormData): Promise<SettingsState> {
+  await requireFeature("website");
   const actor = await requireActor();
   const values: Record<string, string> = {};
   for (const [k, v] of f.entries()) if (typeof v === "string") values[k] = v;
@@ -40,6 +44,7 @@ export async function websiteSettingsAction(_prev: SettingsState, f: FormData): 
 export type DomainState = { errors?: FieldErrors; done?: string };
 
 export async function domainAction(_prev: DomainState, f: FormData): Promise<DomainState> {
+  await requireFeature("website");
   const actor = await requireActor();
   const r = await setCustomDomain(actor, String(f.get("domain") ?? ""));
   if (!r.ok) return { errors: r.errors };

@@ -145,4 +145,18 @@ describe("tenant isolation (row-level security)", () => {
       await adminSql`update clubs set website_published = false`;
     }
   });
+
+  it("features are off until switched on, and the switch is read by the app", async () => {
+    const { featureFlags } = await import("@/data/features");
+    await adminSql`delete from feature_flags`;
+    expect(Object.values(await featureFlags()).every((v) => v === false)).toBe(true);
+    await adminSql`insert into feature_flags (key, enabled) values ('shop', true)`;
+    try {
+      const on = await featureFlags();
+      expect(on.shop).toBe(true);
+      expect(on.events).toBe(false);
+    } finally {
+      await adminSql`delete from feature_flags`;
+    }
+  });
 });

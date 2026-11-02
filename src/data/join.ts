@@ -267,7 +267,8 @@ export async function submitJoin(
   const url = await appUrl();
   const parentName = `${d.parentFirstName} ${d.parentLastName}`;
   const awaitingDebit = out.items.length > 0;
-  const confirm = templates.joinConfirm(parentName, club.clubName, out.names, awaitingDebit);
+  const { featureOn } = await import("./features");
+  const confirm = templates.joinConfirm(parentName, club.clubName, out.names, awaitingDebit, await featureOn("family"));
   const alert = templates.newSignup(club.clubName, parentName, out.names, `${url}/students`, awaitingDebit);
   // Never let email trouble undo a sign-up.
   await Promise.allSettled([

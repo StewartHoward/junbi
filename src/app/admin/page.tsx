@@ -6,6 +6,8 @@ import { PLANS } from "@/lib/plans";
 import { billingWebhookReady } from "@/data/billing";
 import { BillingSwitch } from "./BillingSwitch";
 import { TestAlert } from "./TestAlert";
+import { FeatureSwitches } from "./FeatureSwitches";
+import { featureSwitches } from "@/data/features";
 
 export const metadata: Metadata = { title: "Junbi admin" };
 
@@ -35,7 +37,7 @@ const STATUS_PILL: Record<AdminClub["fee"]["status"], string> = { trial: "blue",
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string }> }) {
   const { show, q } = await searchParams;
-  const [clubs, hooked] = await Promise.all([adminClubs(), billingWebhookReady()]);
+  const [clubs, hooked, switches] = await Promise.all([adminClubs(), billingWebhookReady(), featureSwitches()]);
   const today = todayISO();
   const now = Date.now();
 
@@ -104,6 +106,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <div className="card kpi"><p className="l">Monthly revenue</p><p className="v">{pounds(mrr)}</p><p className="s">{pounds(paid30)} paid in the last 30 days{afterTrials ? ` · + about ${pounds(afterTrials)} when trials end` : ""}</p></div>
         <div className="card kpi"><p className="l">Students on Junbi</p><p className="v">{students.toLocaleString("en-GB")}</p><p className="s">{newStudents} added in the last 30 days</p></div>
         <div className="card kpi"><p className="l">Families on Direct Debit</p><p className="v">{familiesPaying.toLocaleString("en-GB")}</p><p className="s">{founding} Founding {founding === 1 ? "Club" : "Clubs"}</p></div>
+      </section>
+
+      <section className="card" style={{ marginTop: 20 }} aria-labelledby="features-title">
+        <h2 id="features-title" className="section-title">Features in development</h2>
+        <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>Switched off, a feature is hidden from every club, parent and visitor, including its pages on junbi.co.uk. Switch it on when it&apos;s ready.</p>
+        <FeatureSwitches ready={switches.ready} items={switches.items.map((i) => ({ key: i.key, label: i.label, hint: i.hint, on: i.on, changed: i.changed ? `Last changed ${i.changed.at.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })}` : null }))} />
       </section>
 
       <div className="g2 anim" style={{ marginTop: 24 }}>

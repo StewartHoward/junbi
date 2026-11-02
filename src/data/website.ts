@@ -396,7 +396,7 @@ export async function clubWebsite(slug: unknown, opts: { preview?: Actor; draft?
       signupFee: plans?.signupFeePence ? `£${(plans.signupFeePence / 100).toFixed(2)}` : null,
       signupUrl: `${base}/join/${c.joinToken}`,
       shopUrl: products > 0 ? `${base}/c/${c.slug}/shop` : null,
-      familyUrl: `${base}/family`,
+      familyUrl: `${base}/family` as string | null,
     };
   });
 }

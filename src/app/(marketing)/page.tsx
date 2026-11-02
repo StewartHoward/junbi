@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import { PLANS } from "@/lib/plans";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 import { CountUp, Reveal } from "./Motion";
+import { featureOn } from "@/data/features";
+
+// Re-checked every few minutes so feature switches on the admin page show here.
+export const revalidate = 300;
 
 export const metadata: Metadata = pageMeta({
   title: "Martial Arts Club Management Software · Junbi",
@@ -70,7 +74,8 @@ const PAYMENTS = [
 const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu", "Krav Maga", "Muay Thai", "MMA"];
 const ART_LINK: Record<string, string> = { Taekwondo: "taekwondo", Karate: "karate", Kickboxing: "kickboxing", Judo: "judo", "Brazilian Jiu-Jitsu": "brazilian-jiu-jitsu" };
 
-export default function Home() {
+export default async function Home() {
+  const parentLogin = await featureOn("family");
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(STRUCTURED)} />
@@ -127,7 +132,7 @@ export default function Home() {
             {FEATURES.map((f, i) => (
               <div key={f.title} className="m-tile" data-anim="up" style={{ "--i": i } as React.CSSProperties}>
                 <Icon d={f.icon} />
-                <h3>{FEATURE_LINK[f.title] ? <Link href={FEATURE_LINK[f.title]} style={{ color: "inherit" }}>{f.title}</Link> : f.title}</h3>
+                <h3>{FEATURE_LINK[f.title] && (parentLogin || f.title !== "Students and families") ? <Link href={FEATURE_LINK[f.title]} style={{ color: "inherit" }}>{f.title}</Link> : f.title}</h3>
                 <p>{f.text}</p>
               </div>
             ))}

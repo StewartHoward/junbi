@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GUIDES, guideBySlug, relatedGuides } from "@/lib/guides";
 import { landingPath } from "@/lib/landing";
-import { landingsForGuide } from "../../_landing/Landing";
+import { landingShown, landingsForGuide } from "../../_landing/Landing";
+
+// Re-checked every few minutes so feature switches on the admin page show here.
+export const revalidate = 300;
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -21,7 +24,8 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const g = guideBySlug((await params).slug);
   if (!g) notFound();
   const others = relatedGuides(g);
-  const pages = landingsForGuide(g.slug).slice(0, 4);
+  const shown = await landingShown();
+  const pages = landingsForGuide(g.slug).filter(shown).slice(0, 4);
   const url = `${SITE_URL}/guides/${g.slug}`;
   const structured = [
     { "@context": "https://schema.org", "@type": "Article", headline: g.title, description: g.summary, url, mainEntityOfPage: url, author: { "@type": "Organization", name: "Junbi", url: SITE_URL }, publisher: { "@type": "Organization", name: "Junbi", logo: { "@type": "ImageObject", url: `${SITE_URL}/apple-icon` } }, inLanguage: "en-GB" },

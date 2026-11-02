@@ -1,5 +1,6 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireActor } from "@/auth/session";
@@ -12,6 +13,7 @@ export type NoteState = { errors?: FieldErrors; done?: string };
 const str = (f: FormData, k: string) => String(f.get(k) ?? "");
 
 export async function createEventAction(_prev: EventFormState, f: FormData): Promise<EventFormState> {
+  await requireFeature("events");
   const actor = await requireActor();
   const input = {
     kind: (str(f, "kind") === "event" ? "event" : "grading") as "grading" | "event",
@@ -33,6 +35,7 @@ export async function createEventAction(_prev: EventFormState, f: FormData): Pro
 }
 
 export async function inviteAction(eventId: string, _prev: NoteState, f: FormData): Promise<NoteState> {
+  await requireFeature("events");
   const actor = await requireActor();
   const r = await inviteToEvent(actor, eventId, f.getAll("studentId").map(String));
   if (!r.ok) return { errors: r.errors };
@@ -44,6 +47,7 @@ export async function inviteAction(eventId: string, _prev: NoteState, f: FormDat
 }
 
 export async function addBookingAction(eventId: string, _prev: NoteState, f: FormData): Promise<NoteState> {
+  await requireFeature("events");
   const actor = await requireActor();
   const r = await addBooking(actor, eventId, str(f, "studentId"), f.get("paid") === "on");
   if (!r.ok) return { errors: r.errors };
@@ -52,6 +56,7 @@ export async function addBookingAction(eventId: string, _prev: NoteState, f: For
 }
 
 export async function bookingStatusAction(eventId: string, f: FormData) {
+  await requireFeature("events");
   const actor = await requireActor();
   const status = str(f, "status");
   if (status === "cancelled" || status === "paid" || status === "booked") await setBookingStatus(actor, str(f, "bookingId"), status);
@@ -59,6 +64,7 @@ export async function bookingStatusAction(eventId: string, f: FormData) {
 }
 
 export async function resultsAction(eventId: string, _prev: NoteState, f: FormData): Promise<NoteState> {
+  await requireFeature("events");
   const actor = await requireActor();
   const results: Record<string, string> = {};
   for (const [k, v] of f.entries()) if (k.startsWith("r_") && typeof v === "string") results[k.slice(2)] = v;
@@ -69,6 +75,7 @@ export async function resultsAction(eventId: string, _prev: NoteState, f: FormDa
 }
 
 export async function cancelEventAction(eventId: string) {
+  await requireFeature("events");
   const actor = await requireActor();
   await cancelEvent(actor, eventId);
   revalidatePath("/events");

@@ -1,3 +1,4 @@
+import { featureFlags, requireFeature } from "@/data/features";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { currentActor } from "@/auth/session";
@@ -13,13 +14,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 /** The club's public page. ?draft=1 shows the owner their unpublished changes. */
 export default async function ClubPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ draft?: string }> }) {
+  await requireFeature("website");
   const [{ slug }, { draft }] = await Promise.all([params, searchParams]);
   const w = await clubWebsite(slug, { preview: (await currentActor()) ?? undefined, draft: draft === "1" });
   if (!w) notFound();
+  const on = await featureFlags();
+  const site = { ...w, shopUrl: on.shop ? w.shopUrl : null, familyUrl: on.family ? w.familyUrl : null };
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(clubStructuredData(w))} />
-      <ClubSite w={w} />
+      <ClubSite w={site} />
     </>
   );
 }

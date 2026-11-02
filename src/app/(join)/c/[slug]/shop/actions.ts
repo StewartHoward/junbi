@@ -1,5 +1,6 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { redirect } from "next/navigation";
 import { submitOrder } from "@/data/shop";
 import { rateLimited, type FieldErrors } from "@/data/accounts";
@@ -7,6 +8,7 @@ import { rateLimited, type FieldErrors } from "@/data/accounts";
 export type OrderState = { errors?: FieldErrors; values?: Record<string, string>; done?: boolean };
 
 export async function orderAction(slug: string, _prev: OrderState, f: FormData): Promise<OrderState> {
+  await requireFeature("shop");
   const values: Record<string, string> = {};
   for (const [k, v] of f.entries()) if (typeof v === "string") values[k] = v;
   if (values.website) return { done: true }; // honeypot

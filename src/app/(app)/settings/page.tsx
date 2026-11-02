@@ -29,7 +29,8 @@ export default async function SettingsPage() {
     seePrices ? listPlans(actor) : null,
     can(actor, "classes.manage") ? timetableEmbed(actor) : null,
   ]);
-  const website = owner ? await websiteSettings(actor) : null;
+  const { featureOn } = await import("@/data/features");
+  const website = owner && (await featureOn("website")) ? await websiteSettings(actor) : null;
   const plan = PLANS.find((p) => p.id === o.club.plan);
   const discount = describeDiscount(o.club.discountPercent, o.club.discountMonths);
   const freeForGood = (o.club.discountPercent ?? 0) >= 100 && o.club.discountMonths == null;

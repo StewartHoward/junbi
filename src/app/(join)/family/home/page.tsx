@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { familyEmail, familyOverview } from "@/data/family";
+import { featureFlags } from "@/data/features";
 import { familyDetailsAction, familySignOutAction } from "../actions";
 import { DetailsForm } from "./DetailsForm";
 
@@ -16,7 +17,8 @@ const card: React.CSSProperties = { border: "1px solid var(--m-line)", borderRad
 export default async function FamilyHome() {
   const email = await familyEmail();
   if (!email) redirect("/family");
-  const clubs = await familyOverview(email);
+  const on = await featureFlags();
+  const clubs = (await familyOverview(email)).map((c) => ({ ...c, events: on.events ? c.events : [], shopUrl: on.shop ? c.shopUrl : null }));
   if (!clubs.length) redirect("/family");
   return (
     <div className="m-auth" style={{ maxWidth: 720 }}>

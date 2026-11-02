@@ -1,5 +1,6 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { redirect } from "next/navigation";
 import { endFamilySession, familyEmail, sendFamilyLink, updateFamilyDetails } from "@/data/family";
 import { rateLimited, type FieldErrors } from "@/data/accounts";
@@ -7,6 +8,7 @@ import { rateLimited, type FieldErrors } from "@/data/accounts";
 export type FamilyState = { errors?: FieldErrors; sent?: string; saved?: boolean; values?: Record<string, string> };
 
 export async function familyLinkAction(_prev: FamilyState, f: FormData): Promise<FamilyState> {
+  await requireFeature("family");
   const email = String(f.get("email") ?? "");
   if (await rateLimited("family-link", 10)) return { errors: { form: "Lots of attempts from here just now. Please wait 15 minutes and try again." }, values: { email } };
   const r = await sendFamilyLink(email);
@@ -15,6 +17,7 @@ export async function familyLinkAction(_prev: FamilyState, f: FormData): Promise
 }
 
 export async function familyDetailsAction(clubId: string, householdId: string, _prev: FamilyState, f: FormData): Promise<FamilyState> {
+  await requireFeature("family");
   const email = await familyEmail();
   if (!email) redirect("/family");
   const str = (k: string) => String(f.get(k) ?? "");

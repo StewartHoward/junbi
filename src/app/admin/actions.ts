@@ -64,3 +64,21 @@ export async function testAlertAction(): Promise<SwitchState> {
   await alertError("Test alert from the admin page", new Error(`This is a test. If you can read this, error alerts work. (${new Date().toISOString()})`));
   return { ok: `Sent to ${process.env.ALERT_EMAIL || "hello@junbi.co.uk"}.` };
 }
+
+/** Turns a feature on or off for every club. Pages pick it up straight away. */
+export async function setFeatureAction(key: string, enabled: boolean): Promise<SwitchState> {
+  const { requireSuperAdmin } = await import("@/auth/admin");
+  await requireSuperAdmin();
+  const { FEATURES } = await import("@/lib/feature-list");
+  const f = FEATURES.find((x) => x.key === key);
+  if (!f) return { error: "Unknown feature." };
+  const { setFeature } = await import("@/data/features");
+  try {
+    await setFeature(f.key, enabled);
+  } catch {
+    return { error: "Couldn't save. Has the feature switches SQL been run in Supabase?" };
+  }
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/", "layout");
+  return { ok: `${f.label} ${enabled ? "on" : "off"}.` };
+}

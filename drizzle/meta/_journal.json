@@ -267,6 +267,13 @@
       "when": 1791667574924,
       "tag": "0037_club_sitemap",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791667575924,
+      "tag": "0038_feature_switches",
+      "breakpoints": true
     }
   ]
 }

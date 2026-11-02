@@ -1,11 +1,13 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { websiteTrial } from "@/data/website";
 import { rateLimited, type FieldErrors } from "@/data/accounts";
 
 export type TrialState = { errors?: FieldErrors; values?: Record<string, string>; done?: boolean };
 
 export async function trialAction(slug: string, _prev: TrialState, f: FormData): Promise<TrialState> {
+  await requireFeature("website");
   const values: Record<string, string> = {};
   for (const [k, v] of f.entries()) if (typeof v === "string") values[k] = v;
   if (values.website) return { done: true }; // honeypot

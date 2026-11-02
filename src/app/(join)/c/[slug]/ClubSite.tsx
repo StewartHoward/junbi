@@ -241,7 +241,7 @@ export function ClubSite({ w }: { w: Site }) {
         <div className="cw-in">
           <b>{w.clubName}</b>
           {w.shopUrl && <a href={w.shopUrl}>Club shop</a>}
-          <a href={w.familyUrl}>Parent and member login</a>
+          {w.familyUrl && <a href={w.familyUrl}>Parent and member login</a>}
           <a href={w.signupUrl}>Sign up</a>
         </div>
       </footer>

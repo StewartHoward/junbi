@@ -1,5 +1,6 @@
 "use server";
 
+import { requireFeature } from "@/data/features";
 import { redirect } from "next/navigation";
 import { submitBooking } from "@/data/events";
 import { rateLimited, type FieldErrors } from "@/data/accounts";
@@ -7,6 +8,7 @@ import { rateLimited, type FieldErrors } from "@/data/accounts";
 export type BookState = { errors?: FieldErrors; confirmed?: number; declinedOnly?: boolean };
 
 export async function bookAction(token: string, _prev: BookState, f: FormData): Promise<BookState> {
+  await requireFeature("events");
   if (await rateLimited("book", 40)) return { errors: { form: "Lots of attempts from here just now. Please wait 15 minutes and try again." } };
   const chosen: string[] = [];
   const declined: string[] = [];

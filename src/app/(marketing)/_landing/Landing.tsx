@@ -4,6 +4,17 @@ import { notFound } from "next/navigation";
 import { GUIDES } from "@/lib/guides";
 import { INDEX, KIND_PATH, LANDINGS, landingBy, landingPath, landingRef, landingsOf, type Landing, type LandingKind } from "@/lib/landing";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
+import { featureFlags } from "@/data/features";
+import { LANDING_FEATURE } from "@/lib/feature-list";
+
+/** Whether a landing page is shown: pages about a feature that's switched off are hidden. */
+export async function landingShown() {
+  const on = await featureFlags();
+  return (l: Pick<Landing, "kind" | "slug">) => {
+    const f = LANDING_FEATURE[`${l.kind}/${l.slug}`];
+    return !f || on[f];
+  };
+}
 
 /* Shared pieces for /features, /club-software and /compare. Each route file is a thin wrapper around these. */
 
@@ -47,9 +58,10 @@ export async function landingMetadata(kind: LandingKind, params: Promise<{ slug:
 
 export async function LandingPage({ kind, params }: { kind: LandingKind; params: Promise<{ slug: string }> }) {
   const l = landingBy(kind, (await params).slug);
-  if (!l) notFound();
+  const shown = await landingShown();
+  if (!l || !shown(l)) notFound();
   const url = `${SITE_URL}${landingPath(l)}`;
-  const related = l.related.map(landingRef).filter((x): x is Landing => Boolean(x));
+  const related = l.related.map(landingRef).filter((x): x is Landing => Boolean(x) && shown(x!));
   const guides = l.guides.map((s) => GUIDES.find((g) => g.slug === s)).filter((g): g is (typeof GUIDES)[number] => Boolean(g));
   const structured = [
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Junbi", item: SITE_URL }, { "@type": "ListItem", position: 2, name: crumbName(kind), item: `${SITE_URL}${KIND_PATH[kind]}` }, { "@type": "ListItem", position: 3, name: l.label, item: url }] },
@@ -155,9 +167,10 @@ export function indexMetadata(kind: LandingKind): Metadata {
   return pageMeta({ ownImage: true, title: x.metaTitle, description: x.description, path: KIND_PATH[kind] });
 }
 
-export function IndexPage({ kind }: { kind: LandingKind }) {
+export async function IndexPage({ kind }: { kind: LandingKind }) {
   const x = INDEX[kind];
-  const items = landingsOf(kind);
+  const shown = await landingShown();
+  const items = landingsOf(kind).filter(shown);
   const structured = { "@context": "https://schema.org", "@type": "ItemList", itemListElement: items.map((l, i) => ({ "@type": "ListItem", position: i + 1, name: l.label, url: `${SITE_URL}${landingPath(l)}` })) };
   return (
     <>

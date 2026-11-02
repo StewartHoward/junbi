@@ -1,3 +1,4 @@
+import { requireFeature } from "@/data/features";
 import { clubWebsite, slugForDomain } from "@/data/website";
 import { OG_SIZE, OG_TYPE, shareImage } from "@/lib/og";
 
@@ -7,6 +8,7 @@ export const contentType = OG_TYPE;
 
 /** Share image for a club website on its own domain, in the club's colour. */
 export default async function Image({ params }: { params: Promise<{ host: string }> }) {
+  await requireFeature("website");
   const slug = await slugForDomain((await params).host).catch(() => null);
   const w = slug ? await clubWebsite(slug).catch(() => null) : null;
   if (!w) return shareImage({ title: "Martial arts club" });

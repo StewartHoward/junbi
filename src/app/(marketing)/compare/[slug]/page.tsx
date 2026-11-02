@@ -1,5 +1,7 @@
 import { LandingPage, landingMetadata, landingParams } from "../../_landing/Landing";
 
+// Re-checked every few minutes so feature switches on the admin page show here.
+export const revalidate = 300;
 export const dynamicParams = false;
 export const generateStaticParams = () => landingParams("compare");
 export const generateMetadata = ({ params }: { params: Promise<{ slug: string }> }) => landingMetadata("compare", params);

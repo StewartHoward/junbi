@@ -1,4 +1,5 @@
 import { clubWebsite, slugForDomain } from "@/data/website";
+import { featureOn } from "@/data/features";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ host: string; file: string }> }) {
   const { host, file } = await params;
-  const slug = await slugForDomain(host);
+  const slug = (await featureOn("website")) ? await slugForDomain(host) : null;
   const site = slug ? await clubWebsite(slug) : null;
   const base = site?.domain ? `https://${site.domain}` : null;
   const headers = { "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" };
