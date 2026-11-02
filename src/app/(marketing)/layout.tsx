@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import "./marketing.css";
 import { NavLinks } from "./NavLinks";
+import { SupportWidget } from "@/components/SupportWidget";
 
 export const metadata: Metadata = {
   title: { default: "Junbi", template: "%s · Junbi" },
@@ -37,6 +38,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <span>© 2026 Junbi. Made in the UK for martial arts clubs.</span>
         </div>
       </footer>
+      <SupportWidget />
     </div>
   );
 }

@@ -101,3 +101,18 @@ describe("follow-up emails", () => {
     expect(c).toMatchObject({ stage: "trial", signed_up_club: club.id, followup_due_at: null });
   });
 });
+
+describe("support messages", () => {
+  it("checks the form, then notes the message on the sender's CRM record", async () => {
+    const { sendSupportMessage } = await import("@/data/support");
+    const bad = await sendSupportMessage({ name: "", email: "x", message: "hi", page: "", club: "" });
+    expect(bad.ok).toBe(false);
+    const r = await sendSupportMessage({ name: "Help Seeker", email: "Help@Example.test", message: "How do I import my students?", page: "/pricing", club: "Help Club" });
+    expect(r.ok).toBe(true);
+    const c = await contact("help@example.test");
+    expect(c).toMatchObject({ name: "Help Seeker", club_name: "Help Club", source: "support" });
+    const notes = await adminSql`select detail from crm_events where contact_id = ${c.id} and kind = 'note'`;
+    expect(notes[0].detail).toContain("How do I import my students?");
+  });
+});
+

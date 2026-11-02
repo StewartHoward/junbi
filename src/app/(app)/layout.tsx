@@ -2,6 +2,8 @@ import { canSeeEvents } from "@/data/events";
 import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
 import { Sidebar } from "@/components/Sidebar";
+import { SupportWidget } from "@/components/SupportWidget";
+import { currentUser } from "@/auth/session";
 import { visibleSiteList } from "@/data/club";
 import { billingGate } from "@/data/billing";
 import { redirect } from "next/navigation";
@@ -30,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="shell">
       <Sidebar clubName={actor.clubName} clubId={actor.clubId} clubs={actor.clubs} sites={sites.map((x) => x.name)} userName={actor.userName} role={actor.role} links={links} />
       <main className="main">{children}</main>
+      <SupportWidget name={actor.userName} email={(await currentUser())?.email ?? ""} club={actor.clubName} />
     </div>
   );
 }

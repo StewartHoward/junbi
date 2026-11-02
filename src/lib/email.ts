@@ -221,10 +221,10 @@ function sessionLines(l: LeadEmail) {
 }
 
 /** Emails from the Junbi Library (free ebooks). Follow-ups carry an unsubscribe link. */
-export function libraryEmail(subject: string, title: string, paragraphs: string[], button?: { label: string; url: string }, unsubscribeUrl?: string) {
-  const foot = unsubscribeUrl
+export function libraryEmail(subject: string, title: string, paragraphs: string[], button?: { label: string; url: string }, unsubscribeUrl?: string, footnote?: string) {
+  const foot = footnote ?? (unsubscribeUrl
     ? "You're getting this because you said yes to emails from Junbi when you got a free ebook."
-    : "You're getting this because you ordered a free ebook from the Junbi Library.";
+    : "You're getting this because you ordered a free ebook from the Junbi Library.");
   const base = build(subject, title, paragraphs, button, foot);
   if (!unsubscribeUrl) return base;
   return {
