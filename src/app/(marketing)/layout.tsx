@@ -23,7 +23,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         <div className="m-footer-inner">
           <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.025em", color: "#1d1d1f" }}>junbi</span>
           <nav aria-label="Footer">
-            <Link href="/#features">Features</Link>
+            <Link href="/features">Features</Link>
+            <Link href="/club-software">Every art</Link>
+            <Link href="/compare">Compare</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/founding-clubs">Founding Clubs</Link>
             <Link href="/guides">Guides</Link>

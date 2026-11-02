@@ -9,10 +9,11 @@ export const metadata: Metadata = pageMeta({ ownImage: true,
   path: "/pricing",
 });
 
+// From each provider's published pricing page, checked November 2026. Keep in step with /compare.
 const SAVINGS = [
-  { club: "40 students, 1 site", junbi: "£19", martialytics: "£29", nest: "£84 to £112" },
-  { club: "120 students, 1 site", junbi: "£39", martialytics: "£49", nest: "£252 to £336" },
-  { club: "300 students, 2 sites", junbi: "£69", martialytics: "£69", nest: "£630 to £840" },
+  { club: "Up to 50 students", junbi: "£19", martialytics: "$69", nest: "£77.94" },
+  { club: "100 students", junbi: "£39", martialytics: "$99", nest: "£197.64" },
+  { club: "200 students, up to 3 sites", junbi: "£69", martialytics: "$129", nest: "£392.05" },
 ];
 
 const FAQ = [
@@ -54,7 +55,7 @@ export default function PricingPage() {
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <h2 className="m-h2 m-center" style={{ fontSize: "clamp(36px, 5vw, 48px)" }}>See what you&apos;d save.</h2>
           <p className="m-sub m-center" style={{ maxWidth: 600, fontSize: 19 }}>
-            Monthly cost for a club charging £35 per student, based on each provider&apos;s published pricing in October 2026.
+            Monthly cost by club size, from each provider&apos;s published pricing in November 2026. Martialytics prices are in US dollars. NEST figures are the typical monthly fees NEST publishes for clubs of that size.
           </p>
           <div className="m-table-wrap">
             <table className="m-table">
@@ -63,7 +64,7 @@ export default function PricingPage() {
                   <th scope="col">Your club</th>
                   <th scope="col" className="us">Junbi</th>
                   <th scope="col">Martialytics</th>
-                  <th scope="col">NEST (6 to 8%)</th>
+                  <th scope="col">NEST</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,6 +79,7 @@ export default function PricingPage() {
               </tbody>
             </table>
           </div>
+          <p className="m-center" style={{ margin: "24px 0 0" }}><Link href="/compare" className="m-link">Read the full comparisons</Link></p>
         </div>
       </section>
 

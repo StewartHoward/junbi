@@ -213,13 +213,35 @@ export async function uploadWebsiteImage(actor: Actor, dataUrl: string, size?: {
   const sig = data.subarray(0, 12).toString("hex");
   const real = (m[1] === "image/jpeg" && sig.startsWith("ffd8ff")) || (m[1] === "image/png" && sig.startsWith("89504e47")) || (m[1] === "image/webp" && sig.startsWith("52494646") && sig.slice(16, 24) === "57454250");
   if (!real) return { ok: false, errors: { form: "That file isn't a photo we can use. Try a JPEG or PNG." } };
+  const small = await shrinkPhoto(data);
   const [row] = await withClub({ clubId: actor.clubId, userId: actor.userId }, (tx) =>
     tx
       .insert(s.websiteImages)
-      .values({ clubId: actor.clubId, mime: m[1], data, width: size?.width ? Math.round(size.width) : null, height: size?.height ? Math.round(size.height) : null })
+      .values(small
+        ? { clubId: actor.clubId, mime: "image/webp", data: small.data, width: small.width, height: small.height }
+        : { clubId: actor.clubId, mime: m[1], data, width: size?.width ? Math.round(size.width) : null, height: size?.height ? Math.round(size.height) : null })
       .returning({ id: s.websiteImages.id }),
   );
   return { ok: true, value: { id: row.id, url: `/img/${row.id}` } };
+}
+
+/**
+ * Re-saves a photo as WebP, at most 1800px, turned the right way up and with its metadata removed (phones put
+ * the GPS location in photos). Usually a fraction of the size, so club sites load fast on phones.
+ * Returns null if sharp isn't available, and the original is kept instead.
+ */
+export async function shrinkPhoto(data: Buffer, maxSide = 1800): Promise<{ data: Buffer; width: number; height: number } | null> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const { data: out, info } = await sharp(data, { failOn: "error" })
+      .rotate()
+      .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer({ resolveWithObject: true });
+    return { data: out, width: info.width, height: info.height };
+  } catch {
+    return null;
+  }
 }
 
 /** A photo for the public image route. */
@@ -302,6 +324,16 @@ export async function domainStatus(domain: string) {
       { type: "CNAME", name: "www", value: NETLIFY_TARGET(), ok: www.some((w) => w.replace(/\.$/, "") === NETLIFY_TARGET()) },
     ],
   };
+}
+
+/** Published club websites, for the sitemap. Empty if the database function isn't there yet. */
+export async function publishedClubSites(): Promise<Array<{ slug: string; customDomain: string | null }>> {
+  try {
+    const rows = (await db().execute(sql`select * from published_club_sites()`)) as unknown as Array<{ slug: string; custom_domain: string | null }>;
+    return rows.map((r) => ({ slug: r.slug, customDomain: r.custom_domain }));
+  } catch {
+    return [];
+  }
 }
 
 export async function slugForDomain(host: string): Promise<string | null> {

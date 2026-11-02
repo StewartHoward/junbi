@@ -41,6 +41,8 @@ function Icon({ d }: { d: React.ReactNode }) {
   );
 }
 
+const FEATURE_LINK: Record<string, string> = { "Classes and timetable": "/features/registers", "Registers in seconds": "/features/registers", "Direct Debit": "/features/direct-debit", "Students and families": "/features/parent-login" };
+
 const FEATURES = [
   { title: "Students and families", text: "Belts, attendance, medical notes and contacts in one place. Brothers and sisters grouped into one family.", icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></> },
   { title: "Classes and timetable", text: "Set up each weekly class once. Junbi gives you a register for it every week, at every site.", icon: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
@@ -65,6 +67,7 @@ const PAYMENTS = [
 ];
 
 const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu", "Krav Maga", "Muay Thai", "MMA"];
+const ART_LINK: Record<string, string> = { Taekwondo: "taekwondo", Karate: "karate", Kickboxing: "kickboxing", Judo: "judo", "Brazilian Jiu-Jitsu": "brazilian-jiu-jitsu" };
 
 export default function Home() {
   return (
@@ -118,11 +121,12 @@ export default function Home() {
         <div className="m-wrap">
           <h2 className="m-h2 m-center">Everything your club runs on.</h2>
           <p className="m-sub m-center">The everyday jobs every club does, made simple. Nothing you&apos;ll never use.</p>
+          <p className="m-center" style={{ margin: "12px 0 0" }}><Link href="/features" className="m-link">See every feature</Link></p>
           <div className="m-tiles">
             {FEATURES.map((f) => (
               <div key={f.title} className="m-tile">
                 <Icon d={f.icon} />
-                <h3>{f.title}</h3>
+                <h3>{FEATURE_LINK[f.title] ? <Link href={FEATURE_LINK[f.title]} style={{ color: "inherit" }}>{f.title}</Link> : f.title}</h3>
                 <p>{f.text}</p>
               </div>
             ))}
@@ -180,7 +184,7 @@ export default function Home() {
         <p className="m-sub">Pick the arts you teach and Junbi sets up the belts, classes and dashboard to match. Teach more than one? Run them all together.</p>
         <div className="m-arts" aria-label="Martial arts Junbi supports">
           {ARTS.map((a) => (
-            <span key={a}>{a}</span>
+            ART_LINK[a] ? <Link key={a} href={`/club-software/${ART_LINK[a]}`} style={{ color: "inherit", textDecoration: "none" }}><span>{a}</span></Link> : <span key={a}>{a}</span>
           ))}
         </div>
       </section>

@@ -1586,7 +1586,7 @@ describe("club shop and club website", () => {
     await expect(website.uploadWebsiteImage({ ...k, role: "admin" }, png)).rejects.toThrow(/Not allowed/);
     const up = await website.uploadWebsiteImage(k, png, { width: 1, height: 1 });
     if (!up.ok) throw new Error("upload failed");
-    expect((await website.websiteImage(up.value.id))?.mime).toBe("image/png");
+    expect((await website.websiteImage(up.value.id))?.mime).toBe("image/webp"); // re-saved small, metadata removed
     const gallery = { ...website.newSection("gallery"), images: [up.value.id] };
     const draft = [{ ...ed.sections[0], heading: "New heading" }, gallery, ed.sections[4]];
     expect((await website.saveSections(k, draft, false)).ok).toBe(true);

@@ -228,3 +228,4 @@
 .m-legal p { margin: 0 0 14px; }
 .m-legal ul { margin: 0 0 14px; padding-left: 22px; }
 .m-legal li { margin-bottom: 8px; }
+.m-table.fit { min-width: 0; }

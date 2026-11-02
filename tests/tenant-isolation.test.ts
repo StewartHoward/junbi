@@ -134,4 +134,15 @@ describe("tenant isolation (row-level security)", () => {
     const [bob] = await withClub({ clubId: clubB }, (tx) => tx.select().from(schema.students), app);
     expect(bob.firstName).toBe("Bob");
   });
+
+  it("the sitemap lookup lists only published club sites, and only their web address", async () => {
+    await adminSql`update clubs set onboarded_at = now(), website_published = (id = ${clubA}), custom_domain = null`;
+    try {
+      const rows = await appSql`select * from published_club_sites()`;
+      expect(rows.map((r) => r.slug)).toEqual(["club-a"]);
+      expect(Object.keys(rows[0]).sort()).toEqual(["custom_domain", "slug"]);
+    } finally {
+      await adminSql`update clubs set website_published = false`;
+    }
+  });
 });

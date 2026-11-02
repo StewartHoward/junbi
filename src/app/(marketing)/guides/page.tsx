@@ -5,7 +5,7 @@ import { GUIDES } from "@/lib/guides";
 
 export const metadata: Metadata = pageMeta({ ownImage: true,
   title: "Guides for club owners",
-  description: "Free, practical guides for martial arts club owners: switching club software, running gradings, turning trials into members and setting prices.",
+  description: "Free, practical guides for UK martial arts club owners: starting a club, insurance, safeguarding, gradings, pricing, marketing and switching software.",
   path: "/guides",
 });
 

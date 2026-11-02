@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GUIDES, guideBySlug } from "@/lib/guides";
+import { GUIDES, guideBySlug, relatedGuides } from "@/lib/guides";
+import { landingPath } from "@/lib/landing";
+import { landingsForGuide } from "../../_landing/Landing";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -18,7 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const g = guideBySlug((await params).slug);
   if (!g) notFound();
-  const others = GUIDES.filter((x) => x.slug !== g.slug).slice(0, 3);
+  const others = relatedGuides(g);
+  const pages = landingsForGuide(g.slug).slice(0, 4);
   const url = `${SITE_URL}/guides/${g.slug}`;
   const structured = [
     { "@context": "https://schema.org", "@type": "Article", headline: g.title, description: g.summary, url, mainEntityOfPage: url, author: { "@type": "Organization", name: "Junbi", url: SITE_URL }, publisher: { "@type": "Organization", name: "Junbi", logo: { "@type": "ImageObject", url: `${SITE_URL}/apple-icon` } }, inLanguage: "en-GB" },
@@ -47,9 +50,17 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
         <p className="m-sub" style={{ textAlign: "left", fontSize: 17, margin: "8px 0 0", maxWidth: "none" }}>Students, Direct Debit, gradings, trials, a shop and your club website, from £19 a month. Free for 7 days.</p>
         <p style={{ margin: "16px 0 0" }}><Link href="/signup" className="m-btn primary">Start free trial</Link></p>
       </div>
+      {pages.length > 0 && (
+        <section style={{ marginTop: 48 }}>
+          <h2 style={{ fontSize: 20, margin: 0 }}>How Junbi helps</h2>
+          <ul style={{ margin: "12px 0 0", paddingLeft: 0, listStyle: "none" }}>
+            {pages.map((p) => <li key={landingPath(p)} style={{ marginTop: 10 }}><Link href={landingPath(p)} className="m-link">{p.label}</Link></li>)}
+          </ul>
+        </section>
+      )}
       {others.length > 0 && (
         <section style={{ marginTop: 48 }}>
-          <h2 style={{ fontSize: 20, margin: 0 }}>More guides</h2>
+          <h2 style={{ fontSize: 20, margin: 0 }}>Related guides</h2>
           <ul style={{ margin: "12px 0 0", paddingLeft: 0, listStyle: "none" }}>
             {others.map((o) => <li key={o.slug} style={{ marginTop: 10 }}><Link href={`/guides/${o.slug}`} className="m-link">{o.title}</Link></li>)}
           </ul>

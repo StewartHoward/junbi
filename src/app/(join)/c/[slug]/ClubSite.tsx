@@ -10,6 +10,8 @@ function onColour(h: string) {
 }
 
 const img = (id: string) => `/img/${id}`;
+/** Smaller copies for phones; the browser picks the right one. */
+const srcSet = (id: string) => `/img/${id}?w=480 480w, /img/${id}?w=960 960w, /img/${id} 1800w`;
 const paras = (t: string) => t.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
 
 /**
@@ -110,7 +112,7 @@ export function ClubSite({ w }: { w: Site }) {
                     <a className="cw-link" href={w.signupUrl}>Join now ›</a>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {x.image && <img className="cw-hero-img" src={img(x.image)} alt={`${w.clubName}${w.arts.length ? `, ${w.arts.join(" and ")} classes` : ""}`} />}
+                  {x.image && <img className="cw-hero-img" src={img(x.image)} srcSet={srcSet(x.image)} sizes="100vw" fetchPriority="high" alt={`${w.clubName}${w.arts.length ? `, ${w.arts.join(" and ")} classes` : ""}`} />}
                 </div>
               </header>
             );
@@ -132,7 +134,7 @@ export function ClubSite({ w }: { w: Site }) {
                     {paras(x.text).map((p, i) => <p key={i} className="cw-p">{p}</p>)}
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <div className="cw-split-img">{x.image ? <img src={img(x.image)} alt={x.heading || w.clubName} loading="lazy" /> : null}</div>
+                  <div className="cw-split-img">{x.image ? <img src={img(x.image)} srcSet={srcSet(x.image)} sizes="(max-width: 800px) 100vw, 50vw" alt={x.heading || w.clubName} loading="lazy" /> : null}</div>
                 </div>
               </section>
             );
@@ -142,7 +144,7 @@ export function ClubSite({ w }: { w: Site }) {
                 <div className="cw-in">
                   {x.heading && <h2 className="cw-h2 cw-c">{x.heading}</h2>}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <div className="cw-gallery">{x.images.map((id, i) => <img key={id} src={img(id)} alt={`${x.heading || w.clubName}, photo ${i + 1}`} loading="lazy" />)}</div>
+                  <div className="cw-gallery">{x.images.map((id, i) => <img key={id} src={img(id)} srcSet={srcSet(id)} sizes="(max-width: 600px) 50vw, 33vw" alt={`${x.heading || w.clubName}, photo ${i + 1}`} loading="lazy" />)}</div>
                 </div>
               </section>
             ) : null;
