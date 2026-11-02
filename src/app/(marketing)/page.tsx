@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PLANS } from "@/lib/plans";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
+import { CountUp, Reveal } from "./Motion";
 
 export const metadata: Metadata = pageMeta({
   title: "Martial Arts Club Management Software · Junbi",
@@ -89,22 +90,22 @@ export default function Home() {
             <div className="m-window-side" aria-hidden="true">
               <span className="on">Today</span><span>Students</span><span>Classes</span><span>Payments</span><span>Messages</span><span>Settings</span>
             </div>
-            <div className="m-window-main">
+            <Reveal className="m-window-main">
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                 <h2 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em" }}>Today</h2>
                 <span className="m-sample">Sample data</span>
               </div>
               <div className="m-row" style={{ marginTop: 20 }}>
-                <div className="m-stat"><p className="k">Collected this month</p><p className="v">£8,940</p><p className="n" style={{ color: "#1a7f37" }}>✓ 97% of expected</p></div>
-                <div className="m-stat"><p className="k">Active students</p><p className="v">264</p><p className="n">2 sites</p></div>
-                <div className="m-stat"><p className="k">Checked in today</p><p className="v">58</p><p className="n">4 classes</p></div>
+                <div className="m-stat"><p className="k">Collected this month</p><p className="v"><CountUp to={8940} prefix="£" duration={1800} /></p><p className="n" style={{ color: "#1a7f37" }}>✓ <CountUp to={97} suffix="%" duration={1800} /> of expected</p></div>
+                <div className="m-stat"><p className="k">Active students</p><p className="v"><CountUp to={264} duration={1600} delay={150} /></p><p className="n">2 sites</p></div>
+                <div className="m-stat"><p className="k">Checked in today</p><p className="v"><CountUp to={58} duration={1400} delay={300} /></p><p className="n">4 classes</p></div>
               </div>
               <div className="m-card m-rows" style={{ marginTop: 16 }}>
-                <div><strong>17:00 Little Dragons</strong><span style={{ color: "#6e6e73" }}>Taekwondo · 14 here</span></div>
-                <div><strong>18:00 Juniors</strong><span style={{ color: "#6e6e73" }}>Kickboxing · 22 here</span></div>
-                <div><strong>19:15 Adults</strong><span style={{ color: "#6e6e73" }}>Brazilian Jiu-Jitsu · 18 here</span></div>
+                {[["17:00 Little Dragons", "Taekwondo", 14], ["18:00 Juniors", "Kickboxing", 22], ["19:15 Adults", "Brazilian Jiu-Jitsu", 18]].map(([cls, art, n], i) => (
+                  <div key={cls} data-anim="up" style={{ "--i": i, "--d": "500ms" } as React.CSSProperties}><strong>{cls}</strong><span style={{ color: "#6e6e73" }}>{art} · <CountUp to={n as number} delay={700 + i * 120} duration={1000} /> here</span></div>
+                ))}
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -112,7 +113,7 @@ export default function Home() {
       <section className="m-section dark m-center">
         <h2 className="m-h2 xl">Your fees are yours.</h2>
         <p className="m-sub" style={{ maxWidth: 620 }}>Some club software takes a cut of every membership. Junbi is one flat monthly price, however much your club grows.</p>
-        <p className="m-zero">0%</p>
+        <p className="m-zero"><CountUp from={6} to={0} suffix="%" duration={1600} delay={200} /></p>
         <p style={{ margin: "8px 0 0", fontSize: 21, color: "#a1a1a6" }}>of your students&apos; fees. Ever.</p>
         <p style={{ margin: "36px 0 0" }}><Link href="/pricing" className="m-link">See pricing</Link></p>
       </section>
@@ -122,15 +123,15 @@ export default function Home() {
           <h2 className="m-h2 m-center">Everything your club runs on.</h2>
           <p className="m-sub m-center">The everyday jobs every club does, made simple. Nothing you&apos;ll never use.</p>
           <p className="m-center" style={{ margin: "12px 0 0" }}><Link href="/features" className="m-link">See every feature</Link></p>
-          <div className="m-tiles">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="m-tile">
+          <Reveal className="m-tiles">
+            {FEATURES.map((f, i) => (
+              <div key={f.title} className="m-tile" data-anim="up" style={{ "--i": i } as React.CSSProperties}>
                 <Icon d={f.icon} />
                 <h3>{FEATURE_LINK[f.title] ? <Link href={FEATURE_LINK[f.title]} style={{ color: "inherit" }}>{f.title}</Link> : f.title}</h3>
                 <p>{f.text}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -141,35 +142,44 @@ export default function Home() {
             <h2 className="m-h2">Registers in seconds.</h2>
             <p className="m-sub" style={{ margin: "20px 0 0" }}>Open today&apos;s class on your phone and tap each student in. Junbi counts every class towards their next belt as you go.</p>
           </div>
-          <div className="panel m-panel-alt">
+          <Reveal className="panel m-panel-alt">
             <div className="m-panel-head"><h3>Juniors · 18:00</h3><span className="m-sample">Sample data</span></div>
             <div className="m-card m-rows" style={{ marginTop: 16, boxShadow: "none" }}>
-              {REGISTER.map((r) => (
+              {REGISTER.map((r, i) => (
                 <div key={r.name}>
                   <span style={{ flexGrow: 1 }}>{r.name}</span>
-                  <span className="m-chip" style={{ background: BELT[r.belt].bg, color: BELT[r.belt].fg }}>{r.grade}</span>
-                  {r.here ? <span className="m-ok">✓ Here</span> : <span className="m-warn">Not in yet</span>}
+                  <span className="m-chip" data-anim="belt" style={{ background: BELT[r.belt].bg, color: BELT[r.belt].fg, "--i": i } as React.CSSProperties}>{r.grade}</span>
+                  {r.here ? <span className="m-ok" data-anim="pop" style={{ "--i": i * 3, "--d": "700ms" } as React.CSSProperties}>✓ Here</span> : <span className="m-warn" data-anim="pop" style={{ "--i": i * 3, "--d": "700ms" } as React.CSSProperties}>Not in yet</span>}
                 </div>
               ))}
             </div>
-          </div>
+            <div className="m-progress" data-anim="up" style={{ "--d": "1500ms" } as React.CSSProperties}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 15 }}>
+                <span><b>Oliver T.</b> to blue belt</span>
+                <span style={{ color: "#6e6e73" }}><CountUp from={0} to={22} delay={1700} duration={1600} /> of 24 classes</span>
+              </div>
+              <div className="m-progress-track" aria-hidden="true">
+                <span className="m-progress-bar" data-anim="fill" style={{ width: "91.7%", background: `linear-gradient(90deg, ${BELT.green.bg}, ${BELT.blue.bg})`, "--d": "1700ms" } as React.CSSProperties} />
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       <section id="payments" className="m-section alt">
         <div className="m-wrap m-split reverse">
-          <div className="panel m-panel-white">
+          <Reveal className="panel m-panel-white">
             <div className="m-panel-head"><h3>October payments</h3><span className="m-sample">Sample data</span></div>
             <div className="m-rows" style={{ marginTop: 12 }}>
-              {PAYMENTS.map((p) => (
-                <div key={p.who}>
+              {PAYMENTS.map((p, i) => (
+                <div key={p.who} data-anim="up" style={{ "--i": i } as React.CSSProperties}>
                   <span style={{ flexGrow: 1 }}>{p.who}</span>
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>{p.amount}</span>
-                  {p.ok ? <span className="m-pill ok">✓ Paid</span> : <span className="m-pill warn">↻ Retrying Fri</span>}
+                  {p.ok ? <span className="m-pill ok" data-anim="pop" style={{ "--i": i * 2, "--d": "600ms" } as React.CSSProperties}>✓ Paid</span> : <span className="m-pill warn" data-anim="pop" style={{ "--i": i * 2, "--d": "600ms" } as React.CSSProperties}>↻ Retrying Fri</span>}
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
           <div className="copy">
             <p className="m-eyebrow">Direct Debit</p>
             <h2 className="m-h2">Paid on time. Every time.</h2>
@@ -182,11 +192,11 @@ export default function Home() {
         <p className="m-eyebrow">Every art</p>
         <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>Whatever you teach. One login.</h2>
         <p className="m-sub">Pick the arts you teach and Junbi sets up the belts, classes and dashboard to match. Teach more than one? Run them all together.</p>
-        <div className="m-arts" aria-label="Martial arts Junbi supports">
-          {ARTS.map((a) => (
-            ART_LINK[a] ? <Link key={a} href={`/club-software/${ART_LINK[a]}`} style={{ color: "inherit", textDecoration: "none" }}><span>{a}</span></Link> : <span key={a}>{a}</span>
+        <Reveal className="m-arts">
+          {ARTS.map((a, i) => (
+            ART_LINK[a] ? <Link key={a} href={`/club-software/${ART_LINK[a]}`} data-anim="up" style={{ color: "inherit", textDecoration: "none", "--i": i } as React.CSSProperties}><span>{a}</span></Link> : <span key={a} data-anim="up" style={{ "--i": i } as React.CSSProperties}>{a}</span>
           ))}
-        </div>
+        </Reveal>
       </section>
 
       <section id="switching" className="m-section alt m-center">

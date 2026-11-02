@@ -229,3 +229,28 @@
 .m-legal ul { margin: 0 0 14px; padding-left: 22px; }
 .m-legal li { margin-bottom: 8px; }
 .m-table.fit { min-width: 0; }
+
+/* ---------- Motion (see Motion.tsx). Transform, opacity and clip-path only, so it stays smooth on phones. ---------- */
+.m-reveal { --ease: cubic-bezier(0.22, 1, 0.36, 1); }
+.m-reveal.pending [data-anim] { opacity: 0; }
+.m-reveal.pending [data-anim="belt"] { opacity: 1; clip-path: inset(0 100% 0 0 round 980px); }
+.m-reveal.pending [data-anim="fill"] { opacity: 1; transform: scaleX(0); }
+.m-reveal.in [data-anim] { animation-duration: 0.7s; animation-timing-function: var(--ease); animation-fill-mode: both; animation-delay: calc(var(--i, 0) * 90ms + var(--d, 0ms)); }
+.m-reveal.in [data-anim="up"] { animation-name: m-up; }
+.m-reveal.in [data-anim="belt"] { animation-name: m-belt; animation-duration: 0.9s; }
+.m-reveal.in [data-anim="pop"] { animation-name: m-pop; animation-duration: 0.45s; }
+.m-reveal.in [data-anim="fill"] { animation-name: m-fill; animation-duration: 1.6s; }
+[data-anim="fill"] { transform-origin: left center; }
+@keyframes m-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes m-belt { from { clip-path: inset(0 100% 0 0 round 980px); } to { clip-path: inset(0 0 0 0 round 980px); } }
+@keyframes m-pop { 0% { opacity: 0; transform: scale(0.6); } 70% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes m-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Belt progress in the registers panel */
+.m-progress { margin-top: 16px; padding: 16px 18px; border-radius: 16px; background: #fff; }
+.m-progress-track { position: relative; height: 12px; border-radius: 6px; background: #e8e8ed; overflow: hidden; margin-top: 10px; }
+.m-progress-bar { position: absolute; inset: 0 auto 0 0; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-reveal [data-anim] { animation: none !important; opacity: 1 !important; clip-path: none !important; transform: none !important; }
+}
