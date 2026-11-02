@@ -274,6 +274,13 @@
       "when": 1791667575924,
       "tag": "0038_feature_switches",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791667576924,
+      "tag": "0039_library_crm",
+      "breakpoints": true
     }
   ]
 }

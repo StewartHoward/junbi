@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/#switching", label: "Switching" },
   { href: "/pricing", label: "Pricing" },
   { href: "/guides", label: "Guides" },
+  { href: "/library", label: "Free ebooks" },
   { href: "/login", label: "Sign in" },
 ];
 

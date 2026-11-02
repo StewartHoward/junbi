@@ -220,6 +220,20 @@ function sessionLines(l: LeadEmail) {
   return [`${day} at ${time}`, s.className, [s.siteName, s.address].filter(Boolean).join(", ") || null].filter(Boolean).join("\n");
 }
 
+/** Emails from the Junbi Library (free ebooks). Follow-ups carry an unsubscribe link. */
+export function libraryEmail(subject: string, title: string, paragraphs: string[], button?: { label: string; url: string }, unsubscribeUrl?: string) {
+  const foot = unsubscribeUrl
+    ? "You're getting this because you said yes to emails from Junbi when you got a free ebook."
+    : "You're getting this because you ordered a free ebook from the Junbi Library.";
+  const base = build(subject, title, paragraphs, button, foot);
+  if (!unsubscribeUrl) return base;
+  return {
+    subject,
+    html: base.html.replace(`${esc(foot)}</p>`, `${esc(foot)} <a href="${esc(unsubscribeUrl)}" style="color:#6e6e73">Unsubscribe</a></p>`),
+    text: `${base.text}\n\nUnsubscribe: ${unsubscribeUrl}`,
+  };
+}
+
 export const templates = {
   welcome: (name: string, clubName: string, url: string) =>
     build(

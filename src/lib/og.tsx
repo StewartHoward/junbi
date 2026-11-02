@@ -13,7 +13,7 @@ function onColour(h: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? "#1d1d1f" : "#ffffff";
 }
 
-export function shareImage({ eyebrow, title, subtitle, colour, footer = "junbi.co.uk" }: { eyebrow?: string; title: string; subtitle?: string; colour?: string; footer?: string }) {
+export function shareImage({ eyebrow, title, subtitle, colour, footer = "junbi.co.uk", pill }: { eyebrow?: string; title: string; subtitle?: string; colour?: string; footer?: string; pill?: string }) {
   const club = colour && /^#[0-9a-f]{6}$/i.test(colour) ? colour : null;
   const bg = club ?? "#ffffff";
   const ink = club ? onColour(club) : "#1d1d1f";
@@ -30,7 +30,7 @@ export function shareImage({ eyebrow, title, subtitle, colour, footer = "junbi.c
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.03em" }}>{club ? footer : "junbi"}</div>
           <div style={{ display: "flex", fontSize: 26, fontWeight: 600, padding: "14px 28px", borderRadius: 999, background: club ? ink : "#0066cc", color: club ? club : "#ffffff" }}>
-            {club ? "Book a free trial" : "Free 7-day trial"}
+            {pill ?? (club ? "Book a free trial" : "Free 7-day trial")}
           </div>
         </div>
       </div>

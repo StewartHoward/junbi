@@ -30,6 +30,8 @@ export async function signupAction(_prev: FormState, f: FormData): Promise<FormS
   await startSession(r.value.userId);
   // Never let a slow or failed email stop someone getting into their new club.
   await sendWelcome({ ...r.value, name: values.name, email: values.email, clubName: values.clubName }).catch((err) => console.error("welcome email failed", err));
+  const { linkSignupToCrm } = await import("@/data/crm");
+  await linkSignupToCrm(values.email, r.value.clubId, values.clubName).catch((err) => console.error("crm link failed", err));
   const { alertNewClub, alertError } = await import("@/lib/alerts");
   await alertNewClub({ clubName: values.clubName, ownerName: values.name, email: values.email, plan: values.plan, founding: false, promoCode: values.promoCode || null });
   // Card next (nothing taken until the trial ends), unless the club is free.

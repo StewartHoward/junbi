@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMeta({
   path: "/privacy",
 });
 
-const UPDATED = "11 October 2026";
+const UPDATED = "2 November 2026";
 
 export default function PrivacyPage() {
   return (
@@ -53,6 +53,12 @@ export default function PrivacyPage() {
           <li>A record of important actions in the account (for example who changed a belt or removed a site) to keep the account secure.</li>
           <li>Emails we send you, such as password resets, invitations and trial reminders, and whether they were delivered.</li>
         </ul>
+        <h3>People who order a free ebook</h3>
+        <ul>
+          <li>Name, email address, your role, your club&apos;s name, the arts you teach, roughly how many students you have and what you use to run your club now.</li>
+          <li>Which ebooks you ordered and downloaded, the emails we sent you, and whether you said yes to further emails.</li>
+          <li>Any notes we make if we speak to you, and whether you later sign up to Junbi.</li>
+        </ul>
         <h3>Club records, held on the club&apos;s behalf</h3>
         <ul>
           <li>
@@ -78,6 +84,7 @@ export default function PrivacyPage() {
           <li>To provide Junbi: running club accounts, registers, belts, sign-ups, messages and payments.</li>
           <li>To send emails Junbi needs to send: sign-in and password emails, staff invitations, sign-up confirmations, trial reminders, lead welcome and reminder emails, and messages a club chooses to send.</li>
           <li>To keep Junbi secure, prevent misuse and fix problems.</li>
+          <li>To send the ebooks you order and, only if you said yes, a few follow-up emails with tips and news about Junbi. Every one has an unsubscribe link.</li>
           <li>To provide support when you contact us.</li>
           <li>To meet our legal obligations, for example keeping business and tax records.</li>
         </ul>
@@ -87,6 +94,8 @@ export default function PrivacyPage() {
         <ul>
           <li><strong>Contract:</strong> to provide the service a club has signed up for.</li>
           <li><strong>Legitimate interests:</strong> to keep Junbi secure, improve it and send essential service emails, in ways people would reasonably expect.</li>
+          <li><strong>Consent:</strong> for follow-up emails after you order a free ebook. You can withdraw it at any time with the unsubscribe link.</li>
+          <li><strong>Legitimate interests</strong> also cover keeping the details you give when you order an ebook, so we can send it and understand who our readers are.</li>
           <li><strong>Legal obligation:</strong> to keep records the law requires.</li>
         </ul>
         <p>
@@ -121,6 +130,7 @@ export default function PrivacyPage() {
             Club records: for as long as the club keeps them in Junbi. When a club closes its account, or asks us to, we delete its records within
             30 days, apart from anything we must keep by law.
           </li>
+          <li>Ebook orders and follow-up history: for up to three years from your last contact with us, unless you ask us to delete them sooner.</li>
           <li>Business and billing records: for six years, as UK tax law requires.</li>
           <li>Backups are kept for a short period and then overwritten.</li>
         </ul>

@@ -16,6 +16,7 @@ export default function GuidesPage() {
         <p className="m-eyebrow">Guides</p>
         <h1 className="m-hero-title" style={{ fontSize: "clamp(40px, 6vw, 64px)", maxWidth: 820 }}>Help for running a club.</h1>
         <p className="m-sub" style={{ maxWidth: 620 }}>Short, practical guides from people who run martial arts clubs. Free for everyone to read, whether you use Junbi or not. No sign-up needed.</p>
+        <p style={{ margin: "20px 0 0" }}><Link href="/library" className="m-link">Want more? Get our free ebooks</Link></p>
       </section>
       <section style={{ padding: "0 22px 120px" }}>
         <div style={{ maxWidth: 820, margin: "0 auto", display: "grid", gap: 16 }}>
