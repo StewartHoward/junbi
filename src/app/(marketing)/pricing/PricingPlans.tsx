@@ -30,7 +30,7 @@ export function PricingPlans() {
                 <span> {annual ? "/year" : "/month"}</span>
               </p>
               <p className="limits">{p.limits}</p>
-              <Link href={dark ? "/founding-clubs" : `/signup?plan=${p.id}`} className={`m-btn ${featured ? "primary" : dark ? "white" : "soft"}`}>
+              <Link href={dark ? "mailto:hello@junbi.co.uk?subject=Junbi%20for%20our%20association" : `/signup?plan=${p.id}`} className={`m-btn ${featured ? "primary" : dark ? "white" : "soft"}`}>
                 {dark ? "Talk to us" : `Choose ${p.name}`}
               </Link>
               <ul>

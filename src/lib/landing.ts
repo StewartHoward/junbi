@@ -504,7 +504,7 @@ export const LANDINGS: Landing[] = [
         body: [
           "- Every feature on every plan: students and families, registers, gradings, Direct Debit, messages, parent login, a club website with your own domain and a shop.",
           "- A price that doesn't rise as your fees rise.",
-          "- Set up in an evening, with free migration for Founding Clubs.",
+          "- Set up in an evening. Already on Stripe? Junbi can take over your Direct Debits without families signing up again.",
         ],
       },
     ],
@@ -519,7 +519,7 @@ export const LANDINGS: Landing[] = [
       note: "From nestmanagement.co.uk/pricing, checked November 2026. NEST's figures are the typical monthly fees it publishes for clubs of that size; your own quote may differ. Junbi prices exclude VAT.",
     },
     faq: [
-      { q: "Can we move from NEST without families signing up again?", a: "If your Direct Debits are held by NEST rather than in your own account, families will need to set up a new Direct Debit with your Stripe or GoCardless. Junbi makes that a short link on their phone, and Founding Clubs get the move done for them." },
+      { q: "Can we move from NEST without families signing up again?", a: "If your Direct Debits are held by NEST rather than in your own account, families will need to set up a new Direct Debit with your Stripe or GoCardless. Junbi makes that a short link on their phone." },
       { q: "Is Junbi cheaper than NEST?", a: "For most clubs, yes, because Junbi doesn't charge a percentage. Compare NEST's published figures above with your own club size." },
     ],
     guides: ["switching-without-re-signing-families", "setting-membership-prices"],
@@ -607,7 +607,6 @@ export const LANDINGS: Landing[] = [
         heading: "What moving looks like",
         body: [
           "Export your spreadsheet as a CSV and import it into Junbi. Students, families and belts come across in one go. Then send families your sign-up link to set up Direct Debit.",
-          "Founding Clubs get the whole move done for them, free.",
         ],
       },
       {

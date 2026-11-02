@@ -48,7 +48,7 @@ export default function TermsPage() {
         <ul>
           <li>Our plans and prices are shown on our <Link href="/pricing">pricing page</Link>. Every plan has every feature; plans differ by club size.</li>
           <li>Fees are charged monthly in advance. Prices include any VAT that applies.</li>
-          <li>Discount codes and Founding Club offers apply as described when you sign up. A Founding Club&apos;s price is locked for two years.</li>
+          <li>Discount codes apply as described when you sign up. Clubs that joined through an earlier Founding Club offer keep the terms of that offer.</li>
           <li>We may change our prices. We&apos;ll give you at least 30 days&apos; notice by email, and you can cancel before the change takes effect.</li>
           <li>If a payment to us fails, we&apos;ll let you know. If it isn&apos;t sorted within 14 days, we may pause your account until it is.</li>
         </ul>

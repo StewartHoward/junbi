@@ -40,6 +40,10 @@ const clubSiteHeaders = securityHeaders.map((h) =>
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The Founding Club offer has closed; old links go to pricing.
+  async redirects() {
+    return [{ source: "/founding-clubs", destination: "/pricing", permanent: true }];
+  },
   async headers() {
     return [
       { source: "/((?!embed/|c/).*)", headers: securityHeaders },

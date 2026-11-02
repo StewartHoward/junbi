@@ -23,7 +23,7 @@ export async function signupAction(_prev: FormState, f: FormData): Promise<FormS
   const r = await createClubAccount({
     ...values,
     password: str(f, "password"),
-    founding: str(f, "founding") === "1",
+    founding: false, // The Founding Club offer has closed.
     terms: f.get("terms") === "on",
   });
   if (!r.ok) return { errors: r.errors, values };
@@ -31,7 +31,7 @@ export async function signupAction(_prev: FormState, f: FormData): Promise<FormS
   // Never let a slow or failed email stop someone getting into their new club.
   await sendWelcome({ ...r.value, name: values.name, email: values.email, clubName: values.clubName }).catch((err) => console.error("welcome email failed", err));
   const { alertNewClub, alertError } = await import("@/lib/alerts");
-  await alertNewClub({ clubName: values.clubName, ownerName: values.name, email: values.email, plan: values.plan, founding: str(f, "founding") === "1", promoCode: values.promoCode || null });
+  await alertNewClub({ clubName: values.clubName, ownerName: values.name, email: values.email, plan: values.plan, founding: false, promoCode: values.promoCode || null });
   // Card next (nothing taken until the trial ends), unless the club is free.
   const { checkoutAfterSignup } = await import("@/data/billing");
   const url = await checkoutAfterSignup(r.value, values.email, await appUrl()).catch(async (err) => {

@@ -85,7 +85,7 @@ export default async function Home() {
         <p className="m-sub">Classes, attendance, Direct Debit and messages to parents. One simple system, set up in an evening.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
-          <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
+          <Link href="/pricing" className="m-link">See pricing</Link>
         </div>
         <p className="m-fine">Free for 7 days. Nothing taken until your trial ends. One flat price, 0% of your fees.</p>
 
@@ -207,16 +207,16 @@ export default async function Home() {
       <section id="switching" className="m-section alt m-center">
         <p className="m-eyebrow">Moving to Junbi</p>
         <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>Switch without the hassle.</h2>
-        <p className="m-sub">Bring your students, families and belts across from your current system or a spreadsheet. Founding Clubs get the whole move done for them.</p>
-        <p style={{ margin: "32px 0 0" }}><Link href="/founding-clubs" className="m-link">Become a Founding Club</Link></p>
+        <p className="m-sub">Bring your students, families and belts across from your current system or a spreadsheet. Already collecting through Stripe? Families don&apos;t need to sign up again.</p>
+        <p style={{ margin: "32px 0 0" }}><Link href="/guides/switching-without-re-signing-families" className="m-link">How switching works</Link></p>
       </section>
 
       <section className="m-section m-center">
         <h2 className="m-h2 xl">Ready when you are.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>The first 10 Founding Clubs get 50% off for six months, free migration from their current system, and their price locked for two years.</p>
+        <p className="m-sub" style={{ maxWidth: 600 }}>Every feature on every plan, from £19 a month. Free for 7 days, and 0% of your fees, ever.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
-          <Link href="/founding-clubs" className="m-link">Become a Founding Club</Link>
+          <Link href="/pricing" className="m-link">See pricing</Link>
         </div>
       </section>
     </>

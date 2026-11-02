@@ -6,14 +6,13 @@ import { signupAction, type FormState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
 import { SELF_SERVE_PLANS, formatPounds } from "@/lib/plans";
 
-export function SignupForm({ plan, founding, code }: { plan: string; founding: boolean; code: string }) {
+export function SignupForm({ plan, code }: { plan: string; code: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(signupAction, {});
   const e = state.errors;
   const v = state.values ?? {};
   return (
     <form action={action} className="m-form" noValidate>
       {e?.form && <p className="error" role="alert">{e.form}</p>}
-      <input type="hidden" name="founding" value={founding ? "1" : "0"} />
       <div>
         <label htmlFor="clubName">Club name</label>
         <input id="clubName" name="clubName" autoComplete="organization" defaultValue={v.clubName} required {...errProps("clubName", e)} />
@@ -62,7 +61,7 @@ export function SignupForm({ plan, founding, code }: { plan: string; founding: b
         <FieldError id="terms-err" msg={e?.terms} />
       </div>
       <button type="submit" className="m-btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? "Creating your club…" : founding ? "Claim my Founding Club place" : "Start free trial"}
+        {pending ? "Creating your club…" : "Start free trial"}
       </button>
       <p className="m-auth-alt">
         Already using Junbi? <Link href="/login" className="m-link">Sign in</Link>

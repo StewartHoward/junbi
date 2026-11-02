@@ -21,7 +21,7 @@ const FAQ = [
   { q: "What's the difference between the plans?", a: "Only the size of your club. Every plan has every feature: students and families, belts, timetable and registers, Direct Debit and messages to parents." },
   { q: "Which martial arts does Junbi work with?", a: "Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai and MMA, with belt systems ready to go. Teach more than one? Pick them all when you set up." },
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, paused and past students are free." },
-  { q: "Can you move us from our current system?", a: "Yes. We bring students, families and belts across from your current system or a spreadsheet. Founding Clubs get the whole move done for them, free." },
+  { q: "Can you move us from our current system?", a: "Yes. Import your students, families and belts from your current system or a spreadsheet. If you already collect through Stripe, Junbi can take over your Direct Debits without families signing up again." },
   { q: "Can we change plan later?", a: "Any time, up or down." },
   { q: "When can we start?", a: "Today. Sign up, answer a few quick questions and your dashboard is ready. It's free for 7 days and you don't need a card." },
 ];
@@ -98,10 +98,10 @@ export default function PricingPage() {
       </section>
 
       <section className="m-section dark m-center">
-        <h2 className="m-h2 xl">Become a Founding Club.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>50% off for six months after your free trial, free migration, and your price locked for two years. Open to the first 10 clubs only.</p>
+        <h2 className="m-h2 xl">Ready when you are.</h2>
+        <p className="m-sub" style={{ maxWidth: 600 }}>Free for 7 days. Nothing taken until your trial ends, and you can change plan any time.</p>
         <div className="m-actions">
-          <Link href="/signup?founding=1" className="m-btn on-dark">Claim your place</Link>
+          <Link href="/signup" className="m-btn on-dark">Start free trial</Link>
         </div>
       </section>
     </>

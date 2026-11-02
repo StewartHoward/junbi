@@ -18,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     page("/", 1, "weekly"),
     page("/pricing", 0.9),
-    page("/founding-clubs", 0.8),
     ...Object.values(KIND_PATH).map((p) => page(p, 0.8)),
     ...LANDINGS.filter((l) => shown(`${l.kind}/${l.slug}`)).map((l) => page(landingPath(l), l.kind === "compare" ? 0.7 : 0.8)),
     page("/guides", 0.8, "weekly"),
