@@ -516,7 +516,7 @@ export const LANDINGS: Landing[] = [
         ["100 students", "£39", "£197.64"],
         ["200 students", "£69 (up to 3 sites)", "£392.05"],
       ],
-      note: "From nestmanagement.co.uk/pricing, checked November 2026. NEST's figures are the typical monthly fees it publishes for clubs of that size; your own quote may differ. Junbi prices exclude VAT.",
+      note: "From nestmanagement.co.uk/pricing, checked November 2026. NEST's figures are the typical monthly fees it publishes for clubs of that size; your own quote may differ.",
     },
     faq: [
       { q: "Can we move from NEST without families signing up again?", a: "If your Direct Debits are held by NEST rather than in your own account, families will need to set up a new Direct Debit with your Stripe or GoCardless. Junbi makes that a short link on their phone." },
@@ -540,7 +540,7 @@ export const LANDINGS: Landing[] = [
         heading: "Pricing",
         body: [
           "Martialytics publishes its prices in US dollars, from $69 a month for up to 50 active students to $199 a month for 200 or more. It includes a 30-day free trial.",
-          "Junbi is priced in pounds, from £19 a month for up to 50 active students to £69 for unlimited students across up to three sites. Prices exclude VAT.",
+          "Junbi is priced in pounds, from £19 a month for up to 50 active students to £69 for unlimited students across up to three sites.",
         ],
       },
       {
@@ -573,11 +573,11 @@ export const LANDINGS: Landing[] = [
         ["151 to 200", "£69", "$129"],
         ["200+", "£69", "$199"],
       ],
-      note: "From martialytics.com/pricing, checked November 2026. Martialytics prices are in US dollars. Junbi prices are in pounds and exclude VAT.",
+      note: "From martialytics.com/pricing, checked November 2026. Martialytics prices are in US dollars. Junbi prices are in pounds.",
     },
     faq: [
       { q: "Can we use GoCardless with Junbi?", a: "Yes. Connect your own Stripe or GoCardless account." },
-      { q: "Is there a free trial?", a: "Yes. Junbi is free for 7 days with nothing taken until your trial ends." },
+      { q: "Is there a free trial?", a: "Yes. Add your card when you sign up and you won't be charged for 7 days. Cancel before then and you pay nothing." },
     ],
     guides: ["switching-without-re-signing-families"],
     related: ["compare/nest", "feature/club-website", "compare/spreadsheets"],

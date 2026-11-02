@@ -87,7 +87,7 @@ export default async function Home() {
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/pricing" className="m-link">See pricing</Link>
         </div>
-        <p className="m-fine">Free for 7 days. Nothing taken until your trial ends. One flat price, 0% of your fees.</p>
+        <p className="m-fine">Free for 7 days. Add your card at sign-up, and you won&apos;t be charged until day 8. One flat price, 0% of your fees.</p>
 
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students checked in">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>junbi</span></div>

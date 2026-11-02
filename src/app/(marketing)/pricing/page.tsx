@@ -23,7 +23,7 @@ const FAQ = [
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, paused and past students are free." },
   { q: "Can you move us from our current system?", a: "Yes. Import your students, families and belts from your current system or a spreadsheet. If you already collect through Stripe, Junbi can take over your Direct Debits without families signing up again." },
   { q: "Can we change plan later?", a: "Any time, up or down." },
-  { q: "When can we start?", a: "Today. Sign up, answer a few quick questions and your dashboard is ready. It's free for 7 days and you don't need a card." },
+  { q: "When can we start?", a: "Today. Sign up, answer a few quick questions and your dashboard is ready. Add your card when you sign up, and you won't be charged for the first 7 days." },
 ];
 
 export default function PricingPage() {
@@ -47,7 +47,7 @@ export default function PricingPage() {
           </div>
         </div>
         <p className="m-fine m-center" style={{ maxWidth: 820, margin: "28px auto 0", lineHeight: 1.5 }}>
-          Prices exclude VAT. Payment fees are charged by Stripe or GoCardless directly, never by Junbi.
+          Payment fees are charged by Stripe or GoCardless directly, never by Junbi.
         </p>
       </section>
 
@@ -99,7 +99,7 @@ export default function PricingPage() {
 
       <section className="m-section dark m-center">
         <h2 className="m-h2 xl">Ready when you are.</h2>
-        <p className="m-sub" style={{ maxWidth: 600 }}>Free for 7 days. Nothing taken until your trial ends, and you can change plan any time.</p>
+        <p className="m-sub" style={{ maxWidth: 600 }}>Free for 7 days. Add your card at sign-up and you won&apos;t be charged until the trial ends. Change plan any time.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn on-dark">Start free trial</Link>
         </div>

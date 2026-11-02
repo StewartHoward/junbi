@@ -1,6 +1,6 @@
 /**
  * Junbi plans. One source for the pricing page, sign-up form, settings and (later) billing.
- * Prices are in pence, ex VAT. Every plan has every feature; plans differ only by club size and sites.
+ * Prices are in pence. Every plan has every feature; plans differ only by club size and sites.
  */
 
 /** What every plan includes. */

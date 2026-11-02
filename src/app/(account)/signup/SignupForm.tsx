@@ -42,7 +42,7 @@ export function SignupForm({ plan, code }: { plan: string; code: string }) {
             </option>
           ))}
         </select>
-        <p className="hint">Free for 7 days, with every feature. You add a card next, but nothing is taken until your trial ends. Cancel or change plan any time.</p>
+        <p className="hint">Free for 7 days, with every feature. You add your card next, and you won't be charged for 7 days. Cancel or change plan any time.</p>
       </div>
       <div>
         <label htmlFor="promoCode">Code (optional)</label>
