@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { checkoutAction, type CheckoutState } from "../actions";
 import { FieldError, errProps } from "@/components/FormBits";
-import { ARTS, ROLES, SIZES, SYSTEMS, type Ebook } from "@/lib/ebooks";
+import { ARTS, ROLES, SIZES, SYSTEMS, formatPrice, type Ebook } from "@/lib/ebooks";
 import { Cover } from "../Cover";
 
 export function CheckoutForm({ books, picked }: { books: Ebook[]; picked: string[] }) {
@@ -13,6 +13,7 @@ export function CheckoutForm({ books, picked }: { books: Ebook[]; picked: string
   const [items, setItems] = useState<string[]>(Array.isArray(v.items) ? v.items : picked);
   const sv = (k: string) => (typeof v[k] === "string" ? (v[k] as string) : "");
   const arts = Array.isArray(v.arts) ? v.arts : [];
+  const total = books.filter((b) => items.includes(b.slug)).reduce((a, b) => a + b.pricePence, 0);
   const toggle = (slug: string) => setItems((x) => (x.includes(slug) ? x.filter((s) => s !== slug) : [...x, slug]));
 
   return (
@@ -20,24 +21,24 @@ export function CheckoutForm({ books, picked }: { books: Ebook[]; picked: string
       {e?.form && <p className="error" role="alert">{e.form}</p>}
       <fieldset className="m-fieldset">
         <legend>Your bag</legend>
-        <p className="hint">Untick anything you don&apos;t want. Everything is free.</p>
+        <p className="hint">Untick anything you don&apos;t want.</p>
         <div className="m-bag">
           {books.map((b) => (
             <label key={b.slug} className="m-bag-item">
               <input type="checkbox" name="items" value={b.slug} checked={items.includes(b.slug)} onChange={() => toggle(b.slug)} />
               <Cover book={b} size="xs" />
-              <span className="t"><b>{b.title}</b><span>{b.ready ? `PDF, ${b.pages} pages` : "Pre-order: emailed when it's out"}</span></span>
-              <span style={{ fontWeight: 600 }}>£0</span>
+              <span className="t"><b>{b.title}</b><span>{b.status === "live" ? `PDF${b.pages ? `, ${b.pages} pages` : ""}` : "Pre-order: emailed when it's out"}</span></span>
+              <span style={{ fontWeight: 600, textAlign: "right" }}>{b.worthPence ? <s className="muted" style={{ fontWeight: 400, display: "block", fontSize: 13 }}>{formatPrice(b.worthPence)}</s> : null}{formatPrice(b.pricePence)}</span>
             </label>
           ))}
         </div>
         <FieldError id="items-err" msg={e?.items} />
-        <div className="m-total" style={{ marginTop: 16 }}><span>{items.length} {items.length === 1 ? "ebook" : "ebooks"}</span><span><b>Total £0.00</b></span></div>
+        <div className="m-total" style={{ marginTop: 16 }}><span>{items.length} {items.length === 1 ? "ebook" : "ebooks"}</span><span><b>Total £{(total / 100).toFixed(2)}</b></span></div>
       </fieldset>
 
       <fieldset className="m-fieldset" style={{ marginTop: 24 }}>
         <legend>Your details</legend>
-        <p className="hint">So we know where to send them. No card needed.</p>
+        <p className="hint">{total ? "So we know where to send them. You pay by card on the next page." : "So we know where to send them. No card needed."}</p>
         <div style={{ display: "grid", gap: 18 }}>
           <div>
             <label htmlFor="name">Your name</label>
@@ -92,7 +93,7 @@ export function CheckoutForm({ books, picked }: { books: Ebook[]; picked: string
       </fieldset>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: "absolute", left: -9999, width: 1, height: 1 }} />
       <button type="submit" className="m-btn primary" disabled={pending || items.length === 0} style={{ width: "100%", marginTop: 28 }}>
-        {pending ? "Placing your order…" : `Place order · £0.00`}
+        {pending ? (total ? "Taking you to payment…" : "Placing your order…") : total ? `Continue to payment · £${(total / 100).toFixed(2)}` : "Place order · £0.00"}
       </button>
       <p className="m-fine" style={{ marginTop: 12, textAlign: "center" }}>We use your details to send your order and, if you tick the box, the odd email. See our <a href="/privacy" className="m-link">privacy policy</a>.</p>
     </form>

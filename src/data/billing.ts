@@ -310,7 +310,12 @@ type Invoice = {
 export async function handleBillingEvent(event: { type: string; data: { object: unknown } }) {
   const o = event.data.object as Record<string, unknown>;
   if (event.type === "checkout.session.completed") {
-    const session = o as { mode?: string; metadata?: { club_id?: string }; subscription?: string };
+    const session = o as { id?: string; mode?: string; metadata?: { club_id?: string; junbi_library_order?: string }; subscription?: string };
+    if (session.mode === "payment" && session.metadata?.junbi_library_order && session.id) {
+      const { markLibraryOrderPaid } = await import("./crm");
+      await markLibraryOrderPaid(session.metadata.junbi_library_order, session.id);
+      return;
+    }
     const clubId = session.metadata?.club_id;
     if (session.mode !== "subscription" || !clubId || !session.subscription) return;
     const sub = await stripeApi<Sub>("GET", `/subscriptions/${session.subscription}`, null);

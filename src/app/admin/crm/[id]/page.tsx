@@ -2,18 +2,17 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { STAGES, crmContact, stageLabel } from "@/data/crm";
-import { ebookBySlug } from "@/lib/ebooks";
 import { EditContactForm, NoteForm } from "../Forms";
 
 export const metadata: Metadata = { title: "Lead · Junbi admin" };
 
 const when = (d: Date) => d.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
-const KIND: Record<string, string> = { order: "Order", delivered: "Ebook sent", download: "Download", email: "Email", note: "Note", stage: "Stage", signup: "Signed up", unsubscribe: "Unsubscribed", edit: "Follow-up" };
+const KIND: Record<string, string> = { order: "Order", paid: "Payment", delivered: "Ebook sent", download: "Download", email: "Email", note: "Note", stage: "Stage", signup: "Signed up", unsubscribe: "Unsubscribed", edit: "Follow-up" };
 
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const data = await crmContact((await params).id);
   if (!data) notFound();
-  const { contact: c, events } = data;
+  const { contact: c, events, orders, titles } = data;
   const facts: Array<[string, React.ReactNode]> = [
     ["Email", <a key="e" href={`mailto:${c.email}`}>{c.email}</a>],
     ["Phone", c.phone ? <a key="p" href={`tel:${c.phone}`}>{c.phone}</a> : <span className="muted">Not given</span>],
@@ -21,7 +20,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     ["Teaches", c.arts.join(", ") || "Unknown"],
     ["Size", c.size || "Unknown"],
     ["Uses now", c.system || "Unknown"],
-    ["Ebooks", c.ordered.map((s) => ebookBySlug(s)?.title ?? s).join(", ") || "None"],
+    ["Ebooks", c.ordered.map((s) => titles[s] ?? s).join(", ") || "None"],
+    ["Spent", `£${(orders.filter((o) => o.status === "paid").reduce((a, o) => a + o.amountPence, 0) / 100).toFixed(2)}`],
     ["Emails", c.unsubscribed ? "Unsubscribed" : c.marketingOk ? `Yes${c.followupStep ? `, ${c.followupStep} of 3 follow-ups sent` : ""}` : "No, order emails only"],
     ["Junbi", c.signedUp ? "Signed up" : "Not signed up"],
     ["Added", when(c.createdAt)],

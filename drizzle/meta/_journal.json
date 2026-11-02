@@ -281,6 +281,13 @@
       "when": 1791667576924,
       "tag": "0039_library_crm",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791667577924,
+      "tag": "0040_hq_ebooks",
+      "breakpoints": true
     }
   ]
 }

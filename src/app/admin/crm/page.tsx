@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { STAGES, crmOverview, stageLabel } from "@/data/crm";
-import { ebookBySlug } from "@/lib/ebooks";
 import { AddContactForm, DeliverButton } from "./Forms";
 
 export const metadata: Metadata = { title: "Leads · Junbi admin" };
@@ -49,8 +48,8 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
             <tbody>
               {books.map((b) => (
                 <tr key={b.book.slug}>
-                  <td><Link href={href({ book: b.book.slug })}><b>{b.book.title}</b></Link><span className="sub">{b.book.pages} pages</span></td>
-                  <td><span className={`pill ${b.book.ready ? "ok" : "warn"}`}>{b.book.ready ? "Live" : "Pre-orders"}</span></td>
+                  <td><Link href={href({ book: b.book.slug })}><b>{b.book.title}</b></Link><span className="sub"><Link href={`/admin/hq/${b.book.id}`}>Edit in HQ</Link></span></td>
+                  <td><span className={`pill ${b.book.ready ? "ok" : b.book.status === "draft" ? "neutral" : "warn"}`}>{b.book.ready ? "Live" : b.book.status === "draft" ? "Draft" : "Pre-orders"}</span></td>
                   <td className="num">{b.people}</td>
                   <td className="num">{b.downloads}</td>
                   <td className="num">{b.waiting}</td>
@@ -76,7 +75,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
           <Link href={href({ stage: undefined })} aria-current={!sp.stage ? "true" : undefined}>All {counts.total}</Link>
           {STAGES.map((s) => <Link key={s.key} href={href({ stage: s.key })} aria-current={sp.stage === s.key ? "true" : undefined}>{s.label} {byStage[s.key] ?? 0}</Link>)}
         </nav>
-        {sp.book && <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>Showing people who ordered {ebookBySlug(sp.book)?.title}. <Link href={href({ book: undefined })}>Show everyone</Link></p>}
+        {sp.book && <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>Showing people who ordered {books.find((b) => b.book.slug === sp.book)?.book.title ?? sp.book}. <Link href={href({ book: undefined })}>Show everyone</Link></p>}
         <div className="table-wrap admin-table" style={{ marginTop: 12 }}>
           <table className="data" style={{ minWidth: 960 }}>
             <thead><tr><th scope="col">Person</th><th scope="col">Stage</th><th scope="col">Club</th><th scope="col">Uses now</th><th scope="col">Ebooks</th><th scope="col">Next follow-up</th><th scope="col">Last activity</th></tr></thead>
@@ -87,7 +86,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                   <td><span className={`pill ${STAGE_PILL[c.stage]}`}>{stageLabel(c.stage)}</span></td>
                   <td>{c.clubName || <span className="muted">No club yet</span>}<span className="sub">{[c.arts.join(", "), c.size].filter(Boolean).join(" · ")}</span></td>
                   <td>{c.system || <span className="muted">Unknown</span>}</td>
-                  <td>{c.ordered.length ? c.ordered.map((s) => ebookBySlug(s)?.title ?? s).join(", ") : <span className="muted">Added by hand</span>}</td>
+                  <td>{c.ordered.length ? c.ordered.map((s) => books.find((b) => b.book.slug === s)?.book.title ?? s).join(", ") : <span className="muted">Added by hand</span>}</td>
                   <td className={c.nextActionOn && c.nextActionOn <= today ? "warn-t" : undefined}>{c.nextActionOn ? day(new Date(`${c.nextActionOn}T12:00:00Z`)) : <span className="muted">None</span>}</td>
                   <td>{ago(c.lastActivity)}</td>
                 </tr>

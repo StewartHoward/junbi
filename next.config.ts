@@ -40,8 +40,6 @@ const clubSiteHeaders = securityHeaders.map((h) =>
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Ebook PDFs are read by the download route, so ship them with it.
-  outputFileTracingIncludes: { "/api/library/download": ["./content/ebooks/**/*.pdf"] },
   // The Founding Club offer has closed; old links go to pricing.
   async redirects() {
     return [{ source: "/founding-clubs", destination: "/pricing", permanent: true }];

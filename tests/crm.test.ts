@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import * as crm from "@/data/crm";
-import { EBOOKS } from "@/lib/ebooks";
+const EBOOKS = [{ slug: "club-starter-kit" }, { slug: "full-classes" }, { slug: "paid-on-time" }];
 
 /* The Junbi Library's £0 checkout and the CRM behind it. */
 

@@ -256,11 +256,11 @@
 }
 
 /* ---------- Junbi Library ---------- */
-.m-cover { position: relative; aspect-ratio: 3 / 4; border-radius: 6px 14px 14px 6px; padding: 9% 9% 9% 14%; display: flex; flex-direction: column; overflow: hidden;
+.m-cover { position: relative; aspect-ratio: 3 / 4; border-radius: 6px 14px 14px 6px; padding: 1.4em 1.4em 1.4em 2.1em; display: flex; flex-direction: column; overflow: hidden;
   box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 18px 40px -12px rgba(0,0,0,.35); text-align: left; }
-.m-cover.xs { width: 52px; font-size: 6px; border-radius: 2px 5px 5px 2px; } .m-cover.sm { width: 120px; } .m-cover.md { width: 100%; max-width: 260px; } .m-cover.lg { width: 100%; max-width: 360px; }
+.m-cover.xs { width: 52px; font-size: 6px; border-radius: 2px 5px 5px 2px; } .m-cover.sm { width: 120px; font-size: 10px; } .m-cover.md { width: 100%; max-width: 260px; } .m-cover.lg { width: 100%; max-width: 360px; }
 .m-cover-spine { position: absolute; inset: 0 auto 0 0; width: 6%; background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.08)); }
-.m-cover-belt { display: block; flex: none; height: .7em; margin: auto -10% .9em -16.5%; }
+.m-cover-belt { display: block; flex: none; height: .7em; margin: auto -1.4em .9em -2.1em; }
 .m-cover-kicker { font-size: .72em; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
 .m-cover-title { font-size: 1.9em; font-weight: 700; letter-spacing: -.03em; line-height: 1.02; margin-top: .5em; }
 .m-cover-sub { font-size: .78em; line-height: 1.35; opacity: .8; margin-top: .7em; }
@@ -301,3 +301,6 @@
 .m-form .m-bag-item { display: flex; }
 .m-book-card h2, .m-book-card h3, .m-book-card .m-price { color: #1d1d1f; }
 .m-cover.md .m-cover-sub { display: none; }
+.m-price .was { font-size: 17px; color: var(--m-muted); }
+.m-price.big .was { font-size: 22px; }
+img.m-cover { padding: 0; object-fit: cover; display: block; height: auto; background: #e8e8ed; }

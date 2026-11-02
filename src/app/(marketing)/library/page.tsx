@@ -1,47 +1,59 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { EBOOKS } from "@/lib/ebooks";
+import { shopEbooks } from "@/data/library";
+import { formatPrice } from "@/lib/ebooks";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 import { Cover, Price } from "./Cover";
 
+// Ebooks are edited in HQ; saving there refreshes this straight away.
+export const revalidate = 300;
+
 export const metadata: Metadata = pageMeta({
   ownImage: true,
-  title: "Free Ebooks for Martial Arts Club Owners",
-  description: "The Junbi Library: free ebooks on starting a martial arts club, filling your classes and getting paid on time. £0 at the checkout.",
+  title: "Ebooks for Martial Arts Club Owners",
+  description: "The Junbi Library: practical ebooks on starting a martial arts club, filling your classes and getting paid on time. Many are free.",
   path: "/library",
 });
 
-export default function LibraryPage() {
+export default async function LibraryPage() {
+  const books = await shopEbooks();
+  const free = books.filter((b) => b.pricePence === 0);
   const structured = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    itemListElement: EBOOKS.map((b, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE_URL}/library/${b.slug}`, name: b.title })),
+    itemListElement: books.map((b, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE_URL}/library/${b.slug}`, name: b.title })),
   };
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(structured)} />
       <section className="m-section m-center" style={{ paddingBottom: 40 }}>
         <p className="m-eyebrow">Junbi Library</p>
-        <h1 className="m-hero-title" style={{ fontSize: "clamp(40px, 6vw, 68px)", maxWidth: 860 }}>Free ebooks for club owners.</h1>
-        <p className="m-sub" style={{ maxWidth: 640 }}>Practical, plain-English books on starting, filling and running a martial arts club. Every one is £0 at the checkout. Take as many as you like.</p>
+        <h1 className="m-hero-title" style={{ fontSize: "clamp(40px, 6vw, 68px)", maxWidth: 860 }}>{free.length === books.length ? "Free ebooks for club owners." : "Ebooks for club owners."}</h1>
+        <p className="m-sub" style={{ maxWidth: 640 }}>Practical, plain-English books on starting, filling and running a martial arts club.{free.length ? ` ${free.length === books.length ? "Every one is" : `${free.length} of them are`} £0 at the checkout.` : ""}</p>
       </section>
       <section className="m-section alt" style={{ paddingTop: 56 }}>
-        <div className="m-shelf">
-          {EBOOKS.map((b) => (
-            <Link key={b.slug} href={`/library/${b.slug}`} className="m-book-card">
-              <Cover book={b} />
-              <h2>{b.title}</h2>
-              <p>{b.pitch}</p>
-              <div className="row">
-                <Price />
-                <span className="m-link">{b.ready ? "Get it" : "Pre-order"}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-        <p className="m-center" style={{ margin: "40px 0 0" }}>
-          <Link href={`/library/checkout?items=${EBOOKS.map((b) => b.slug).join(",")}`} className="m-btn primary">Get all {EBOOKS.length} for £0</Link>
-        </p>
+        {books.length === 0 ? (
+          <p className="m-sub m-center">New books are on the way. Check back soon.</p>
+        ) : (
+          <div className="m-shelf">
+            {books.map((b) => (
+              <Link key={b.slug} href={`/library/${b.slug}`} className="m-book-card">
+                <Cover book={b} />
+                <h2>{b.title}</h2>
+                <p>{b.pitch}</p>
+                <div className="row">
+                  <Price book={b} />
+                  <span className="m-link">{b.status === "preorder" ? "Pre-order" : b.pricePence ? "Buy" : "Get it"}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+        {free.length > 1 && (
+          <p className="m-center" style={{ margin: "40px 0 0" }}>
+            <Link href={`/library/checkout?items=${free.map((b) => b.slug).join(",")}`} className="m-btn primary">Get all {free.length} free ones for {formatPrice(0)}</Link>
+          </p>
+        )}
       </section>
       <section className="m-section m-center">
         <h2 className="m-h2" style={{ fontSize: "clamp(30px, 4vw, 40px)" }}>Prefer something shorter?</h2>

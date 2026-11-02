@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { GUIDES } from "@/lib/guides";
 import { KIND_PATH, LANDINGS, landingPath } from "@/lib/landing";
-import { EBOOKS } from "@/lib/ebooks";
+import { shopEbooks } from "@/data/library";
 import { SITE_URL } from "@/lib/seo";
 import { publishedClubSites } from "@/data/website";
 import { featureFlags } from "@/data/features";
@@ -22,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...Object.values(KIND_PATH).map((p) => page(p, 0.8)),
     ...LANDINGS.filter((l) => shown(`${l.kind}/${l.slug}`)).map((l) => page(landingPath(l), l.kind === "compare" ? 0.7 : 0.8)),
     page("/library", 0.8, "weekly"),
-    ...EBOOKS.map((b) => page(`/library/${b.slug}`, 0.7)),
+    ...(await shopEbooks()).map((b) => page(`/library/${b.slug}`, 0.7)),
     page("/guides", 0.8, "weekly"),
     ...GUIDES.map((g) => page(`/guides/${g.slug}`, 0.7)),
     page("/signup", 0.6),
