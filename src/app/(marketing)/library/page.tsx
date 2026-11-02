@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { shopEbooks } from "@/data/library";
-import { formatPrice } from "@/lib/ebooks";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
 import { Cover, Price } from "./Cover";
 
@@ -48,11 +47,6 @@ export default async function LibraryPage() {
               </Link>
             ))}
           </div>
-        )}
-        {free.length > 1 && (
-          <p className="m-center" style={{ margin: "40px 0 0" }}>
-            <Link href={`/library/checkout?items=${free.map((b) => b.slug).join(",")}`} className="m-btn primary">Get all {free.length} free ones for {formatPrice(0)}</Link>
-          </p>
         )}
       </section>
       <section className="m-section m-center">
