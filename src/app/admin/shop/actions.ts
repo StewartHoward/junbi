@@ -11,7 +11,7 @@ const list = (f: FormData, k: string) => str(f, k).split("\n").map((s) => s.trim
 function refresh() {
   revalidatePath("/library");
   revalidatePath("/library/[slug]", "page");
-  revalidatePath("/admin/hq", "layout");
+  revalidatePath("/admin/shop", "layout");
   revalidatePath("/admin/crm");
   revalidatePath("/sitemap.xml");
 }
@@ -26,14 +26,14 @@ export async function saveEbookAction(id: string | null, _prev: EbookFormState, 
   });
   if (!r.ok) return { errors: r.errors };
   refresh();
-  redirect(`/admin/hq/${r.value.id}?${id ? "saved" : "created"}=1`);
+  redirect(`/admin/shop/${r.value.id}?${id ? "saved" : "created"}=1`);
 }
 
 export async function deleteEbookAction(id: string, _prev: EbookFormState): Promise<EbookFormState> {
   const r = await deleteEbook(id);
   if (!r.ok) return { errors: r.errors };
   refresh();
-  redirect("/admin/hq");
+  redirect("/admin/shop");
 }
 
 export async function removeCoverAction(id: string) {

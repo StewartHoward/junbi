@@ -5,7 +5,7 @@ import { UPLOAD_CHUNK } from "@/lib/ebooks";
 export const dynamic = "force-dynamic";
 
 /**
- * One piece of an ebook PDF or cover image from HQ, sent as raw bytes. Junbi admins only (checked in
+ * One piece of an ebook PDF or cover image from the admin Shop page, sent as raw bytes. Junbi admins only (checked in
  * uploadChunk). The browser splits big files so each request stays under the hosting limit.
  */
 export async function POST(req: Request) {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/library");
     revalidatePath("/library/[slug]", "page");
-    revalidatePath("/admin/hq", "layout");
+    revalidatePath("/admin/shop", "layout");
   }
   return NextResponse.json({ ok: true, done: r.value.done });
 }

@@ -42,7 +42,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The Founding Club offer has closed; old links go to pricing.
   async redirects() {
-    return [{ source: "/founding-clubs", destination: "/pricing", permanent: true }];
+    return [
+      { source: "/founding-clubs", destination: "/pricing", permanent: true },
+      { source: "/admin/hq/:path*", destination: "/admin/shop/:path*", permanent: true },
+      { source: "/admin/hq", destination: "/admin/shop", permanent: true },
+    ];
   },
   async headers() {
     return [

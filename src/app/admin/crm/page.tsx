@@ -48,7 +48,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
             <tbody>
               {books.map((b) => (
                 <tr key={b.book.slug}>
-                  <td><Link href={href({ book: b.book.slug })}><b>{b.book.title}</b></Link><span className="sub"><Link href={`/admin/hq/${b.book.id}`}>Edit in HQ</Link></span></td>
+                  <td><Link href={href({ book: b.book.slug })}><b>{b.book.title}</b></Link><span className="sub"><Link href={`/admin/shop/${b.book.id}`}>Edit in Shop</Link></span></td>
                   <td><span className={`pill ${b.book.ready ? "ok" : b.book.status === "draft" ? "neutral" : "warn"}`}>{b.book.ready ? "Live" : b.book.status === "draft" ? "Draft" : "Pre-orders"}</span></td>
                   <td className="num">{b.people}</td>
                   <td className="num">{b.downloads}</td>

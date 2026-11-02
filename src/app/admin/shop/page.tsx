@@ -5,7 +5,7 @@ import { STATUS_LABEL, formatPrice } from "@/lib/ebooks";
 import { Cover } from "@/app/(marketing)/library/Cover";
 import "@/app/(marketing)/marketing.css";
 
-export const metadata: Metadata = { title: "HQ · Junbi admin" };
+export const metadata: Metadata = { title: "Shop · Junbi admin" };
 
 const PILL = { draft: "neutral", preorder: "warn", live: "ok" } as const;
 
@@ -18,12 +18,12 @@ export default async function HqPage() {
     <>
       <div className="phead">
         <div>
-          <p className="eyebrow">Junbi HQ</p>
-          <h1 className="ptitle">Library shop</h1>
+          <p className="eyebrow">Junbi admin</p>
+          <h1 className="ptitle">Shop</h1>
         </div>
         <div className="acts">
           <Link href="/library" className="btn ghost sm" target="_blank">View the shop</Link>
-          <Link href="/admin/hq/new" className="btn primary sm">New ebook</Link>
+          <Link href="/admin/shop/new" className="btn primary sm">New ebook</Link>
         </div>
       </div>
 
@@ -35,7 +35,7 @@ export default async function HqPage() {
 
       <section className="card anim" style={{ marginTop: 24 }}>
         <div className="ch"><h2>Ebooks</h2><span className="m">In shop order</span></div>
-        {books.length === 0 && <p className="muted" style={{ marginTop: 12 }}>No ebooks yet. <Link href="/admin/hq/new">Add the first one</Link>.</p>}
+        {books.length === 0 && <p className="muted" style={{ marginTop: 12 }}>No ebooks yet. <Link href="/admin/shop/new">Add the first one</Link>.</p>}
         <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0 }}>
           {books.map((b) => {
             const s = stat(b.slug);
@@ -43,7 +43,7 @@ export default async function HqPage() {
               <li key={b.id} style={{ display: "flex", gap: 16, alignItems: "center", padding: "14px 0", borderTop: "1px solid var(--line, #e5e5ea)", flexWrap: "wrap" }}>
                 <Cover book={b} size="xs" />
                 <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-                  <Link href={`/admin/hq/${b.id}`}><b>{b.title}</b></Link>
+                  <Link href={`/admin/shop/${b.id}`}><b>{b.title}</b></Link>
                   <span className="sub" style={{ display: "block" }}>junbi.co.uk/library/{b.slug}{b.pdf ? " · PDF uploaded" : " · No PDF yet"}</span>
                 </div>
                 <span className={`pill ${PILL[b.status]}`}>{STATUS_LABEL[b.status]}</span>
@@ -52,7 +52,7 @@ export default async function HqPage() {
                   <b>{formatPrice(b.pricePence)}</b>
                 </span>
                 <span className="muted" style={{ fontSize: 14, minWidth: 170 }}>{s.people} ordered · {s.downloads} downloads{s.waiting && b.status !== "live" ? ` · ${s.waiting} waiting` : ""}</span>
-                <Link href={`/admin/hq/${b.id}`} className="btn secondary sm">Edit</Link>
+                <Link href={`/admin/shop/${b.id}`} className="btn secondary sm">Edit</Link>
               </li>
             );
           })}
