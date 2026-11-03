@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { requireActor } from "@/auth/session";
 import { can } from "@/auth/permissions";
-import { listStudents } from "@/data/students";
+import { listStudents, hasArchivedStudents } from "@/data/students";
 import { studentsSummary } from "@/data/dashboard";
 import { RankChip, StatusPill } from "@/components/badges";
 import { ringColour } from "@/components/ringColour";
@@ -23,6 +23,7 @@ const STATUSES = [
   ["paused", "Paused"],
   ["frozen", "Frozen"],
   ["cancelled", "Left"],
+  ["archived", "Archived"],
 ] as const;
 const SORTS = [
   ["", "Last name"],
@@ -36,11 +37,11 @@ const Icon = ({ d }: { d: string }) => (
 );
 const Plus = () => <Icon d="M12 5v14M5 12h14" />;
 
-type Params = { q?: string; status?: string; site?: string; filter?: string; sort?: string; id?: string; tab?: string };
+type Params = { q?: string; status?: string; site?: string; filter?: string; sort?: string; id?: string; tab?: string; deleted?: string };
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<Params> }) {
   const actor = await requireActor();
-  const { q, status, site, filter, sort, id } = await searchParams;
+  const { q, status, site, filter, sort, id, deleted } = await searchParams;
   const selected = id && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
   // Keep the current filters when moving between students.
   const keepObj = { q, status, site, filter, sort };
@@ -76,15 +77,17 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     { key: "status=trial", label: "Trial" },
     { key: "filter=new", label: "Joined in last 30 days" },
     ...(money ? [{ key: "filter=payment-problems", label: "Payment problems" }, { key: "filter=no-dd", label: "No Direct Debit" }] : []),
+    { key: "status=archived", label: "Archived" },
   ];
   const currentQuick = filter ? `filter=${filter}` : status && !site ? `status=${status}` : !filterCount ? "" : null;
 
   const canAdd = can(actor, "students.edit");
   const link = canAdd ? <JoinLinkCard url={await joinLink(actor)} emailOn={emailConfigured()} payments={await signupPayments(actor)} manage={can(actor, "payments.manage")} /> : null;
 
-  if (listed.length === 0 && !filtering) {
+  if (listed.length === 0 && !filtering && !selected && !(await hasArchivedStudents(actor))) {
     return (
       <div className="wrap">
+        {deleted && <p className="banner" role="status" style={{ marginBottom: 12 }}>Student deleted.</p>}
         <div className="phead"><div><h1 className="ptitle">Students</h1></div></div>
         <div className="card empty" style={{ marginTop: 24 }}>
           <h2>Add your first student.</h2>
@@ -106,6 +109,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="wrap">
+      {deleted && <p className="banner" role="status" style={{ marginBottom: 12 }}>Student deleted.</p>}
       <div className={`sp-wrap${selected ? " on-detail" : ""}`}>
         <div className="show-narrow phead" style={{ marginBottom: 4 }}>
           <div><h1 className="ptitle">Students</h1></div>

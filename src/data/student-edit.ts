@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { withClub, type Tx } from "@/db/client";
 import * as s from "@/db/schema";
@@ -172,7 +172,8 @@ export async function updateStudent(actor: Actor, id: string, input: EditStudent
         lastName: d.lastName,
         dateOfBirth: d.dateOfBirth ?? null,
         siteId: d.siteId,
-        status: d.status,
+        // Archiving and restoring have their own buttons, so editing never un-archives by accident.
+        status: before.status === "archived" ? "archived" : d.status,
         medicalNotes: d.medicalNotes ?? null,
         firstAidConsent: d.firstAidConsent,
         photoConsent: d.photoConsent,
@@ -300,6 +301,80 @@ export async function updateFamilyContact(actor: Actor, studentId: string, input
         .where(and(eq(s.guardians.id, g.id), eq(s.guardians.householdId, st.householdId)));
     }
     await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "household_contact", entityId: st.householdId });
+    return { ok: true as const, value: undefined };
+  });
+}
+
+/* ---------- Archive and delete ---------- */
+
+/** Active memberships still being paid through Stripe or GoCardless. These must be cancelled there first. */
+async function livePayments(tx: Tx, studentId: string) {
+  return tx
+    .select({ id: s.memberships.id })
+    .from(s.memberships)
+    .where(and(eq(s.memberships.studentId, studentId), ne(s.memberships.status, "cancelled"), isNotNull(s.memberships.providerSubscriptionId)));
+}
+
+const PAYING = "still pays by Direct Debit or card. Cancel their membership in your Stripe or GoCardless dashboard first (Junbi updates by itself), then try again. Cancelling here could stop their brothers' and sisters' payments too.";
+
+/** Hides a student who has left: off lists, registers and messages, with their history kept. Any plan without online payments ends today. */
+export async function archiveStudent(actor: Actor, id: string): Promise<Result> {
+  assertCan(actor, "students.edit");
+  if (!uuid.safeParse(id).success) throw new ForbiddenError("students.edit");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select().from(s.students).where(eq(s.students.id, id));
+    if (!st) throw new ForbiddenError("students.edit");
+    await assertSite(tx, actor, st.siteId);
+    if (st.status === "archived") return { ok: true as const, value: undefined };
+    if ((await livePayments(tx, id)).length) return { ok: false as const, errors: { form: `${st.firstName} ${PAYING}` } };
+    await tx.update(s.memberships).set({ status: "cancelled", endsOn: todayISO() }).where(and(eq(s.memberships.studentId, id), ne(s.memberships.status, "cancelled")));
+    await tx.update(s.students).set({ status: "archived", archivedAt: new Date(), archivedFrom: st.status }).where(eq(s.students.id, id));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "archive", entity: "student", entityId: id, before: { status: st.status } });
+    return { ok: true as const, value: undefined };
+  });
+}
+
+/** Brings an archived student back, with the status they had before. */
+export async function restoreStudent(actor: Actor, id: string): Promise<Result> {
+  assertCan(actor, "students.edit");
+  if (!uuid.safeParse(id).success) throw new ForbiddenError("students.edit");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select().from(s.students).where(eq(s.students.id, id));
+    if (!st) throw new ForbiddenError("students.edit");
+    await assertSite(tx, actor, st.siteId);
+    if (st.status !== "archived") return { ok: true as const, value: undefined };
+    const back = (["trial", "active", "paused", "frozen", "cancelled", "pending"] as const).find((x) => x === st.archivedFrom) ?? "cancelled";
+    await tx.update(s.students).set({ status: back, archivedAt: null, archivedFrom: null }).where(eq(s.students.id, id));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "restore", entity: "student", entityId: id, after: { status: back } });
+    return { ok: true as const, value: undefined };
+  });
+}
+
+/**
+ * Deletes a student for good: their attendance, belts, memberships and bookings go too. Owners and admins only,
+ * and they type the student's name to confirm. Their family record goes as well when nobody else is in it and
+ * it has no payment history.
+ */
+export async function deleteStudent(actor: Actor, id: string, confirmName: string): Promise<Result> {
+  assertCan(actor, "payments.manage");
+  if (!uuid.safeParse(id).success) throw new ForbiddenError("payments.manage");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [st] = await tx.select().from(s.students).where(eq(s.students.id, id));
+    if (!st) throw new ForbiddenError("payments.manage");
+    await assertSite(tx, actor, st.siteId);
+    const name = `${st.firstName} ${st.lastName}`.trim();
+    if (confirmName.trim().toLowerCase().replace(/\s+/g, " ") !== name.toLowerCase().replace(/\s+/g, " ")) {
+      return { ok: false as const, errors: { confirm: `Type ${name} exactly to confirm.` } };
+    }
+    if ((await livePayments(tx, id)).length) return { ok: false as const, errors: { form: `${st.firstName} ${PAYING}` } };
+    await tx.delete(s.students).where(eq(s.students.id, id));
+    const [left] = (await tx.execute(sql`
+      select (select count(*)::int from students where household_id = ${st.householdId}) as students,
+             (select count(*)::int from payments where household_id = ${st.householdId}) as payments,
+             (select count(*)::int from mandates where household_id = ${st.householdId}) as mandates`)) as unknown as Array<{ students: number; payments: number; mandates: number }>;
+    if (left && left.students === 0 && left.payments === 0 && left.mandates === 0) await tx.delete(s.households).where(eq(s.households.id, st.householdId));
+    // No name kept: the point of deleting is that their details are gone.
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "delete", entity: "student", entityId: id });
     return { ok: true as const, value: undefined };
   });
 }

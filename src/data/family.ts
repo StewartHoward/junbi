@@ -85,7 +85,7 @@ export async function familyOverview(email: string) {
           .select({ id: s.students.id, firstName: s.students.firstName, lastName: s.students.lastName, status: s.students.status, siteId: s.students.siteId, site: s.sites.name, medicalNotes: s.students.medicalNotes })
           .from(s.students)
           .innerJoin(s.sites, eq(s.sites.id, s.students.siteId))
-          .where(and(eq(s.students.householdId, h.household_id), ne(s.students.status, "cancelled")))
+          .where(and(eq(s.students.householdId, h.household_id), inArray(s.students.status, ["trial", "active", "paused", "frozen", "pending"])))
           .orderBy(asc(s.students.firstName));
         const ids = kids.map((k) => k.id);
 

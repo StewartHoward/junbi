@@ -227,6 +227,8 @@ export async function submitJoin(
       const known = have.get(key(p));
       if (known) {
         names.push(p.firstName);
+        // Someone archived who signs up again is back: waiting on payment if the club takes it online.
+        await tx.update(s.students).set({ status: payment?.provider ? "pending" : "active", archivedAt: null, archivedFrom: null }).where(and(eq(s.students.id, known), eq(s.students.status, "archived")));
         await addMembership(known, p.planId);
         continue;
       }

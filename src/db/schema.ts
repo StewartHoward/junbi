@@ -32,7 +32,7 @@ const clubId = () =>
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
 export const staffRole = pgEnum("staff_role", ["owner", "admin", "instructor", "assistant"]);
-export const studentStatus = pgEnum("student_status", ["trial", "active", "paused", "frozen", "cancelled", "pending"]);
+export const studentStatus = pgEnum("student_status", ["trial", "active", "paused", "frozen", "cancelled", "pending", "archived"]);
 export const gradeKind = pgEnum("grade_kind", ["kup", "poom", "dan", "kyu", "grade"]);
 export const gradingOutcome = pgEnum("grading_outcome", ["pass", "merit", "distinction", "fail"]);
 export const billingInterval = pgEnum("billing_interval", ["monthly", "termly", "annual"]);
@@ -245,6 +245,9 @@ export const students = pgTable(
     lastName: text("last_name").notNull(),
     dateOfBirth: date("date_of_birth"),
     status: studentStatus("status").notNull().default("trial"),
+    /** When an archived student was archived, and the status to restore them to. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedFrom: text("archived_from"),
     joinedOn: date("joined_on").notNull().defaultNow(),
     medicalNotes: text("medical_notes"),
     firstAidConsent: boolean("first_aid_consent").notNull().default(false),

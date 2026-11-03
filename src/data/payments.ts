@@ -568,7 +568,7 @@ export async function completeSetup(
       await tx.insert(s.memberships).values({ clubId, studentId: sub.studentId, planId: sub.planId, startsOn: today, providerSubscriptionId: sub.subscriptionId, status: "active" });
     }
     const ids = r.subscriptions.map((x) => x.studentId);
-    if (ids.length) await tx.update(s.students).set({ status: "active" }).where(and(inArray(s.students.id, ids), inArray(s.students.status, ["trial", "pending"])));
+    if (ids.length) await tx.update(s.students).set({ status: "active", archivedAt: null, archivedFrom: null }).where(and(inArray(s.students.id, ids), inArray(s.students.status, ["trial", "pending", "archived", "cancelled"])));
     await tx.update(s.paymentSetups).set({ status: "completed", completedAt: new Date() }).where(eq(s.paymentSetups.id, setupId));
     await tx.insert(s.auditLog).values({ clubId, action: "create", entity: "payment_setup", entityId: setupId, after: { provider: setup.provider, students: ids.length } });
   });

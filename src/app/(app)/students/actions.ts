@@ -173,3 +173,34 @@ export async function sendPayLinkAction(id: string, _prev: MembershipState, _f: 
   if (!r.ok) return { errors: r.errors };
   return { done: `Sent to ${r.value.email}. They choose a membership and set up their Direct Debit, then they become members.` };
 }
+
+export type ArchiveState = { errors?: Partial<Record<string, string>> };
+
+export async function archiveStudentAction(id: string, _prev: ArchiveState): Promise<ArchiveState> {
+  const actor = await requireActor();
+  const { archiveStudent } = await import("@/data/student-edit");
+  const r = await archiveStudent(actor, id);
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath("/students");
+  revalidatePath(`/students/${id}`);
+  return {};
+}
+
+export async function restoreStudentAction(id: string, _prev: ArchiveState): Promise<ArchiveState> {
+  const actor = await requireActor();
+  const { restoreStudent } = await import("@/data/student-edit");
+  const r = await restoreStudent(actor, id);
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath("/students");
+  revalidatePath(`/students/${id}`);
+  return {};
+}
+
+export async function deleteStudentAction(id: string, _prev: ArchiveState, f: FormData): Promise<ArchiveState> {
+  const actor = await requireActor();
+  const { deleteStudent } = await import("@/data/student-edit");
+  const r = await deleteStudent(actor, id, String(f.get("confirm") ?? ""));
+  if (!r.ok) return { errors: r.errors };
+  revalidatePath("/students");
+  redirect("/students?deleted=1");
+}

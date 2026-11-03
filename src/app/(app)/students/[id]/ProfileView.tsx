@@ -11,6 +11,7 @@ import { canSendPayLink } from "@/data/paylink";
 import { ContactCard } from "./ContactCard";
 import { AddMembershipForm } from "./AddMembershipForm";
 import { UpdateBeltForm } from "./UpdateBeltForm";
+import { StudentLifecycle } from "./StudentLifecycle";
 import { BeltSwatch, PaymentPill, RankChip, StatusPill } from "@/components/badges";
 import { ringColour } from "@/components/ringColour";
 
@@ -71,6 +72,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
     <>
       {compact && <Link href={backHref} className="sp-back" style={{ fontSize: 15, marginBottom: 8 }}>‹ All students</Link>}
 
+      {p.status === "archived" && <p className="banner" style={{ marginBottom: 16 }}>Archived{p.archivedAt ? ` on ${fmtDate(new Date(p.archivedAt).toISOString().slice(0, 10))}` : ""}. They don&apos;t show on lists, registers or messages. Restore them at the bottom of this page.</p>}
       <div className="phead">
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <span className="ring-av lg" style={{ ["--ring" as string]: ringColour(p.belts[0]?.current.grade.beltColour) }} aria-hidden="true">{p.initials}</span>
@@ -247,6 +249,8 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
               <p className="muted" style={{ marginTop: 10, fontSize: 15 }}>None recorded.</p>
             )}
           </section>
+
+          {can(actor, "students.edit") && <StudentLifecycle key={p.status} id={p.id} name={p.name} archived={p.status === "archived"} canDelete={can(actor, "payments.manage")} />}
         </div>
       </div>
     </>

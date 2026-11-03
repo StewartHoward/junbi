@@ -793,6 +793,32 @@ describe("club payments and paying at sign-up", () => {
     expect(c.ends_on).not.toBeNull();
   });
 
+  it("archives, restores and deletes students, but never while they still pay online", async () => {
+    const made = await studentsEdit.createStudent(p, { firstName: "Leo", lastName: "Gone", siteId: site, status: "active", firstAidConsent: true, photoConsent: true, relationship: "parent", guardianFirstName: "Lia", guardianLastName: "Gone", guardianEmail: "lia@example.test", guardianPhone: "07700 900555" });
+    if (!made.ok) throw new Error(JSON.stringify(made.errors));
+    const id = made.value.id;
+    expect((await studentsEdit.archiveStudent(p, id)).ok).toBe(true);
+    expect((await students.listStudents(p)).some((x) => x.id === id)).toBe(false);
+    expect((await students.listStudents(p, { status: "archived" })).map((x) => x.id)).toContain(id);
+    expect((await studentsEdit.restoreStudent(p, id)).ok).toBe(true);
+    const [back] = await adminSql`select status, archived_at from students where id = ${id}`;
+    expect(back).toMatchObject({ status: "active", archived_at: null });
+
+    // Jay still pays through GoCardless: not until that's cancelled there.
+    const [jay] = await adminSql`select id from students where club_id = ${p.clubId} and first_name = 'Jay'`;
+    const blocked = await studentsEdit.archiveStudent(p, jay.id);
+    expect(!blocked.ok && blocked.errors.form).toMatch(/Direct Debit or card/);
+    expect((await studentsEdit.deleteStudent(p, jay.id, "Jay Hall")).ok).toBe(false);
+
+    await expect(studentsEdit.deleteStudent({ ...p, role: "instructor" }, id, "Leo Gone")).rejects.toThrow(/Not allowed/);
+    const wrong = await studentsEdit.deleteStudent(p, id, "Leo");
+    expect(!wrong.ok && wrong.errors.confirm).toMatch(/Leo Gone/);
+    const [hh] = await adminSql`select household_id from students where id = ${id}`;
+    expect((await studentsEdit.deleteStudent(p, id, "leo  gone")).ok).toBe(true);
+    expect(await adminSql`select 1 from students where id = ${id}`).toHaveLength(0);
+    expect(await adminSql`select 1 from households where id = ${hh.household_id}`).toHaveLength(0); // nobody else, no payments
+  });
+
   it("dashboard money summary and student filters", async () => {
     const m = await pay.moneySummary(p);
     expect(m.expectedMonthlyPence).toBe(3500); // Jay on Kids monthly £35 (Ivy was cancelled above)

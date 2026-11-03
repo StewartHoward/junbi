@@ -130,7 +130,8 @@ export async function listStudents(actor: Actor, opts: StudentListOptions = {}):
         and(
           siteFilter(actor),
           q ? or(ilike(s.students.firstName, `%${q}%`), ilike(s.students.lastName, `%${q}%`)) : undefined,
-          status ? eq(s.students.status, status) : undefined,
+          // Archived students only show when asked for.
+          status ? eq(s.students.status, status) : ne(s.students.status, "archived"),
           siteId ? eq(s.students.siteId, siteId) : undefined,
           opts.filter === "new" ? sql`${s.students.createdAt} > now() - interval '30 days'` : undefined,
           opts.filter === "no-dd" && money
@@ -290,6 +291,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       site: row.site.name,
       dateOfBirth: st.dateOfBirth,
       joinedOn: st.joinedOn,
+      archivedAt: st.archivedAt,
       licence: st.licenceNumber ? { number: st.licenceNumber, expiresOn: st.licenceExpiresOn } : null,
       medical: can(actor, "medical.view") ? { notes: st.medicalNotes, firstAidConsent: st.firstAidConsent } : null,
       belts,
@@ -329,5 +331,14 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
       billing,
       attendance: { weeks, last: lastRow?.last ?? null },
     };
+  });
+}
+
+/** Whether the club has archived students, so the Students page doesn't show "add your first student" when everyone is archived. */
+export async function hasArchivedStudents(actor: Actor): Promise<boolean> {
+  assertCan(actor, "students.view");
+  return withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    const [r] = await tx.select({ id: s.students.id }).from(s.students).where(eq(s.students.status, "archived")).limit(1);
+    return Boolean(r);
   });
 }
