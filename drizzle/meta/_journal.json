@@ -288,6 +288,13 @@
       "when": 1791667577924,
       "tag": "0040_hq_ebooks",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791667578924,
+      "tag": "0041_join_card",
+      "breakpoints": true
     }
   ]
 }

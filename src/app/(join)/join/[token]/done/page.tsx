@@ -12,7 +12,7 @@ export default async function JoinDone({ params, searchParams }: { params: Promi
       <div className="m-auth">
         <h1>Almost there.</h1>
         <p className="m-sub" style={{ fontSize: 19 }}>
-          Your Direct Debit isn&apos;t set up yet, so your place isn&apos;t confirmed. Go back to finish it, or the club can email you a link.
+          Your payment isn&apos;t set up yet, so your place isn&apos;t confirmed. Go back to finish it, or the club can email you a link.
         </p>
       </div>
     );
@@ -22,7 +22,7 @@ export default async function JoinDone({ params, searchParams }: { params: Promi
       <p className="m-eyebrow">{st.clubName}</p>
       <h1>You&apos;re all set.</h1>
       <p className="m-sub" style={{ fontSize: 19 }}>
-        Thanks for setting up your Direct Debit. {st.provider === "stripe" ? "Stripe" : "GoCardless"} will email you to confirm it, and the first payment comes out in the next few days. The club will be in touch about classes.
+        Thanks for setting up your payment. {st.provider === "stripe" ? "Stripe" : "GoCardless"} will email you to confirm it, and the first payment is taken {st.provider === "stripe" ? "shortly" : "in the next few days"}. The club will be in touch about classes.
       </p>
     </div>
   );

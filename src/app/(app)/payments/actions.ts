@@ -35,6 +35,13 @@ export async function disconnectAction() {
   revalidatePath("/payments");
 }
 
+export async function setJoinCardAction(on: boolean) {
+  const actor = await requireActor();
+  const { setJoinCard } = await import("@/data/payments");
+  await setJoinCard(actor, on);
+  revalidatePath("/payments");
+}
+
 export async function setSignupFeeAction(_prev: PlanState, f: FormData): Promise<PlanState> {
   const actor = await requireActor();
   const r = await setSignupFee(actor, str(f, "signupFee"));

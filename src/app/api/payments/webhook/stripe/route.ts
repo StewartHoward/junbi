@@ -56,10 +56,10 @@ export async function POST(req: Request) {
       }
       const setupId = meta.junbi_setup_id;
       if (!setupId || !o.subscription) break;
-      const sub = await stripeApi<{ items: { data: Array<{ id: string; price: { product: { metadata?: Record<string, string> } } }> } }>(
+      const sub = await stripeApi<{ default_payment_method?: { type?: string } | null; items: { data: Array<{ id: string; price: { product: { metadata?: Record<string, string> } } }> } }>(
         "GET",
         `/subscriptions/${o.subscription}`,
-        { expand: ["items.data.price.product"] },
+        { expand: ["items.data.price.product", "default_payment_method"] },
         auth.account,
         undefined,
         auth.key,
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       await completeSetup(clubId, setupId, {
         customerId: String(o.customer ?? "") || null,
         mandateId: null,
+        method: sub.default_payment_method?.type === "card" ? "card" : "direct_debit",
         subscriptions: sub.items.data
           .map((i) => ({ studentId: i.price.product.metadata?.junbi_student_id ?? "", planId: i.price.product.metadata?.junbi_plan_id ?? "", subscriptionId: String(o.subscription) }))
           .filter((x) => x.studentId && x.planId),

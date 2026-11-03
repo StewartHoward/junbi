@@ -63,7 +63,7 @@ export type JoinForm = {
   sites: Array<{ id: string; name: string }>;
   arts: Array<{ id: string; name: string }>;
   /** The memberships to choose from (set when the club has prices). provider is set when they pay by Direct Debit straight away. */
-  payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }>; signupFeePence: number } | null;
+  payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }>; signupFeePence: number; card: boolean } | null;
 };
 
 /** What the public sign-up page needs. Null when the link is wrong or has been reset. */

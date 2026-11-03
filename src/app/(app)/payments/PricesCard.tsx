@@ -2,20 +2,22 @@ import { formatPence } from "@/data/students";
 import { archivePlanAction, setPlanOnSignupAction } from "./actions";
 import { PlanForm } from "./PlanForm";
 import { SignupFeeForm } from "./SignupFeeForm";
+import { JoinCardSwitch } from "./JoinCardSwitch";
 
 type Plan = { id: string; name: string; amountPence: number; interval: string; showOnSignup?: boolean };
 
 const every = (i: string) => (i === "annual" ? "a year" : i === "termly" ? "a term" : "a month");
 
 /** The club's membership prices: what families choose from on the sign-up link and QR code. */
-export function PricesCard({ plans, manage, connected, signupFeePence }: { plans: Plan[]; manage: boolean; connected: boolean; signupFeePence: number }) {
+export function PricesCard({ plans, manage, connected, signupFeePence, provider, joinCard }: { plans: Plan[]; manage: boolean; connected: boolean; signupFeePence: number; provider?: string | null; joinCard?: boolean }) {
+  const card = provider === "stripe" && joinCard !== false;
   return (
     <section className="card" style={{ marginTop: 20 }} id="prices">
       <h2 className="section-title">Membership prices</h2>
       <p className="muted" style={{ marginTop: 4, fontSize: 14 }}>
         Families pick from these for each child when they sign up with your link or QR code. Old prices you no longer offer can be hidden from
         the sign-up form and still used for existing members.
-        {connected ? " They then set up their Direct Debit straight away." : ""}
+        {connected ? (card ? " They then set up their payment straight away, by Direct Debit or card." : " They then set up their Direct Debit straight away.") : ""}
       </p>
       {plans.length > 0 ? (
         <div className="list" style={{ marginTop: 8 }}>
@@ -57,6 +59,12 @@ export function PricesCard({ plans, manage, connected, signupFeePence }: { plans
         </p>
         {manage && <div style={{ marginTop: 12 }}><SignupFeeForm pence={signupFeePence} /></div>}
       </div>
+      {manage && provider === "stripe" && (
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line-soft)" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>How families pay</h3>
+          <div style={{ marginTop: 10 }}><JoinCardSwitch on={joinCard !== false} /></div>
+        </div>
+      )}
       {!connected && (
         <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
           To have families set up Direct Debit when they sign up, connect Stripe or GoCardless on the <a href="/payments">Payments</a> page.

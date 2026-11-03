@@ -729,6 +729,7 @@ describe("club payments and paying at sign-up", () => {
     const token = (await join.joinLink(p)).split("/join/")[1];
     const form = await join.joinForm(token);
     expect(form?.payment?.provider).toBe("gocardless");
+    expect(form?.payment?.card).toBe(false); // GoCardless is Direct Debit only
     const kids = form!.payment!.plans.find((x) => x.name === "Kids monthly")!.id;
     const input = {
       who: "children" as const, parentFirstName: "Gwen", parentLastName: "Hall", email: "gwen@example.test", phone: "07700 900333",
@@ -759,6 +760,23 @@ describe("club payments and paying at sign-up", () => {
     const [md] = await adminSql`select status, provider, provider_mandate_id from mandates where club_id = ${p.clubId}`;
     expect(md).toMatchObject({ status: "pending_submission", provider: "gocardless", provider_mandate_id: "MD1" });
     expect((await join.joinSetupStatus(token, setupId))?.status).toBe("completed");
+  });
+
+  it("a family that pays by card is set up straight away, labelled as card", async () => {
+    const [hh] = await adminSql`select household_id from students where club_id = ${p.clubId} and first_name = 'Ivy'`;
+    const [setup] = await adminSql`insert into payment_setups (club_id, household_id, provider, items) values (${p.clubId}, ${hh.household_id}, 'stripe', '[]'::jsonb) returning id`;
+    await pay.completeSetup(p.clubId, setup.id, { customerId: "CU_CARD", mandateId: null, subscriptions: [], method: "card" });
+    const [md] = await adminSql`select status, method from mandates where club_id = ${p.clubId} and provider_customer_id = 'CU_CARD'`;
+    expect(md).toMatchObject({ status: "active", method: "card" });
+    await adminSql`delete from mandates where provider_customer_id = 'CU_CARD'`;
+  });
+
+  it("clubs can switch card payments off for sign-ups", async () => {
+    await pay.setJoinCard(p, false);
+    const [c] = await adminSql`select join_card from clubs where id = ${p.clubId}`;
+    expect(c.join_card).toBe(false);
+    await expect(pay.setJoinCard({ ...p, role: "instructor" }, true)).rejects.toThrow(/Not allowed/);
+    await pay.setJoinCard(p, true);
   });
 
   it("tracks the mandate, payments and cancellations from the provider", async () => {

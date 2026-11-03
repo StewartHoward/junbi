@@ -258,6 +258,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
 
     let billing: null | {
       mandateStatus: string | null;
+      payMethod: "direct_debit" | "card";
       payments: Array<{ id: string; chargeDate: string; description: string; amount: string; status: string }>;
     } = null;
     if (can(actor, "payments.view")) {
@@ -275,6 +276,7 @@ export async function getStudentProfile(actor: Actor, studentId: string) {
         .orderBy(desc(s.payments.chargeDate));
       billing = {
         mandateStatus: mandate?.status ?? null,
+        payMethod: mandate?.method === "card" ? "card" : "direct_debit",
         payments: payments.map((p) => ({ id: p.id, chargeDate: p.chargeDate, description: p.description, amount: formatPence(p.amountPence), status: p.status })),
       };
     }

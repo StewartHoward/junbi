@@ -209,7 +209,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
             <div className="ch"><h2>Billing plan</h2></div>
             {p.memberships.length === 0 ? (
               <p className="muted" style={{ marginTop: 10, fontSize: 15 }}>
-                {p.status === "pending" && p.billing ? "Signed up, but their Direct Debit isn't set up yet, so they're not a member." : "No plan yet."}
+                {p.status === "pending" && p.billing ? "Signed up, but their payment isn't set up yet, so they're not a member." : "No plan yet."}
               </p>
             ) : (
               p.memberships.map((m) => (
@@ -218,7 +218,7 @@ export async function ProfileView({ id, backHref = "/students", siblingHref, com
             )}
             {p.billing && (
               <p style={{ marginTop: 10 }}>
-                {p.billing.mandateStatus === "active" ? <span className="pill ok">✓ Direct Debit active</span> : <span className="pill bad">! Direct Debit {p.billing.mandateStatus ?? "not set up"}</span>}
+                {p.billing.mandateStatus === "active" ? <span className="pill ok">{p.billing.payMethod === "card" ? "✓ Paying by card" : "✓ Direct Debit active"}</span> : <span className="pill bad">! Direct Debit {p.billing.mandateStatus ?? "not set up"}</span>}
               </p>
             )}
             {payLink && <SendPayLinkButton action={sendPayLinkAction.bind(null, p.id)} />}

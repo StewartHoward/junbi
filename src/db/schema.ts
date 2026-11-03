@@ -79,6 +79,8 @@ export const clubs = pgTable(
     discountMonths: integer("discount_months"),
     /** One-off fee per new member, taken with their first payment. 0 = none. */
     signupFeePence: integer("signup_fee_pence").notNull().default(0),
+    /** Stripe clubs: families signing up can pay by card as well as Direct Debit. */
+    joinCard: boolean("join_card").notNull().default(true),
     /** Secret part of the club's family sign-up link (/join/<token>). The owner can reset it. */
     joinToken: text("join_token")
       .notNull()
@@ -365,6 +367,8 @@ export const mandates = pgTable("mandates", {
   /** Stripe customer or GoCardless customer the mandate belongs to. */
   providerCustomerId: text("provider_customer_id"),
   status: mandateStatus("status").notNull().default("pending_customer_approval"),
+  /** "direct_debit" or "card" (card is Stripe only). */
+  method: text("method").notNull().default("direct_debit"),
   createdAt: createdAt(),
 });
 

@@ -76,7 +76,7 @@ export default async function FamilyHome() {
           {(c.directDebit || c.payments.length > 0) && (
             <div style={card}>
               <p style={{ margin: 0, fontWeight: 600, fontSize: 18 }}>Payments</p>
-              {c.directDebit && <p style={{ margin: "6px 0 0" }}>{DD[c.directDebit] ?? c.directDebit}</p>}
+              {c.directDebit && <p style={{ margin: "6px 0 0" }}>{c.payMethod === "card" && c.directDebit === "active" ? "✓ Paying by card" : (DD[c.directDebit] ?? c.directDebit)}</p>}
               {c.payments.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   {c.payments.map((p) => (

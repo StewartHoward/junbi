@@ -13,6 +13,8 @@ export type StartSetupInput = {
   items: SetupItem[];
   /** One-off sign-up fee for everyone in this set-up, taken with the first payment. 0 = none. */
   signupFeePence?: number;
+  /** Also let them pay by card (Stripe only; GoCardless is Direct Debit only). */
+  allowCard?: boolean;
   successUrl: string;
   cancelUrl: string;
 };

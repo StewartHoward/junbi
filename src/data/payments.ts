@@ -38,7 +38,7 @@ export async function paymentSettings(actor: Actor) {
       .innerJoin(s.households, eq(s.households.id, s.payments.householdId))
       .orderBy(desc(s.payments.chargeDate))
       .limit(20);
-    const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
+    const [club] = await tx.select({ fee: s.clubs.signupFeePence, joinCard: s.clubs.joinCard }).from(s.clubs).where(eq(s.clubs.id, actor.clubId));
     return {
       // ownKey: the club connected its existing Stripe account with a key, so it can take over Direct Debits running there.
       account: account
@@ -49,6 +49,7 @@ export async function paymentSettings(actor: Actor) {
         : null,
       plans,
       signupFeePence: club?.fee ?? 0,
+      joinCard: club?.joinCard ?? true,
       mandates: Object.fromEntries(mandates.map((m) => [m.status, m.count])) as Record<string, number>,
       recent,
       available: { stripe: provider("stripe").available(), gocardless: provider("gocardless").available() },
@@ -192,6 +193,16 @@ export async function listPlans(actor: Actor) {
 }
 
 /** The club's one-off sign-up fee per new member. Empty or 0 turns it off. */
+/** Stripe clubs: whether families signing up can pay by card as well as Direct Debit. */
+export async function setJoinCard(actor: Actor, on: boolean): Promise<Result> {
+  assertCan(actor, "payments.manage");
+  await withClub({ clubId: actor.clubId, userId: actor.userId }, async (tx) => {
+    await tx.update(s.clubs).set({ joinCard: on }).where(eq(s.clubs.id, actor.clubId));
+    await tx.insert(s.auditLog).values({ clubId: actor.clubId, actorUserId: actor.userId, action: "update", entity: "join_card", entityId: actor.clubId, after: { on } });
+  });
+  return { ok: true, value: undefined };
+}
+
 export async function setSignupFee(actor: Actor, amount: string): Promise<Result<{ pence: number }>> {
   assertCan(actor, "payments.manage");
   const v = amount.trim().replace(/^£/, "");
@@ -427,11 +438,11 @@ export async function joinPlans(tx: Tx) {
   if (!plans.length) return null;
   const [a] = await tx.select({ provider: s.clubPaymentAccounts.provider }).from(s.clubPaymentAccounts);
   const live = a && provider(a.provider as ProviderId).available();
-  const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(sql`${s.clubs.id} = current_club_id()`);
+  const [club] = await tx.select({ fee: s.clubs.signupFeePence, card: s.clubs.joinCard }).from(s.clubs).where(sql`${s.clubs.id} = current_club_id()`);
   // Direct Debit can't do termly prices, so they're not offered while it's on.
   const offered = live ? plans.filter((p) => p.interval !== "termly") : plans;
   if (!offered.length) return null;
-  return { provider: live ? (a.provider as ProviderId) : null, plans: offered, signupFeePence: club?.fee ?? 0 };
+  return { provider: live ? (a.provider as ProviderId) : null, plans: offered, signupFeePence: club?.fee ?? 0, card: live && a.provider === "stripe" && club?.card !== false };
 }
 
 export async function joinPaymentOptions(tx: Tx) {
@@ -460,7 +471,7 @@ export async function startJoinPayment(
       return [{ studentId: st.id, planId: plan.id, name: `${plan.name} (${st.firstName})`, amountPence: plan.amountPence, interval: plan.interval }];
     });
     if (!items.length) return null;
-    const [club] = await tx.select({ fee: s.clubs.signupFeePence }).from(s.clubs).where(eq(s.clubs.id, clubId));
+    const [club] = await tx.select({ fee: s.clubs.signupFeePence, card: s.clubs.joinCard }).from(s.clubs).where(eq(s.clubs.id, clubId));
     const signupFeePence = input.withSignupFee === false ? 0 : (club?.fee ?? 0) * items.length;
     // An earlier link for this family that wasn't finished: close it so they can't end up paying twice.
     const stale = await tx
@@ -472,7 +483,7 @@ export async function startJoinPayment(
       .insert(s.paymentSetups)
       .values({ clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })), signupFeePence })
       .returning({ id: s.paymentSetups.id });
-    return { account, items, setupId: setup.id, signupFeePence, stale: stale.map((x) => x.ref).filter((r): r is string => Boolean(r)) };
+    return { account, items, setupId: setup.id, signupFeePence, allowCard: account.provider === "stripe" && club?.card !== false, stale: stale.map((x) => x.ref).filter((r): r is string => Boolean(r)) };
   });
   if (!prepared) return { ok: false, errors: { form: "Online payment isn't set up for this club." } };
   await expireOldLinks(prepared.account, prepared.stale).catch((err) => console.error("expiring old payment links failed", err));
@@ -484,6 +495,7 @@ export async function startJoinPayment(
       firstName: input.firstName,
       lastName: input.lastName,
       items: prepared.items,
+      allowCard: prepared.allowCard,
       signupFeePence: prepared.signupFeePence,
       successUrl: input.successUrl(prepared.setupId),
       cancelUrl: input.cancelUrl,
@@ -535,7 +547,7 @@ export async function loadSetup(clubId: string, setupId: string) {
 export async function completeSetup(
   clubId: string,
   setupId: string,
-  r: { customerId: string | null; mandateId: string | null; subscriptions: Array<{ studentId: string; planId: string; subscriptionId: string | null }> },
+  r: { customerId: string | null; mandateId: string | null; subscriptions: Array<{ studentId: string; planId: string; subscriptionId: string | null }>; method?: "direct_debit" | "card" },
 ) {
   await withClub({ clubId }, async (tx) => {
     const [setup] = await tx.select().from(s.paymentSetups).where(eq(s.paymentSetups.id, setupId)).for("update");
@@ -547,7 +559,10 @@ export async function completeSetup(
         ? await tx.select({ id: s.mandates.id }).from(s.mandates).where(eq(s.mandates.providerCustomerId, r.customerId))
         : [];
     if (!existing.length) {
-      await tx.insert(s.mandates).values({ clubId, householdId: setup.householdId, provider: setup.provider, providerMandateId: r.mandateId, providerCustomerId: r.customerId, status: "pending_submission" });
+      // A card is ready to use straight away; a Direct Debit is confirmed by the provider a few days later.
+      await tx.insert(s.mandates).values({ clubId, householdId: setup.householdId, provider: setup.provider, providerMandateId: r.mandateId, providerCustomerId: r.customerId, status: r.method === "card" ? "active" : "pending_submission", method: r.method ?? "direct_debit" });
+    } else if (r.method === "card") {
+      await tx.update(s.mandates).set({ method: "card", status: "active" }).where(eq(s.mandates.id, existing[0].id));
     }
     for (const sub of r.subscriptions) {
       await tx.insert(s.memberships).values({ clubId, studentId: sub.studentId, planId: sub.planId, startsOn: today, providerSubscriptionId: sub.subscriptionId, status: "active" });

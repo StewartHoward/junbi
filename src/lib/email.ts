@@ -296,7 +296,7 @@ export const templates = {
       [
         `Hi ${first(parentName)},`,
         awaitingDebit
-          ? `We've got ${list(names)}'s details. Your place at ${clubName} is confirmed once your Direct Debit is set up. If you didn't finish it, the club can send you a link.`
+          ? `We've got ${list(names)}'s details. Your place at ${clubName} is confirmed once your payment is set up. If you didn't finish it, the club can send you a link.`
           : `${list(names)} ${names.length === 1 ? "is" : "are"} now registered with ${clubName}. The club will be in touch about classes.`,
         ...(familyLogin ? ["If anything changes, like medical details or contact numbers, you can update them yourself by signing in with this email address at junbi.co.uk/family."] : []),
       ],
@@ -308,7 +308,7 @@ export const templates = {
       [
         `${parentName} has signed up ${list(names)} using your sign-up link.`,
         awaitingDebit
-          ? "They become members once their Direct Debit is set up. Until then they show as Sign-up unfinished, and you can send them a payment link from their profile."
+          ? "They become members once their payment is set up. Until then they show as Sign-up unfinished, and you can send them a payment link from their profile."
           : "They're on your student list as members.",
       ],
       { label: "See them in Junbi", url },

@@ -109,7 +109,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         )}
       </section>
 
-      <PricesCard plans={p.plans} manage={manage} connected={Boolean(p.account)} signupFeePence={p.signupFeePence} />
+      <PricesCard plans={p.plans} manage={manage} connected={Boolean(p.account)} signupFeePence={p.signupFeePence} provider={p.account?.provider ?? null} joinCard={p.joinCard} />
 
       <section className="card" style={{ marginTop: 20 }}>
         <h2 className="section-title">Direct Debits</h2>

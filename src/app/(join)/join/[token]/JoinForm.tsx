@@ -6,7 +6,7 @@ import { FieldError, errProps } from "@/components/FormBits";
 
 type Site = { id: string; name: string };
 type Plan = { id: string; name: string; amountPence: number; interval: string };
-type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[]; signupFeePence: number } | null;
+type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[]; signupFeePence: number; card?: boolean } | null;
 
 const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}`;
 
@@ -57,7 +57,7 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
         <h2 className="m-h2" style={{ fontSize: 32 }}>{state.done.paymentError ? "Almost there." : "Thanks, you're signed up."}</h2>
         {state.done.paymentError ? (
           <p className="m-sub" style={{ fontSize: 19 }}>
-            We&apos;ve got your details, but your Direct Debit isn&apos;t set up yet, so your place isn&apos;t confirmed. The club will email you a link to finish it.
+            We&apos;ve got your details, but your payment isn&apos;t set up yet, so your place isn&apos;t confirmed. The club will email you a link to finish it.
           </p>
         ) : (
           <p className="m-sub" style={{ fontSize: 19 }}>
@@ -226,12 +226,14 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
               ? `There's a one-off sign-up fee of £${(payment.signupFeePence / 100).toFixed(2)} per member, taken with the first payment. `
               : ""}
           {payment.provider
-            ? <>Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.</>
+            ? payment.card
+              ? <>Next you&apos;ll set up your payment securely with Stripe, by Direct Debit or by card.</>
+              : <>Next you&apos;ll set up a Direct Debit with {payment.provider === "stripe" ? "Stripe" : "GoCardless"}, protected by the Direct Debit Guarantee.</>
             : "The club will be in touch about how to pay."}
         </p>
       )}
       <button type="submit" className="m-btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? "Signing up…" : payment?.provider ? "Continue to Direct Debit" : "Become a member"}
+        {pending ? "Signing up…" : payment?.provider ? (payment.card ? "Continue to payment" : "Continue to Direct Debit") : "Become a member"}
       </button>
     </form>
   );

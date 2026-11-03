@@ -181,7 +181,7 @@ export const stripeProvider: PaymentProvider = {
       "/checkout/sessions",
       {
         mode: "subscription",
-        payment_method_types: ["bacs_debit"],
+        payment_method_types: input.allowCard ? ["bacs_debit", "card"] : ["bacs_debit"],
         customer_email: input.email,
         client_reference_id: input.setupId,
         success_url: input.successUrl,

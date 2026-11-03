@@ -149,7 +149,7 @@ export async function familyOverview(email: string) {
           byEvent.set(i.eventId, ev);
         }
         const [mandate] = await tx
-          .select({ status: s.mandates.status })
+          .select({ status: s.mandates.status, method: s.mandates.method })
           .from(s.mandates)
           .where(eq(s.mandates.householdId, h.household_id))
           .orderBy(sql`case when ${s.mandates.status} in ('active', 'submitted', 'pending_submission') then 0 else 1 end`, desc(s.mandates.createdAt))
@@ -189,6 +189,7 @@ export async function familyOverview(email: string) {
           })),
           events: [...byEvent.values()],
           directDebit: mandate?.status ?? null,
+          payMethod: mandate?.method === "card" ? "card" : "direct_debit",
           payments: payments.map((p) => ({ ...p, chargeDate: fmtDate(p.chargeDate), amount: formatPence(p.amountPence) })),
         };
       }),
