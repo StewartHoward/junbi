@@ -488,23 +488,44 @@ export async function startJoinPayment(
   if (!prepared) return { ok: false, errors: { form: "Online payment isn't set up for this club." } };
   await expireOldLinks(prepared.account, prepared.stale).catch((err) => console.error("expiring old payment links failed", err));
 
+  const base = {
+    setupId: prepared.setupId,
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    items: prepared.items,
+    signupFeePence: prepared.signupFeePence,
+    successUrl: input.successUrl(prepared.setupId),
+    cancelUrl: input.cancelUrl,
+  };
+  // Direct Debit and card first. If Stripe won't take one of them on this account, try the other on its own.
+  const attempts = prepared.allowCard ? [{ allowCard: true }, { allowCard: false }, { cardOnly: true }] : [{ allowCard: false }];
+  const failures: string[] = [];
+  for (const a of attempts) {
+    try {
+      const r = await provider(prepared.account.provider).startSetup(prepared.account, { ...base, ...a });
+      await withClub({ clubId }, (tx) => tx.update(s.paymentSetups).set({ providerRef: r.ref }).where(eq(s.paymentSetups.id, prepared.setupId)));
+      if (failures.length) await logSetupProblem(clubId, prepared.setupId, failures, false);
+      return { ok: true, value: { url: r.url, setupId: prepared.setupId } };
+    } catch (err) {
+      failures.push(`${a.cardOnly ? "card only" : a.allowCard ? "Direct Debit and card" : "Direct Debit only"}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  console.error("Starting payment set-up failed", failures);
+  await logSetupProblem(clubId, prepared.setupId, failures, true);
+  return { ok: false, errors: { form: "We couldn't open the payment page. You're signed up, and the club can send you a payment link." } };
+}
+
+/** Keeps the provider's reason when the payment page couldn't open, and emails Junbi so it can be fixed. */
+async function logSetupProblem(clubId: string, setupId: string, failures: string[], failed: boolean) {
   try {
-    const r = await provider(prepared.account.provider).startSetup(prepared.account, {
-      setupId: prepared.setupId,
-      email: input.email,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      items: prepared.items,
-      allowCard: prepared.allowCard,
-      signupFeePence: prepared.signupFeePence,
-      successUrl: input.successUrl(prepared.setupId),
-      cancelUrl: input.cancelUrl,
-    });
-    await withClub({ clubId }, (tx) => tx.update(s.paymentSetups).set({ providerRef: r.ref }).where(eq(s.paymentSetups.id, prepared.setupId)));
-    return { ok: true, value: { url: r.url, setupId: prepared.setupId } };
+    await withClub({ clubId }, (tx) => tx.insert(s.auditLog).values({ clubId, action: failed ? "payment_page_failed" : "payment_page_fallback", entity: "payment_setup", entityId: setupId, after: { failures } }));
+    if (failed) {
+      const { alertError } = await import("@/lib/alerts");
+      await alertError("Sign-up: the payment page didn't open", new Error(failures.join(" | ")), { Club: clubId });
+    }
   } catch (err) {
-    console.error("Starting Direct Debit failed", err);
-    return { ok: false, errors: { form: "We couldn't open the Direct Debit page. You're signed up, and the club can send you a payment link." } };
+    console.error("logging payment set-up problem failed", err);
   }
 }
 

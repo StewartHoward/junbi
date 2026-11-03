@@ -15,6 +15,8 @@ export type StartSetupInput = {
   signupFeePence?: number;
   /** Also let them pay by card (Stripe only; GoCardless is Direct Debit only). */
   allowCard?: boolean;
+  /** Stripe only: card and no Direct Debit, when the club's account can't take Bacs Direct Debit. */
+  cardOnly?: boolean;
   successUrl: string;
   cancelUrl: string;
 };

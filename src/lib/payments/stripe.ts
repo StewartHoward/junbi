@@ -181,7 +181,7 @@ export const stripeProvider: PaymentProvider = {
       "/checkout/sessions",
       {
         mode: "subscription",
-        payment_method_types: input.allowCard ? ["bacs_debit", "card"] : ["bacs_debit"],
+        payment_method_types: input.cardOnly ? ["card"] : input.allowCard ? ["bacs_debit", "card"] : ["bacs_debit"],
         customer_email: input.email,
         client_reference_id: input.setupId,
         success_url: input.successUrl,
@@ -203,7 +203,7 @@ export const stripeProvider: PaymentProvider = {
         ],
       },
       stripeAuth(account).account,
-      `setup-${input.setupId}`,
+      `setup-${input.setupId}-${input.cardOnly ? "card" : input.allowCard ? "both" : "dd"}`,
       stripeAuth(account).key,
     );
     return { ref: session.id, url: session.url };
