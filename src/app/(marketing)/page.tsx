@@ -104,7 +104,7 @@ export default async function Home() {
           <div className="m-door dark">
             <p className="kicker">Competitions <span className="m-soon">Coming soon</span></p>
             <h2>Competitions, ready.</h2>
-            <p className="lead">Host a championship or enter your club in minutes. Free for every club to enter.</p>
+            <p className="lead">Poomsae and WT sparring. Host a championship or enter your club in minutes, free.</p>
             <div className="m-actions" style={{ marginTop: 26 }}>
               <Link href="/competitions" className="m-btn on-dark">Find out more</Link>
               <Link href="/competitions#notify" className="m-link">Tell me when it&apos;s live</Link>
@@ -250,14 +250,14 @@ export default async function Home() {
           <div className="copy">
             <p className="m-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Junbi Competitions <span className="m-soon">Coming soon</span></p>
             <h2 className="m-h2">Competition day, sorted.</h2>
-            <p className="m-sub" style={{ margin: "20px 0 0" }}>Host a championship with live entries, waiting lists and lists for the scoring table. Or enter your club in minutes. Free for every club to enter.</p>
+            <p className="m-sub" style={{ margin: "20px 0 0" }}>Poomsae and WT sparring. Host a championship with live entries, waiting lists and lists for the scoring table, from £49 with your first one free. Or enter your club in minutes, free.</p>
             <p style={{ margin: "28px 0 0" }}><Link href="/competitions" className="m-link">Find out more</Link></p>
           </div>
           <div className="panel m-panel-alt">
             <div className="m-panel-head"><h3>What&apos;s coming</h3></div>
             <ul className="m-checks" style={{ marginTop: 8 }}>
+              <li>Poomsae and WT sparring</li>
               <li>Every athlete placed in the right category</li>
-              <li>Entry limits and a waiting list</li>
               <li>Entry fees paid straight to the host</li>
               <li>Lists ready for the scoring table</li>
               <li>Link your Junbi club to enter in a few taps</li>

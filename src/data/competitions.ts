@@ -57,7 +57,7 @@ export async function registerCompetitionInterest(raw: CompetitionInterestInput)
     "We'll tell you when it's live.",
     [
       `Hi ${d.name.split(/\s+/)[0]},`,
-      "Thanks for your interest in Junbi Competitions. Clubs will be able to enter in minutes, with every athlete placed in the right category, and hosts will get live entries, waiting lists and lists for the scoring table.",
+      "Thanks for your interest in Junbi Competitions. It will run poomsae and WT sparring: clubs enter in minutes with every athlete placed in the right category, and hosts get live entries, waiting lists and lists for the scoring table.",
       "We'll email you as soon as it opens. If you're planning a competition in the meantime, reply to this email and tell us about it.",
     ],
     undefined,

@@ -65,3 +65,14 @@ describe("competitions interest", () => {
     expect(c.marketing_ok).toBe(true);
   });
 });
+
+describe("competition hosting prices", async () => {
+  const plans = await import("@/lib/competition-plans");
+  it("go up with size, in whole pounds, and format for the page", () => {
+    const p = plans.COMPETITION_PLANS.map((x) => x.pence);
+    expect([...p].sort((a, b) => a - b)).toEqual(p);
+    expect(p.every((x) => Number.isInteger(x) && x % 100 === 0)).toBe(true);
+    expect(plans.poundsFromPence(4900)).toBe("£49");
+    expect(plans.poundsFromPence(1950)).toBe("£19.50");
+  });
+});

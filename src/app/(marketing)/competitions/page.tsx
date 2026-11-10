@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 import { Reveal } from "../Motion";
 import { InterestForm } from "./InterestForm";
+import { COMPETITION_FEATURES, COMPETITION_PLANS, JUNBI_CLUB_DISCOUNT_PERCENT, SEMINAR_PENCE, poundsFromPence } from "@/lib/competition-plans";
 
 export const metadata: Metadata = pageMeta({
   title: "Junbi Competitions: Coming Soon",
-  description: "Competition entries for martial arts clubs, coming soon. Clubs enter in minutes, every athlete lands in the right category, and hosts get live entries, waiting lists and lists for the scoring table.",
+  description: "Poomsae and WT sparring competition entries, coming soon. Clubs enter free in minutes, every athlete lands in the right category, and hosts pay one flat fee from £49. First competition free.",
   path: "/competitions",
   ownImage: true,
 });
@@ -19,7 +20,7 @@ function Icon({ d }: { d: React.ReactNode }) {
 }
 
 const FEATURES = [
-  { title: "Categories, picked for you", text: "Individuals, pairs, teams, freestyle and para. Each athlete is placed by grade, gender and competition age, and wrong entries are stopped.", icon: <><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></> },
+  { title: "Categories, picked for you", text: "Each athlete is placed by grade, gender, competition age and, for sparring, weight. Wrong entries are stopped before they happen.", icon: <><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></> },
   { title: "Link your Junbi club", text: "Already run your club on Junbi? Link it once and your students come across with belts and dates of birth filled in.", icon: <><circle cx="9" cy="7" r="4" /><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75M23 21v-2a4 4 0 0 0-3-3.87" /></> },
   { title: "A waiting list that runs itself", text: "Set your entry limit. Once it's full, new entries wait in line and you accept them with one tap.", icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
   { title: "Entry fees, paid to you", text: "Clubs pay when they enter. The money goes straight to your own account, and Junbi never takes a cut.", icon: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></> },
@@ -35,11 +36,11 @@ export default function CompetitionsPage() {
           Junbi Competitions <span className="m-soon">Coming soon</span>
         </p>
         <h1 className="m-hero-title">Competitions, ready.</h1>
-        <p className="m-sub">Clubs enter in minutes and every athlete lands in the right category. Hosts get live entries, payments and everything the scoring table needs.</p>
+        <p className="m-sub">Poomsae and WT sparring. Clubs enter in minutes and every athlete lands in the right category. Hosts get live entries, payments and everything the scoring table needs.</p>
         <div className="m-actions">
           <a href="#notify" className="m-btn primary">Tell me when it&apos;s live</a>
         </div>
-        <p className="m-fine">Free for every club to enter. 0% of your entry fees.</p>
+        <p className="m-fine">Free for every club to enter. Your first competition is free to host.</p>
       </section>
 
       <section className="m-section dark m-center">
@@ -52,7 +53,7 @@ export default function CompetitionsPage() {
       <section className="m-section alt">
         <div className="m-wrap">
           <h2 className="m-h2 m-center">The right category. Every time.</h2>
-          <p className="m-sub m-center">Junbi reads each athlete&apos;s grade, gender and competition age, then puts them in the right division.</p>
+          <p className="m-sub m-center">Junbi reads each athlete&apos;s grade, gender, competition age and weight, then puts them in the right division.</p>
           <Reveal className="m-tiles">
             {FEATURES.map((f, i) => (
               <div key={f.title} className="m-tile" data-anim="up" style={{ "--i": i } as React.CSSProperties}>
@@ -66,8 +67,37 @@ export default function CompetitionsPage() {
       </section>
 
       <section className="m-section">
+        <div className="m-wrap">
+          <h2 className="m-h2 m-center">Poomsae and WT sparring.</h2>
+          <p className="m-sub m-center">Run either, or both at one event. Clubs enter everything in one go.</p>
+          <div className="m-split" style={{ alignItems: "stretch", marginTop: 56 }}>
+            <div className="panel m-panel-alt" style={{ padding: 44 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--m-muted)" }}>Poomsae</p>
+              <h3 style={{ margin: "6px 0 0", fontSize: 32, lineHeight: 1.1, fontWeight: 600, letterSpacing: "-0.02em" }}>Every form, every division.</h3>
+              <ul className="m-checks" style={{ marginTop: 20 }}>
+                <li>Individual, pair, team, freestyle and para</li>
+                <li>Kup and dan classes by competition age</li>
+                <li>Designated poomsae drawn for each round</li>
+                <li>Cut-off rounds set from your entry numbers</li>
+              </ul>
+            </div>
+            <div className="panel m-panel-alt" style={{ padding: 44 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--m-muted)" }}>WT sparring</p>
+              <h3 style={{ margin: "6px 0 0", fontSize: 32, lineHeight: 1.1, fontWeight: 600, letterSpacing: "-0.02em" }}>Weight, age and grade, sorted.</h3>
+              <ul className="m-checks" style={{ marginTop: 20 }}>
+                <li>WT weight divisions for cadets, juniors and seniors</li>
+                <li>Kup and dan classes, so beginners meet beginners</li>
+                <li>Weigh-in lists for the morning</li>
+                <li>Draw sheets for every division</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="m-section alt">
         <div className="m-wrap m-split" style={{ alignItems: "stretch" }}>
-          <div className="panel m-panel-alt" style={{ padding: 44 }}>
+          <div className="panel m-panel-white" style={{ padding: 44 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--m-muted)" }}>For clubs entering</p>
             <h2 className="m-h2" style={{ fontSize: 40, marginTop: 6 }}>Tick, check, pay.</h2>
             <ol className="m-steps">
@@ -76,7 +106,7 @@ export default function CompetitionsPage() {
               <li><b>3</b><span>Pay the entry fees. You&apos;re done.</span></li>
             </ol>
           </div>
-          <div className="panel m-panel-alt" style={{ padding: 44 }}>
+          <div className="panel m-panel-white" style={{ padding: 44 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--m-muted)" }}>For hosts</p>
             <h2 className="m-h2" style={{ fontSize: 40, marginTop: 6 }}>Open, fill, run.</h2>
             <ol className="m-steps">
@@ -85,6 +115,52 @@ export default function CompetitionsPage() {
               <li><b>3</b><span>Download your lists for the scoring table on the morning.</span></li>
             </ol>
           </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="m-section">
+        <div className="m-wrap m-center">
+          <h2 className="m-h2">Simple pricing.</h2>
+          <p className="m-sub">Free for every club to enter. Hosts pay one flat fee per competition, and keep every penny of their entry fees.</p>
+          <p style={{ margin: "24px 0 0" }}><span className="m-soon" style={{ fontSize: 15, padding: "8px 16px" }}>Your first competition is free</span></p>
+        </div>
+        <div className="m-plans" style={{ marginTop: 48 }}>
+          {COMPETITION_PLANS.map((p) => {
+            const featured = p.id === "standard";
+            return (
+              <div key={p.id} className={`m-plan${featured ? " featured" : ""}`}>
+                {featured && <span className="badge">Most popular</span>}
+                <h2>{p.name}</h2>
+                <p className="for">{p.for}</p>
+                <p className="price"><strong>{poundsFromPence(p.pence)}</strong><span> per competition</span></p>
+                <p className="limits">{p.limit}</p>
+                <a href="#notify" className={`m-btn ${featured ? "primary" : "soft"}`}>Tell me when it&apos;s live</a>
+                <ul>
+                  <li className="muted" style={{ color: "#6e6e73" }}>Every competition gets:</li>
+                  {COMPETITION_FEATURES.map((f) => (
+                    <li key={f}>✓ {f}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+          <div className="m-plan dark">
+            <h2>Seminars and courses</h2>
+            <p className="for">Referee courses, training days and camps.</p>
+            <p className="price"><strong>{poundsFromPence(SEMINAR_PENCE)}</strong><span> per event</span></p>
+            <p className="limits">Unlimited places</p>
+            <a href="#notify" className="m-btn white">Tell me when it&apos;s live</a>
+            <ul>
+              <li className="muted">Every seminar gets:</li>
+              <li>✓ Online sign-up for clubs</li>
+              <li>✓ Place limit</li>
+              <li>✓ Fees paid straight to you</li>
+            </ul>
+          </div>
+        </div>
+        <div className="m-wrap m-center" style={{ marginTop: 40 }}>
+          <p className="m-sub" style={{ fontSize: 17, marginTop: 0 }}>Run your club on Junbi? You get {JUNBI_CLUB_DISCOUNT_PERCENT}% off hosting, on any plan.</p>
+          <p className="m-fine">Entering is always free. Card fees for entry payments are charged by your own payment provider.</p>
         </div>
       </section>
 

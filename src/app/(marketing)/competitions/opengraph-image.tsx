@@ -5,5 +5,5 @@ export const size = OG_SIZE;
 export const contentType = OG_TYPE;
 
 export default function Image() {
-  return shareImage({ eyebrow: "Junbi Competitions · Coming soon", title: "Competitions, ready.", subtitle: "Host a championship or enter your club in minutes. Every athlete in the right category. Free for every club to enter." });
+  return shareImage({ eyebrow: "Junbi Competitions · Coming soon", title: "Competitions, ready.", subtitle: "Poomsae and WT sparring. Every athlete in the right category. Free for every club to enter, first competition free to host." });
 }
