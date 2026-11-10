@@ -31,7 +31,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <p style={{ margin: 0, fontSize: 14 }}><Link href="/admin/crm">‹ Leads</Link></p>
       <div className="phead" style={{ marginTop: 8 }}>
         <div>
-          <p className="eyebrow">{stageLabel(c.stage)}{c.source === "elite" ? " · Elite enquiry" : c.source === "elite_brochure" ? " · Elite brochure" : ""}</p>
+          <p className="eyebrow">{stageLabel(c.stage)}{c.source === "elite" ? " · Elite enquiry" : c.source === "elite_brochure" ? " · Elite brochure" : c.source === "competitions" ? " · Competitions waiting list" : ""}</p>
           <h1 className="ptitle">{c.name || c.email}</h1>
           {c.clubName && <p className="muted" style={{ margin: "4px 0 0" }}>{c.clubName}</p>}
         </div>

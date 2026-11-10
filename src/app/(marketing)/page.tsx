@@ -79,16 +79,57 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(STRUCTURED)} />
-      <section className="m-hero">
-        <p className="m-eyebrow">Martial arts club management</p>
-        <h1 className="m-hero-title">Your club, ready.</h1>
-        <p className="m-sub">Classes, attendance, Direct Debit and messages to parents. One simple system, set up in an evening.</p>
+      <section className="m-hero" style={{ paddingBottom: 120 }}>
+        <p className="m-eyebrow">Software for martial arts clubs</p>
+        <h1 className="m-hero-title">Less admin. More training.</h1>
+        <p className="m-sub">Run your club with Junbi. Simple, fairly priced and made in the UK, with competitions on the way.</p>
+        <div className="m-duo">
+          <div className="m-door">
+            <p className="kicker">Club software</p>
+            <h2>Your club, ready.</h2>
+            <p className="lead">Classes, attendance, Direct Debit and messages to parents. From £{Math.min(...prices)} a month.</p>
+            <div className="m-actions" style={{ marginTop: 26 }}>
+              <Link href="/signup" className="m-btn primary">Start free trial</Link>
+              <a href="#club" className="m-link">Learn more</a>
+            </div>
+            <div className="peek" aria-hidden="true">
+              <h3>Today</h3>
+              <div className="m-rows">
+                <div><strong>17:00 Little Dragons</strong><span style={{ color: "#6e6e73" }}>14 here</span></div>
+                <div><strong>18:00 Juniors</strong><span style={{ color: "#6e6e73" }}>22 here</span></div>
+                <div><strong>19:15 Adults</strong><span style={{ color: "#6e6e73" }}>18 here</span></div>
+              </div>
+            </div>
+          </div>
+          <div className="m-door dark">
+            <p className="kicker">Competitions <span className="m-soon">Coming soon</span></p>
+            <h2>Competitions, ready.</h2>
+            <p className="lead">Host a championship or enter your club in minutes. Free for every club to enter.</p>
+            <div className="m-actions" style={{ marginTop: 26 }}>
+              <Link href="/competitions" className="m-btn on-dark">Find out more</Link>
+              <Link href="/competitions#notify" className="m-link">Tell me when it&apos;s live</Link>
+            </div>
+            <div className="peek" aria-hidden="true">
+              <h3>North West Poomsae Open</h3>
+              <div className="m-rows">
+                <div><strong>Dan U14 Female</strong><span style={{ color: "#a1a1a6" }}>12 athletes</span></div>
+                <div><strong>K1 U11 Male</strong><span style={{ color: "#a1a1a6" }}>9 athletes</span></div>
+                <div><strong>Dan U17 Pair</strong><span style={{ color: "#a1a1a6" }}>6 pairs</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="club" className="m-hero" style={{ background: "var(--m-alt)" }}>
+        <p className="m-eyebrow">Club software</p>
+        <h2 className="m-hero-title" style={{ fontSize: "clamp(40px, 5vw, 56px)" }}>One simple system, set up in an evening.</h2>
+        <p className="m-sub">Classes, attendance, Direct Debit and messages to parents, in one place.</p>
         <div className="m-actions">
           <Link href="/signup" className="m-btn primary">Start free trial</Link>
           <Link href="/pricing" className="m-link">See pricing</Link>
         </div>
         <p className="m-fine">Free for 7 days. Add your card at sign-up, and you won&apos;t be charged until day 8. One flat price, 0% of your fees.</p>
-
         <div className="m-window" role="img" aria-label="The Junbi dashboard showing today's classes, payments collected and students checked in">
           <div className="m-window-bar"><i /><i /><i /><span style={{ marginLeft: 12 }}>junbi</span></div>
           <div className="m-window-body">
@@ -202,6 +243,27 @@ export default async function Home() {
             ART_LINK[a] ? <Link key={a} href={`/club-software/${ART_LINK[a]}`} data-anim="up" style={{ color: "inherit", textDecoration: "none", "--i": i } as React.CSSProperties}><span>{a}</span></Link> : <span key={a} data-anim="up" style={{ "--i": i } as React.CSSProperties}>{a}</span>
           ))}
         </Reveal>
+      </section>
+
+      <section id="competitions" className="m-section">
+        <div className="m-wrap m-split">
+          <div className="copy">
+            <p className="m-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Junbi Competitions <span className="m-soon">Coming soon</span></p>
+            <h2 className="m-h2">Competition day, sorted.</h2>
+            <p className="m-sub" style={{ margin: "20px 0 0" }}>Host a championship with live entries, waiting lists and lists for the scoring table. Or enter your club in minutes. Free for every club to enter.</p>
+            <p style={{ margin: "28px 0 0" }}><Link href="/competitions" className="m-link">Find out more</Link></p>
+          </div>
+          <div className="panel m-panel-alt">
+            <div className="m-panel-head"><h3>What&apos;s coming</h3></div>
+            <ul className="m-checks" style={{ marginTop: 8 }}>
+              <li>Every athlete placed in the right category</li>
+              <li>Entry limits and a waiting list</li>
+              <li>Entry fees paid straight to the host</li>
+              <li>Lists ready for the scoring table</li>
+              <li>Link your Junbi club to enter in a few taps</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section id="switching" className="m-section alt m-center">

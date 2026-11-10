@@ -29,6 +29,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Link href="/compare">Compare</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/elite">Elite</Link>
+            <Link href="/competitions">Competitions</Link>
             <Link href="/guides">Guides</Link>
             <Link href="/library">Library</Link>
             <Link href="/login">Sign in</Link>
