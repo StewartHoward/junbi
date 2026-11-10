@@ -52,8 +52,8 @@ export default function PricingPage() {
         <div className="m-plan dark" style={{ maxWidth: 1200, margin: "40px auto 0", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: "16px 32px" }}>
           <div style={{ flex: "1 1 420px" }}>
             <p className="m-eyebrow" style={{ margin: 0, color: "var(--m-hong-dark)", fontSize: 15 }}>Junbi Elite</p>
-            <h2 style={{ marginTop: 6 }}>Want your own brand everywhere?</h2>
-            <p className="for" style={{ minHeight: 0 }}>A website designed for your club, your own member app, a coach portal and payments built in. No Junbi branding. Designed and set up for you, from £199 a month. By enquiry.</p>
+            <h2 style={{ marginTop: 6 }}>Want a system built just for your club?</h2>
+            <p className="for" style={{ minHeight: 0 }}>A website, member app, coach portal and payments, custom built for your club around the way you run it. No Junbi branding. From £199 a month. By enquiry.</p>
           </div>
           <Link href="/elite" className="m-btn white" style={{ width: "auto", marginTop: 0 }}>Find out about Elite</Link>
         </div>

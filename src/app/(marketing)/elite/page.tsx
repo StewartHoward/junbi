@@ -5,8 +5,8 @@ import { EnquiryForm } from "./EnquiryForm";
 
 export const metadata: Metadata = pageMeta({
   ownImage: true,
-  title: "Junbi Elite: your own club website, member app and payments",
-  description: "A custom website, your own branded member app, coach portal and integrated Direct Debit, designed and set up for your martial arts club. No Junbi branding. By enquiry.",
+  title: "Junbi Elite: a club system custom built for you",
+  description: "A website, member app, coach portal and payments system custom built for your martial arts club, around the way you run it. Your brand, no Junbi branding. By enquiry.",
   path: "/elite",
 });
 
@@ -94,22 +94,31 @@ const GROUPS: Array<{ n: string; title: string; intro: string; items: string[] }
   },
 ];
 
+const CUSTOM = [
+  { t: "Your design", d: "A look made for your club, from your logo, colours and photos. Not a theme with your name swapped in." },
+  { t: "Your memberships", d: "Your plans, sibling deals, sign-up fees, add-ons and rules, set up exactly as you charge them now." },
+  { t: "Your way of grading", d: "Your syllabus, belt colours, attendance rules and invitations, built the way your club grades." },
+  { t: "Your extras", d: "Squads, waivers, kit, seminars or something only your club does. If you need it, we build it." },
+];
+
 const STEPS = [
   { t: "Enquire", d: "Tell us about your club below. No obligation." },
-  { t: "A short call", d: "We learn how your club runs and show you Elite working." },
-  { t: "We design", d: "Your website and app, in your brand. You approve every page." },
+  { t: "A short call", d: "We learn how your club runs: your classes, memberships, gradings and the bits that are unique to you." },
+  { t: "We build", d: "Your website, app and portal, built around your club. You approve every page." },
   { t: "We move you across", d: "Students, families, belts and Direct Debits. Families don't fill in new forms." },
   { t: "Launch", d: "We train your team and stay on hand. You get a direct line to us." },
 ];
 
 const FAQ = [
   { q: "Who is Elite for?", a: "Established clubs that want their own brand everywhere, usually with 100 or more students or more than one location. If you'd rather keep it simple, our standard plans have everything you need to run the club, from £19 a month." },
+  { q: "Is it just Junbi with our logo on?", a: "No. Each Elite system is custom built for one club. We design the website and app around your brand, and build the features around how you run things: your memberships, your grading process, your squads, your rules. If you need something no other club has, we build it." },
   { q: "Will families see Junbi anywhere?", a: "No. Your website, member app, emails and receipts all carry your club's name and logo, on your own web address." },
   { q: "Is the member app in the App Store?", a: "It's a web app that families add to their home screen in a couple of taps. It opens full screen like any other app and sends notifications, with no app store downloads or updates to manage." },
   { q: "Do we own our domain and content?", a: "Yes. Your domain, photos, words and student records are yours. If you ever leave, we'll hand everything over." },
   { q: "Can we keep our current Direct Debits?", a: "If you collect through Stripe now, we can move your existing Direct Debits across without families signing up again. For other providers, we'll talk you through the simplest route on the call." },
   { q: "How long does it take?", a: "Usually four to six weeks from the go-ahead to launch, depending on how many pages and locations you have." },
-  { q: "Why do I have to enquire?", a: "Every Elite club gets a custom design and a hands-on move across, so we take on a small number of clubs at a time to do it properly." },
+  { q: "Can we ask for changes later?", a: "Yes. Your system keeps growing with your club. Small changes are part of your monthly plan, and we'll quote for bigger new features before we start." },
+  { q: "Why do I have to enquire?", a: "Every Elite system is custom built, so we take on a small number of clubs at a time to do it properly, and we quote the build after we've talked." },
 ];
 
 export default function ElitePage() {
@@ -118,7 +127,7 @@ export default function ElitePage() {
       "@context": "https://schema.org",
       "@type": "Service",
       name: "Junbi Elite",
-      serviceType: "Martial arts club website, member app and management system",
+      serviceType: "Custom built martial arts club website, member app and management system",
       provider: { "@type": "Organization", name: "Junbi", url: SITE_URL },
       areaServed: "GB",
       url: `${SITE_URL}/elite`,
@@ -134,12 +143,12 @@ export default function ElitePage() {
       <section className="m-section dark m-center elite-hero">
         <p className="m-eyebrow">Junbi Elite</p>
         <h1 className="m-hero-title" style={{ fontSize: "clamp(42px, 6.4vw, 76px)", maxWidth: 940 }}>
-          Your club. Your brand.
+          Your club&apos;s own system.
           <br />
-          One system behind it all.
+          Built just for you.
         </h1>
         <p className="m-sub" style={{ maxWidth: 680 }}>
-          A website designed for your club, your own member app, a coach portal and payments built in. We design it, set it up and move you across. Your families only ever see your club.
+          A website, member app, coach portal and payments, custom built for your club around the way you run it. Not a template, not a rebrand. Your families only ever see your club.
         </p>
         <div className="m-actions">
           <a href="#enquire" className="m-btn on-dark">Enquire about Elite</a>
@@ -185,7 +194,7 @@ export default function ElitePage() {
           <div className="m-center">
             <p className="m-eyebrow">What you get</p>
             <h2 className="m-h2">Everything your club runs on.</h2>
-            <p className="m-sub">One system for your website, your families, your coaches and your money. All in your name.</p>
+            <p className="m-sub">Every Elite system is built from scratch for one club. This is where most clubs start, then we shape it around yours.</p>
           </div>
           <div className="elite-groups">
             {GROUPS.map((g) => (
@@ -202,12 +211,30 @@ export default function ElitePage() {
         </div>
       </section>
 
+      <section className="m-section dark">
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div className="m-center">
+            <p className="m-eyebrow">Custom built</p>
+            <h2 className="m-h2">Built around how you run your club.</h2>
+            <p className="m-sub">Off-the-shelf software makes you work its way. Your Elite system works yours.</p>
+          </div>
+          <div className="elite-custom">
+            {CUSTOM.map((c) => (
+              <div key={c.t}>
+                <h3>{c.t}</h3>
+                <p>{c.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="m-section alt">
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
           <div className="m-center">
             <p className="m-eyebrow">Done for you</p>
             <h2 className="m-h2">We do the heavy lifting.</h2>
-            <p className="m-sub">You keep teaching. We build it, move everything across and train your team.</p>
+            <p className="m-sub">You keep teaching. We build your system, move everything across and train your team.</p>
           </div>
           <ol className="elite-steps">
             {STEPS.map((s, i) => (
@@ -230,17 +257,17 @@ export default function ElitePage() {
           <div className="elite-price">
             <div className="m-plan dark">
               <h2>Elite</h2>
-              <p className="for">Your own brand, done for you</p>
+              <p className="for">A system custom built for your club</p>
               <p className="price"><span>From </span><strong>£199</strong><span> /month</span></p>
-              <p className="limits">Plus a one-off set-up from £1,950 for your design, build and move across.</p>
+              <p className="limits">Plus a one-off build fee from £1,950, quoted after your call. It covers designing and building your system and moving you across.</p>
               <a href="#enquire" className="m-btn white">Enquire about Elite</a>
               <ul>
                 <li>✓ Unlimited students and locations</li>
-                <li>✓ Custom website on your own domain</li>
-                <li>✓ Your own branded member app</li>
+                <li>✓ Custom built website on your own domain</li>
+                <li>✓ Your own member app, built for your club</li>
                 <li>✓ Coach portal for your whole team</li>
-                <li>✓ Every Junbi feature included</li>
-                <li>✓ Priority support, with a direct line to us</li>
+                <li>✓ Features built around how you run things</li>
+                <li>✓ Hosting, updates and priority support</li>
                 <li>✓ 0% of your fees, ever</li>
               </ul>
             </div>
@@ -283,7 +310,7 @@ export default function ElitePage() {
         <div className="m-center">
           <p className="m-eyebrow">Enquire</p>
           <h2 className="m-h2">Let&apos;s talk about your club.</h2>
-          <p className="m-sub" style={{ maxWidth: 560 }}>Tell us a little about where you are now. We&apos;ll reply within one working day to book a short call.</p>
+          <p className="m-sub" style={{ maxWidth: 560 }}>Tell us a little about your club and what you&apos;d want your system to do. We&apos;ll reply within one working day to book a short call.</p>
         </div>
         <EnquiryForm />
       </section>
