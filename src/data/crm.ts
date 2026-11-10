@@ -319,7 +319,7 @@ export async function crmOverview(f: { q?: string; stage?: string; book?: string
     select ${contactCols} from crm_contacts c
     where (${stage}::text is null or c.stage = ${stage})
       and (${q} = '' or lower(c.email) like ${like} or lower(c.name) like ${like} or lower(c.club_name) like ${like})
-      and (${source}::text is null or c.source = ${source})
+      and (${source}::text is null or c.source in ('elite', 'elite_brochure'))
       and (${book}::text is null or exists (select 1 from crm_orders o where o.contact_id = c.id and ${book} = any(o.items)))
     order by c.next_action_on asc nulls last, c.last_activity_at desc limit 500`)) as unknown as ContactRow[];
   const [counts] = (await db().execute(sql`
@@ -328,7 +328,7 @@ export async function crmOverview(f: { q?: string; stage?: string; book?: string
       count(*) filter (where marketing_ok and unsubscribed_at is null)::int as emails_ok,
       count(*) filter (where signed_up_club is not null)::int as signed_up,
       count(*) filter (where next_action_on <= current_date and stage not in ('customer', 'not_interested'))::int as due,
-      count(*) filter (where source = 'elite')::int as elite
+      count(*) filter (where source in ('elite', 'elite_brochure'))::int as elite
     from crm_contacts`)) as unknown as Array<{ total: number; week: number; emails_ok: number; signed_up: number; due: number; elite: number }>;
   const byStage = (await db().execute(sql`select stage, count(*)::int as n from crm_contacts group by stage`)) as unknown as Array<{ stage: string; n: number }>;
   const byBook = (await db().execute(sql`

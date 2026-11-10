@@ -155,3 +155,31 @@ describe("Elite enquiries", () => {
     if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(["clubName", "email", "phone", "sites"]);
   });
 });
+
+describe("Elite brochure", () => {
+  it("logs a new lead as an Elite brochure download, due a follow-up today, and returns the PDF", async () => {
+    const { sendEliteBrochure } = await import("@/data/elite");
+    const r = await sendEliteBrochure({ name: "Sam Reader", email: "Sam@Brochure.test", marketingOk: true });
+    expect(r).toEqual({ ok: true, value: { url: "/downloads/junbi-elite-brochure.pdf" } });
+    const c = await contact("sam@brochure.test");
+    expect(c).toMatchObject({ name: "Sam Reader", source: "elite_brochure", marketing_ok: true, stage: "new" });
+    expect(c.next_action_on).not.toBeNull();
+    const ev = await adminSql`select kind, detail from crm_events where contact_id = ${c.id}`;
+    expect(ev).toEqual([{ kind: "download", detail: "Downloaded the Elite brochure, said yes to emails" }]);
+  });
+
+  it("keeps an Elite enquiry marked as an enquiry and never turns emails off", async () => {
+    const { sendEliteBrochure } = await import("@/data/elite");
+    expect((await sendEliteBrochure({ name: "Jo Master", email: "jo@elite.test", marketingOk: false })).ok).toBe(true);
+    const c = await contact("jo@elite.test");
+    expect(c.source).toBe("elite");
+    expect((await adminSql`select count(*)::int as n from crm_contacts where email = 'jo@elite.test'`)[0].n).toBe(1);
+  });
+
+  it("checks the form", async () => {
+    const { sendEliteBrochure } = await import("@/data/elite");
+    const r = await sendEliteBrochure({ name: "", email: "nope", marketingOk: false });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(["email", "name"]);
+  });
+});

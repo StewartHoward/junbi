@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { SITE_URL, jsonLd, pageMeta } from "@/lib/seo";
+import { BrochureForm } from "./BrochureForm";
 import { EnquiryForm } from "./EnquiryForm";
 
 export const metadata: Metadata = pageMeta({
@@ -152,7 +153,7 @@ export default function ElitePage() {
         </p>
         <div className="m-actions">
           <a href="#enquire" className="m-btn on-dark">Enquire about Elite</a>
-          <a href="#included" className="m-link">See what&apos;s included</a>
+          <a href="#brochure" className="m-link">Download the brochure</a>
         </div>
         <p className="m-fine" style={{ color: "#a1a1a6" }}>By enquiry only. A small number of clubs each quarter.</p>
 
@@ -292,7 +293,16 @@ export default function ElitePage() {
         </div>
       </section>
 
-      <section className="m-section alt">
+      <section className="m-section alt" id="brochure" style={{ scrollMarginTop: 60 }}>
+        <div className="m-center">
+          <p className="m-eyebrow">Brochure</p>
+          <h2 className="m-h2">Take it away with you.</h2>
+          <p className="m-sub" style={{ maxWidth: 560 }}>Everything on this page in a 6-page PDF: what&apos;s included, how we build it and what it costs. Handy for sharing with your team.</p>
+        </div>
+        <BrochureForm />
+      </section>
+
+      <section className="m-section">
         <div style={{ maxWidth: 760, margin: "0 auto" }}>
           <h2 className="m-h2 m-center" style={{ fontSize: "clamp(32px, 4.5vw, 44px)" }}>Questions.</h2>
           <div className="m-faq">
@@ -306,7 +316,7 @@ export default function ElitePage() {
         </div>
       </section>
 
-      <section className="m-section" id="enquire" style={{ scrollMarginTop: 60 }}>
+      <section className="m-section alt" id="enquire" style={{ scrollMarginTop: 60 }}>
         <div className="m-center">
           <p className="m-eyebrow">Enquire</p>
           <h2 className="m-h2">Let&apos;s talk about your club.</h2>

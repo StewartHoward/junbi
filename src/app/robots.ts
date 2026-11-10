@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/api/", "/admin", "/today", "/students", "/leads", "/classes", "/events", "/messages", "/payments", "/shop", "/website",
           "/settings", "/billing", "/setup", "/print/", "/join/", "/pay/", "/book/", "/family/", "/embed/", "/site/", "/invite", "/reset-password", "/forgot-password",
-          "/library/checkout", "/library/order/", "/library/unsubscribe",
+          "/library/checkout", "/library/order/", "/library/unsubscribe", "/downloads/",
         ],
       },
     ],

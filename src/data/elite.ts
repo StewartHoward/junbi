@@ -2,7 +2,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { libraryEmail, sendEmail } from "@/lib/email";
+import { appUrl, libraryEmail, sendEmail } from "@/lib/email";
 import { ARTS, SIZES, SYSTEMS } from "@/lib/ebooks";
 import type { Result } from "./accounts";
 
@@ -81,4 +81,52 @@ export async function sendEliteEnquiry(raw: EliteInput): Promise<Result> {
   );
   await sendEmail({ to: d.email, subject: t.subject, html: t.html, text: t.text, template: "elite-thanks" }).catch(() => {});
   return { ok: true, value: undefined };
+}
+
+/* ---------- Elite brochure: name and email in, PDF out ---------- */
+
+export const ELITE_BROCHURE_PATH = "/downloads/junbi-elite-brochure.pdf";
+
+const brochureSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name.").max(100),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(254),
+  marketingOk: z.boolean(),
+});
+export type BrochureInput = z.input<typeof brochureSchema>;
+
+/** Records the download in the CRM (due a follow-up today) and emails the brochure link. Returns the download path. */
+export async function sendEliteBrochure(raw: BrochureInput): Promise<Result<{ url: string }>> {
+  const p = brochureSchema.safeParse(raw);
+  if (!p.success) {
+    const errors: Record<string, string> = {};
+    for (const i of p.error.issues) errors[String(i.path[0])] ??= i.message;
+    return { ok: false, errors };
+  }
+  const d = p.data;
+  // An Elite enquiry keeps its source; anyone else becomes an Elite brochure lead.
+  const [c] = (await db().execute(sql`
+    insert into crm_contacts (email, name, source, marketing_ok, next_action_on)
+    values (${d.email}, ${d.name}, 'elite_brochure', ${d.marketingOk}, current_date)
+    on conflict (email) do update set
+      name = excluded.name,
+      source = case when crm_contacts.source = 'elite' then crm_contacts.source else 'elite_brochure' end,
+      marketing_ok = crm_contacts.marketing_ok or excluded.marketing_ok,
+      unsubscribed_at = case when excluded.marketing_ok then null else crm_contacts.unsubscribed_at end,
+      stage = case when crm_contacts.stage = 'not_interested' then 'new' else crm_contacts.stage end,
+      next_action_on = coalesce(least(crm_contacts.next_action_on, current_date), current_date),
+      updated_at = now(), last_activity_at = now()
+    returning id`)) as unknown as Array<{ id: string }>;
+  await db().execute(sql`insert into crm_events (contact_id, kind, detail) values (${c.id}::uuid, 'download', ${`Downloaded the Elite brochure${d.marketingOk ? ", said yes to emails" : ""}`})`);
+
+  const base = await appUrl();
+  const t = libraryEmail(
+    "Your Junbi Elite brochure",
+    "Here's your brochure.",
+    [`Hi ${d.name.split(/\s+/)[0]},`, "Thanks for your interest in Junbi Elite. Your brochure is below: what's included, how we build it and what it costs.", "When you're ready to talk about your club, reply to this email or enquire at junbi.co.uk/elite and we'll book a short call."],
+    { label: "Download the brochure", url: `${base}${ELITE_BROCHURE_PATH}` },
+    undefined,
+    "You're getting this because you asked for the Junbi Elite brochure.",
+  );
+  await sendEmail({ to: d.email, subject: t.subject, html: t.html, text: t.text, template: "elite-brochure" }).catch((err) => console.error("elite brochure email failed", err));
+  return { ok: true, value: { url: ELITE_BROCHURE_PATH } };
 }

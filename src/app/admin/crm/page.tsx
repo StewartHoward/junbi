@@ -78,7 +78,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         </nav>
         {counts.elite > 0 && (
           <p style={{ margin: "12px 0 0", fontSize: 14 }}>
-            {sp.source === "elite" ? <>Showing Elite enquiries only. <Link href={href({ source: undefined })}>Show everyone</Link></> : <Link href={href({ source: "elite" })}>Elite enquiries ({counts.elite}) ›</Link>}
+            {sp.source === "elite" ? <>Showing Elite leads only. <Link href={href({ source: undefined })}>Show everyone</Link></> : <Link href={href({ source: "elite" })}>Elite leads ({counts.elite}) ›</Link>}
           </p>
         )}
         {sp.book && <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>Showing people who ordered {books.find((b) => b.book.slug === sp.book)?.book.title ?? sp.book}. <Link href={href({ book: undefined })}>Show everyone</Link></p>}
@@ -92,7 +92,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                   <td><span className={`pill ${STAGE_PILL[c.stage]}`}>{stageLabel(c.stage)}</span></td>
                   <td>{c.clubName || <span className="muted">No club yet</span>}<span className="sub">{[c.arts.join(", "), c.size].filter(Boolean).join(" · ")}</span></td>
                   <td>{c.system || <span className="muted">Unknown</span>}</td>
-                  <td>{c.source === "elite" && <span className="pill warn" style={{ marginRight: 6 }}>Elite enquiry</span>}{c.ordered.length ? c.ordered.map((s) => books.find((b) => b.book.slug === s)?.book.title ?? s).join(", ") : c.source === "elite" ? null : <span className="muted">{c.source === "support" ? "Support message" : "Added by hand"}</span>}</td>
+                  <td>{c.source === "elite" && <span className="pill warn" style={{ marginRight: 6 }}>Elite enquiry</span>}{c.source === "elite_brochure" && <span className="pill" style={{ marginRight: 6 }}>Elite brochure</span>}{c.ordered.length ? c.ordered.map((s) => books.find((b) => b.book.slug === s)?.book.title ?? s).join(", ") : c.source === "elite" || c.source === "elite_brochure" ? null : <span className="muted">{c.source === "support" ? "Support message" : "Added by hand"}</span>}</td>
                   <td className={c.nextActionOn && c.nextActionOn <= today ? "warn-t" : undefined}>{c.nextActionOn ? day(new Date(`${c.nextActionOn}T12:00:00Z`)) : <span className="muted">None</span>}</td>
                   <td>{ago(c.lastActivity)}</td>
                 </tr>
@@ -109,6 +109,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                 <span className={`pill ${STAGE_PILL[c.stage]}`}>{stageLabel(c.stage)}</span>
               </div>
               {c.source === "elite" && <p style={{ marginTop: 8 }}><span className="pill warn">Elite enquiry</span></p>}
+              {c.source === "elite_brochure" && <p style={{ marginTop: 8 }}><span className="pill">Elite brochure</span></p>}
               <p className="sub" style={{ marginTop: 8 }}>{c.nextActionOn ? `Follow up ${day(new Date(`${c.nextActionOn}T12:00:00Z`))}` : `Last activity ${ago(c.lastActivity).toLowerCase()}`}</p>
             </Link>
           ))}
