@@ -21,7 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page("/pricing", 0.9),
     page("/elite", 0.8),
     page("/competitions", 0.6),
-    ...Object.values(KIND_PATH).map((p) => page(p, 0.8)),
+    ...Object.values(KIND_PATH).filter((p) => p !== KIND_PATH.art).map((p) => page(p, 0.8)),
     ...LANDINGS.filter((l) => shown(`${l.kind}/${l.slug}`)).map((l) => page(landingPath(l), l.kind === "compare" ? 0.7 : 0.8)),
     page("/library", 0.8, "weekly"),
     ...(await shopEbooks()).map((b) => page(`/library/${b.slug}`, 0.7)),

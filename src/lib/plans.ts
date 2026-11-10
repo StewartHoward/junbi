@@ -6,7 +6,7 @@
 /** What every plan includes. */
 export const CORE_FEATURES = [
   "Student profiles and families",
-  "Belts for every art you teach",
+  "Kup and dan grades, WT or ITF",
   "Timetable and tap-to-mark registers",
   "Direct Debit through your own Stripe or GoCardless",
   "Email messages to parents",

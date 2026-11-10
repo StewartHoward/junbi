@@ -25,7 +25,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.025em", color: "#1d1d1f" }}>junbi</span>
           <nav aria-label="Footer">
             <Link href="/features">Features</Link>
-            <Link href="/club-software">Every art</Link>
+            <Link href="/club-software/taekwondo">Taekwondo</Link>
             <Link href="/compare">Compare</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/elite">Elite</Link>
@@ -37,7 +37,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <Link href="/privacy">Privacy</Link>
             <Link href="/admin/login">Admin login</Link>
           </nav>
-          <span>© 2026 Junbi. Made in the UK for martial arts clubs.</span>
+          <span>© 2026 Junbi. Made in the UK for taekwondo clubs.</span>
         </div>
       </footer>
       <SupportWidget />

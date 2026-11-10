@@ -64,7 +64,7 @@ export function CheckoutForm({ books, picked }: { books: Ebook[]; picked: string
             {e?.clubName ? <FieldError id="clubName-err" msg={e.clubName} /> : <p id="clubName-hint" className="hint">Leave blank if you haven&apos;t opened yet.</p>}
           </div>
           <fieldset className="m-fieldset">
-            <legend style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>What do you teach?</legend>
+            <legend style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Which style of taekwondo?</legend>
             <div className="m-chips">
               {ARTS.map((a) => <label key={a}><input type="checkbox" name="arts" value={a} defaultChecked={arts.includes(a)} />{a}</label>)}
             </div>

@@ -52,7 +52,7 @@ export function EnquiryForm() {
         <input id="currentSite" name="currentSite" inputMode="url" autoComplete="url" placeholder="yourclub.co.uk" defaultValue={sv("currentSite")} />
       </div>
       <fieldset className="m-fieldset">
-        <legend style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>What do you teach?</legend>
+        <legend style={{ fontSize: 15, fontWeight: 500, marginBottom: 8 }}>Which style of taekwondo?</legend>
         <div className="m-chips">
           {ARTS.map((a) => <label key={a}><input type="checkbox" name="arts" value={a} defaultChecked={arts.includes(a)} />{a}</label>)}
         </div>

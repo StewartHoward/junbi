@@ -41,7 +41,8 @@ export const formatPrice = (pence: number) => (pence === 0 ? "£0" : `£${(pence
 export const ROLES = ["Club owner", "Instructor", "Assistant instructor", "Thinking of starting a club", "Association", "Other"] as const;
 export const SIZES = ["Not open yet", "Under 50 students", "50 to 150", "150 to 300", "Over 300"] as const;
 export const SYSTEMS = ["Spreadsheets or paper", "NEST", "Martialytics", "Class Manager", "ClubRight", "Another system", "Nothing yet"] as const;
-export const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu", "Krav Maga", "Muay Thai", "MMA", "Other"] as const;
+/** Which style of taekwondo a lead teaches. (Older leads may hold other arts from before Junbi focused on taekwondo.) */
+export const ARTS = ["WT / Kukkiwon", "ITF", "Independent", "Another art"] as const;
 
 /** Files are uploaded in pieces this big so each request stays under the hosting limit. */
 export const UPLOAD_CHUNK = 3 * 1024 * 1024;

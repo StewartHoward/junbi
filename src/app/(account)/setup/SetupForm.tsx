@@ -9,7 +9,7 @@ export function SetupForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(setupAction, {});
   const e = state.errors;
   const v = state.values ?? {};
-  const [chosen, setChosen] = useState<string[]>(v.disciplines ? v.disciplines.split(",") : []);
+  const [chosen, setChosen] = useState<string[]>(v.disciplines ? v.disciplines.split(",") : ["taekwondo"]);
   const toggle = (id: string, on: boolean) => setChosen((c) => (on ? [...c, id] : c.filter((x) => x !== id)));
   const chosenArts = DISCIPLINES.filter((d) => chosen.includes(d.id));
 
@@ -18,8 +18,8 @@ export function SetupForm() {
       {e?.form && <p className="error" role="alert">{e.form}</p>}
 
       <fieldset className="m-fieldset" {...errProps("disciplines", e)}>
-        <legend>Which arts do you teach?</legend>
-        <p className="hint">Choose all that apply. Your dashboard, belts and classes are set up around what you pick.</p>
+        <legend>What do you teach?</legend>
+        <p className="hint">Taekwondo is ticked for you. Teach something else as well? Tick that too. Your dashboard, belts and classes are set up around what you pick.</p>
         <div className="m-choices">
           {DISCIPLINES.map((d) => (
             <label key={d.id} className="m-choice">

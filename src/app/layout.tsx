@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/seo";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: "Junbi", template: "%s · Junbi" },
-  description: "Club management software for UK martial arts clubs.",
+  description: "Club management software for UK taekwondo clubs.",
   applicationName: "Junbi",
   openGraph: { siteName: "Junbi", type: "website", locale: "en_GB" },
   twitter: { card: "summary_large_image" },

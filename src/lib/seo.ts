@@ -9,7 +9,7 @@ export const SITE_URL = (process.env.APP_URL || "https://junbi.co.uk").replace(/
  */
 // ownImage: the page folder has its own opengraph-image file, so don't set the default (it would override the file).
 export function pageMeta({ title, description, path, absoluteTitle, noindex, ownImage }: { title: string; description: string; path: string; absoluteTitle?: boolean; noindex?: boolean; ownImage?: boolean }): Metadata {
-  const def = ownImage ? {} : { images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Junbi: martial arts club management for UK clubs" }] };
+  const def = ownImage ? {} : { images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Junbi: club management for UK taekwondo clubs" }] };
   const shareTitle = absoluteTitle ? title : `${title} · Junbi`;
   return {
     title: absoluteTitle ? { absolute: title } : title,

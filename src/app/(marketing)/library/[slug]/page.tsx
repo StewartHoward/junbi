@@ -25,7 +25,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
       ? { q: "Is it really free?", a: "Yes. The price is £0 and we never ask for a card. We ask a few questions about your club so we know who's reading, and that's it." }
       : { q: "How do I pay?", a: `By card, securely through Stripe. It's ${formatPrice(b.pricePence)}, once, with nothing more to pay.` },
     { q: "Will you send me emails?", a: "We email your order and the download link. Anything else only if you tick the box to say yes, and every email has an unsubscribe link." },
-    { q: "Do I need to use Junbi?", a: "No. The books are for any martial arts club, whatever software you use, or none." },
+    { q: "Do I need to use Junbi?", a: "No. The books are for any taekwondo club, whatever software you use, or none." },
   ];
   const structured = {
     "@context": "https://schema.org",

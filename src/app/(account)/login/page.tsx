@@ -5,7 +5,7 @@ import { currentActor } from "@/auth/session";
 import { LoginForm } from "./LoginForm";
 import { featureOn } from "@/data/features";
 
-export const metadata: Metadata = pageMeta({ title: "Sign in", description: "Sign in to Junbi to run your martial arts club: students, classes, payments and more.", path: "/login" });
+export const metadata: Metadata = pageMeta({ title: "Sign in", description: "Sign in to Junbi to run your club: students, classes, payments and more.", path: "/login" });
 
 export default async function LoginPage() {
   if (await currentActor()) redirect("/today");

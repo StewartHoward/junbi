@@ -9,8 +9,8 @@ export const revalidate = 300;
 
 export const metadata: Metadata = pageMeta({
   ownImage: true,
-  title: "Ebooks for Martial Arts Club Owners",
-  description: "The Junbi Library: practical ebooks on starting a martial arts club, filling your classes and getting paid on time. Many are free.",
+  title: "Ebooks for Taekwondo Club Owners",
+  description: "The Junbi Library: practical ebooks on starting a taekwondo club, filling your classes and getting paid on time. Many are free.",
   path: "/library",
 });
 
@@ -28,7 +28,7 @@ export default async function LibraryPage() {
       <section className="m-section m-center" style={{ paddingBottom: 40 }}>
         <p className="m-eyebrow">Junbi Library</p>
         <h1 className="m-hero-title" style={{ fontSize: "clamp(40px, 6vw, 68px)", maxWidth: 860 }}>{free.length === books.length ? "Free ebooks for club owners." : "Ebooks for club owners."}</h1>
-        <p className="m-sub" style={{ maxWidth: 640 }}>Practical, plain-English books on starting, filling and running a martial arts club.{free.length ? ` ${free.length === books.length ? "Every one is" : `${free.length} of them are`} £0 at the checkout.` : ""}</p>
+        <p className="m-sub" style={{ maxWidth: 640 }}>Practical, plain-English books on starting, filling and running a taekwondo club.{free.length ? ` ${free.length === books.length ? "Every one is" : `${free.length} of them are`} £0 at the checkout.` : ""}</p>
       </section>
       <section className="m-section alt" style={{ paddingTop: 56 }}>
         {books.length === 0 ? (

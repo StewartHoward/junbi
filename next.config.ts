@@ -46,6 +46,17 @@ const nextConfig: NextConfig = {
       { source: "/founding-clubs", destination: "/pricing", permanent: true },
       { source: "/admin/hq/:path*", destination: "/admin/shop/:path*", permanent: true },
       { source: "/admin/hq", destination: "/admin/shop", permanent: true },
+      // Junbi is marketed to taekwondo clubs only. Old pages for other arts and renamed guides point to their replacements.
+      { source: "/club-software/karate", destination: "/club-software/taekwondo", permanent: true },
+      { source: "/club-software/kickboxing", destination: "/club-software/taekwondo", permanent: true },
+      { source: "/club-software/brazilian-jiu-jitsu", destination: "/club-software/taekwondo", permanent: true },
+      { source: "/club-software/judo", destination: "/club-software/taekwondo", permanent: true },
+      { source: "/club-software", destination: "/club-software/taekwondo", permanent: true },
+      { source: "/guides/how-to-start-a-martial-arts-club-uk", destination: "/guides/how-to-start-a-taekwondo-club-uk", permanent: true },
+      { source: "/guides/martial-arts-club-insurance", destination: "/guides/taekwondo-club-insurance", permanent: true },
+      { source: "/guides/safeguarding-policy-martial-arts-club", destination: "/guides/safeguarding-policy-taekwondo-club", permanent: true },
+      { source: "/guides/marketing-a-martial-arts-club", destination: "/guides/marketing-a-taekwondo-club", permanent: true },
+      { source: "/guides/martial-arts-membership-terms", destination: "/guides/taekwondo-club-membership-terms", permanent: true },
     ];
   },
   async headers() {

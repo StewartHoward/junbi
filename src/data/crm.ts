@@ -270,7 +270,7 @@ export async function sendLibraryFollowups() {
       const free = next.pricePence === 0;
       e = libraryEmail(free ? `Another free one: ${next.title}` : `You might like ${next.title}`, free ? "Another free one for you." : `You might like ${next.title}.`, [`Hi ${first},`, `Since you got ${had.length ? titles(had) : "one of our ebooks"}, you might like ${next.title}: ${next.pitch}`, ...(free ? ["It's free as well, same as before."] : [])], { label: free ? `Get ${next.title} for £0` : `See ${next.title}`, url: u.book(next.slug) }, u.unsubscribe(c.id));
     } else {
-      e = libraryEmail("Less admin, more training", "Less admin. More training.", [`Hi ${first},`, "Junbi runs the admin side of a martial arts club: students and families, registers on your phone, Direct Debit through your own Stripe or GoCardless, and messages to parents.", "It's one flat price from £19 a month, and we never take a percentage of your fees. Try it free for 7 days."], { label: "Start your free trial", url: u.signup }, u.unsubscribe(c.id));
+      e = libraryEmail("Less admin, more training", "Less admin. More training.", [`Hi ${first},`, "Junbi runs the admin side of a taekwondo club: students and families, registers on your phone, Direct Debit through your own Stripe or GoCardless, and messages to parents.", "It's one flat price from £19 a month, and we never take a percentage of your fees. Try it free for 7 days."], { label: "Start your free trial", url: u.signup }, u.unsubscribe(c.id));
     }
     const r = await sendEmail({ to: c.email, subject: e.subject, html: e.html, text: e.text, template: `library-followup-${step}`, dedupeKey: `library-followup:${c.id}:${step}` });
     const gap = FOLLOWUP_GAPS[step];
@@ -438,7 +438,7 @@ export async function crmCsv(): Promise<string> {
     const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; // stop spreadsheets running formulas
     return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
-  const head = ["Name", "Email", "Club", "Role", "Arts", "Size", "Current system", "Phone", "Stage", "Next follow-up", "Emails OK", "Ebooks", "Signed up", "Added", "Last activity"];
+  const head = ["Name", "Email", "Club", "Role", "Style", "Size", "Current system", "Phone", "Stage", "Next follow-up", "Emails OK", "Ebooks", "Signed up", "Added", "Last activity"];
   const body = rows.map(shape).map((c) => [c.name, c.email, c.clubName, c.role, c.arts, c.size, c.system, c.phone, stageLabel(c.stage), c.nextActionOn ?? "", c.marketingOk && !c.unsubscribed ? "Yes" : "No", c.ordered.map((s) => title(m, s)), c.signedUp ? "Yes" : "No", c.createdAt, c.lastActivity].map(cell).join(","));
   return [head.join(","), ...body].join("\n");
 }

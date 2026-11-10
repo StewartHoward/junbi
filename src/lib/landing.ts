@@ -1,5 +1,5 @@
 /*
- * Public landing pages on junbi.co.uk: one per feature (/features/...), one per martial art (/club-software/...)
+ * Public landing pages on junbi.co.uk: one per feature (/features/...), the taekwondo page (/club-software/taekwondo)
  * and comparisons (/compare/...). Each is written for the search a club owner would actually make.
  * A paragraph starting with "- " is shown as a list item, as in the guides.
  * Competitor facts come from their own published pages, with the date they were checked. Keep them fair and current.
@@ -35,8 +35,8 @@ export const LANDINGS: Landing[] = [
     kind: "feature",
     slug: "direct-debit",
     label: "Direct Debit",
-    metaTitle: "Direct Debit for Martial Arts Clubs",
-    description: "Collect martial arts membership fees by Direct Debit through your own Stripe or GoCardless account. One flat price, no percentage of your fees.",
+    metaTitle: "Direct Debit for Taekwondo Clubs",
+    description: "Collect taekwondo membership fees by Direct Debit through your own Stripe or GoCardless account. One flat price, no percentage of your fees.",
     eyebrow: "Direct Debit",
     h1: "Membership fees, collected on time.",
     intro: "Parents set up Direct Debit on their phone when they join. The money goes from their bank to yours through your own Stripe or GoCardless account. Junbi never touches it and never takes a cut.",
@@ -83,8 +83,8 @@ export const LANDINGS: Landing[] = [
     kind: "feature",
     slug: "gradings",
     label: "Gradings",
-    metaTitle: "Martial Arts Grading Software",
-    description: "Run martial arts gradings without the paperwork: see who's ready from attendance, take bookings and card payments online, and record results as new belts.",
+    metaTitle: "Taekwondo Grading Software",
+    description: "Run taekwondo gradings without the paperwork: see who's ready from attendance, take bookings and card payments online, and record results as new belts.",
     eyebrow: "Gradings",
     h1: "Gradings that almost run themselves.",
     intro: "Junbi works out who's ready from the register, invites families to book and pay online, and turns each pass into the student's new belt. No envelopes of cash, no spreadsheets the night before.",
@@ -93,7 +93,7 @@ export const LANDINGS: Landing[] = [
         heading: "Who's ready, from the register",
         body: [
           "Set how many classes each belt needs. When you create a grading, Junbi ticks every student who has trained enough since their last one. You can still add or remove anyone: the numbers are a starting point, not the final word.",
-          "It works for kup, kyu and dan grades, coloured belts, tags and stripes, across every art you teach.",
+          "It works for kup and dan grades, poom grades, coloured belts and tags, whether you follow a WT, ITF or independent syllabus.",
         ],
       },
       {
@@ -112,18 +112,18 @@ export const LANDINGS: Landing[] = [
     ],
     faq: [
       { q: "Can we charge different prices for different grades?", a: "Yes. Set the price per grading, and run separate gradings for coloured belts and black belts if their fees differ." },
-      { q: "Does it work for associations with their own syllabus?", a: "Yes. You set your own belts and the classes each one needs. Junbi doesn't assume any one syllabus." },
-      { q: "Can we run other events the same way?", a: "Yes. Seminars, competitions and holiday camps use the same booking and payment flow." },
+      { q: "Does it work with our association's syllabus?", a: "Yes. WT and ITF grades are ready to go, and you can rename, recolour or add grades and set the classes each one needs." },
+      { q: "Can we run other events the same way?", a: "Yes. Dan gradings, seminars, competitions and holiday camps use the same booking and payment flow." },
     ],
     guides: ["gradings-that-run-themselves", "setting-membership-prices"],
-    related: ["feature/registers", "art/taekwondo", "art/karate"],
+    related: ["feature/registers", "art/taekwondo", "feature/parent-login"],
     share: { eyebrow: "Gradings", title: "Gradings that almost run themselves.", subtitle: "Who's ready from the register, bookings and payment online, results straight to belts." },
   },
   {
     kind: "feature",
     slug: "club-website",
     label: "Club website",
-    metaTitle: "Martial Arts Club Website Builder",
+    metaTitle: "Taekwondo Club Website Builder",
     description: "A club website built into your club software: timetable, prices and free trial bookings that update themselves. Your own domain, included in every plan.",
     eyebrow: "Club website",
     h1: "A club website that keeps itself up to date.",
@@ -150,7 +150,7 @@ export const LANDINGS: Landing[] = [
       },
       {
         heading: "A shop too",
-        body: ["Sell uniforms, sparring kit and gift vouchers from the same site. Families pay by card through your own Stripe and you get an email for every order."],
+        body: ["Sell doboks, sparring kit and gift vouchers from the same site. Families pay by card through your own Stripe and you get an email for every order."],
       },
     ],
     faq: [
@@ -159,15 +159,15 @@ export const LANDINGS: Landing[] = [
       { q: "Will it show up on Google?", a: "Each published club site has its own title, description, local business details and share image, which helps Google show it for searches in your area." },
     ],
     guides: ["turning-trials-into-members"],
-    related: ["feature/trial-classes", "feature/direct-debit", "art/kickboxing"],
+    related: ["feature/trial-classes", "feature/direct-debit", "art/taekwondo"],
     share: { eyebrow: "Club website", title: "A club website that keeps itself up to date.", subtitle: "Timetable, prices and free trial bookings straight from Junbi. Your own domain." },
   },
   {
     kind: "feature",
     slug: "trial-classes",
     label: "Trial classes",
-    metaTitle: "Trial Class Booking for Martial Arts Clubs",
-    description: "Book trial classes, send welcome and reminder emails automatically, and turn more trials into paying members. Built for UK martial arts clubs.",
+    metaTitle: "Trial Class Booking for Taekwondo Clubs",
+    description: "Book trial classes, send welcome and reminder emails automatically, and turn more trials into paying members. Built for UK taekwondo clubs.",
     eyebrow: "Trial classes",
     h1: "More trials. More of them joining.",
     intro: "Most clubs don't need more enquiries. They need more of the ones they get to turn up, enjoy it and join. Junbi books the trial, sends the reminders and makes joining a two-minute job on a parent's phone.",
@@ -193,22 +193,22 @@ export const LANDINGS: Landing[] = [
       { q: "Can parents book a trial from our website?", a: "Yes. The free trial form on your Junbi club website books straight into Leads. You can also link to it from any other website." },
       { q: "Do you send text messages?", a: "Not yet. Welcome and reminder messages go by email for now." },
     ],
-    guides: ["turning-trials-into-members", "marketing-a-martial-arts-club"],
-    related: ["feature/club-website", "feature/direct-debit", "art/brazilian-jiu-jitsu"],
+    guides: ["turning-trials-into-members", "marketing-a-taekwondo-club"],
+    related: ["feature/club-website", "feature/direct-debit", "art/taekwondo"],
     share: { eyebrow: "Trial classes", title: "More trials. More of them joining.", subtitle: "Bookings, welcome emails and reminders sent for you. Join on the night." },
   },
   {
     kind: "feature",
     slug: "registers",
     label: "Registers and attendance",
-    metaTitle: "Martial Arts Attendance and Class Registers",
-    description: "Take martial arts class registers on your phone in seconds. Attendance counts towards each student's next grading automatically, at every site.",
+    metaTitle: "Taekwondo Attendance and Class Registers",
+    description: "Take taekwondo class registers on your phone in seconds. Attendance counts towards each student's next grading automatically, at every site.",
     eyebrow: "Registers",
     h1: "Registers in seconds.",
     intro: "Set up each weekly class once and Junbi gives you a register for it every week. Open today's class on your phone, tap students in, and every class counts towards their next belt.",
     sections: [
       {
-        heading: "Made for the side of the mat",
+        heading: "Made for the side of the dojang",
         body: [
           "- Large tap targets that work with one hand.",
           "- Belts shown next to each name so you can see the class at a glance.",
@@ -229,14 +229,14 @@ export const LANDINGS: Landing[] = [
       { q: "Is there an app to install?", a: "No. Junbi runs in the browser on any phone, tablet or computer, so there's nothing to install or update." },
     ],
     guides: ["gradings-that-run-themselves"],
-    related: ["feature/gradings", "feature/parent-login", "art/judo"],
+    related: ["feature/gradings", "feature/parent-login", "art/taekwondo"],
     share: { eyebrow: "Registers", title: "Registers in seconds.", subtitle: "Tap students in on your phone. Every class counts towards their next belt." },
   },
   {
     kind: "feature",
     slug: "parent-login",
     label: "Parent login",
-    metaTitle: "Parent and Member Login for Martial Arts Clubs",
+    metaTitle: "Parent and Member Login for Taekwondo Clubs",
     description: "Give parents and members their own login to update details, book gradings and events, and see payments and belts. Fewer messages to the office.",
     eyebrow: "Parent login",
     h1: "Families look after their own details.",
@@ -269,16 +269,16 @@ export const LANDINGS: Landing[] = [
     share: { eyebrow: "Parent login", title: "Families look after their own details.", subtitle: "Contact details, gradings, events and payments, without messaging the office." },
   },
 
-  /* ---------- Martial arts ---------- */
+  /* ---------- Taekwondo ---------- */
   {
     kind: "art",
     slug: "taekwondo",
     label: "Taekwondo",
-    metaTitle: "Taekwondo Club Software UK",
+    metaTitle: "Taekwondo Club Management Software UK",
     description: "Club management software for UK taekwondo clubs: kup and dan grades, gradings, Direct Debit, registers and your club website. Flat price, 0% of your fees.",
     eyebrow: "Taekwondo",
     h1: "Software for taekwondo clubs.",
-    intro: "Junbi started in a taekwondo club, so the kup grades, gradings and family memberships are built in from day one. One flat price, and your fees stay yours.",
+    intro: "Junbi was built inside a working taekwondo club, so kup and dan grades, gradings, squads and family memberships are there from day one. One flat price, and your fees stay yours.",
     sections: [
       {
         heading: "Kup and dan grades, ready to go",
@@ -307,165 +307,11 @@ export const LANDINGS: Landing[] = [
     faq: [
       { q: "Does Junbi work for ITF and WT clubs?", a: "Yes. You set the grades and the classes each one needs, so it works with WT, ITF and independent syllabuses." },
       { q: "Can we run poomsae and sparring squads as separate classes?", a: "Yes. Create as many weekly classes as you like at each site, each with its own register." },
-      { q: "We also teach kickboxing. Can we run both?", a: "Yes. Pick every art you teach when you set up and run them all from one login, each with its own belts." },
+      { q: "Can we track poom grades for juniors?", a: "Yes. The WT set-up includes poom grades for under-15 black belts, and you can add or rename grades to match your association." },
     ],
-    guides: ["gradings-that-run-themselves", "how-to-start-a-martial-arts-club-uk", "setting-membership-prices"],
-    related: ["feature/gradings", "feature/direct-debit", "art/kickboxing"],
+    guides: ["gradings-that-run-themselves", "how-to-start-a-taekwondo-club-uk", "setting-membership-prices"],
+    related: ["feature/gradings", "feature/direct-debit", "feature/registers"],
     share: { eyebrow: "Taekwondo", title: "Software for taekwondo clubs.", subtitle: "Kup and dan grades, gradings, Direct Debit and your club website. Flat price, 0% of your fees." },
-  },
-  {
-    kind: "art",
-    slug: "karate",
-    label: "Karate",
-    metaTitle: "Karate Club Software UK",
-    description: "Management software for UK karate clubs: kyu and dan grades, gradings, Direct Debit, registers and a club website, for one flat monthly price.",
-    eyebrow: "Karate",
-    h1: "Software for karate clubs.",
-    intro: "Kyu and dan grades, gradings, family memberships and Direct Debit in one simple system. Whatever your style, Junbi fits the way your dojo already works.",
-    sections: [
-      {
-        heading: "Kyu and dan, your way",
-        body: [
-          "Choose karate when you set up and Junbi loads kyu grades through to 1st kyu, then dan grades. Belt colours differ between styles and associations, so you can rename, recolour, add or remove grades to match your syllabus exactly.",
-          "Each student's grade comes from their latest grading result, so there's one true record and a full history.",
-        ],
-      },
-      {
-        heading: "Gradings and courses",
-        body: ["See who's ready from attendance, invite families to book and pay by card online, and record results on the day. Courses, seminars and competitions use the same booking flow."],
-      },
-      {
-        heading: "Built for the way dojos run",
-        body: [
-          "- Children's, family and adult classes at one or more venues.",
-          "- Family memberships on one Direct Debit.",
-          "- Licence and insurance details kept on each student.",
-          "- A club website with your timetable and free trial booking built in.",
-        ],
-      },
-    ],
-    faq: [
-      { q: "Does it work for Shotokan, Wado-ryu, Goju-ryu and other styles?", a: "Yes. Junbi doesn't assume a style. You set your own grades, colours and the classes each grade needs." },
-      { q: "Can we keep association licence numbers?", a: "Yes. Store each student's licence number and expiry date on their record." },
-    ],
-    guides: ["gradings-that-run-themselves", "how-to-start-a-martial-arts-club-uk", "martial-arts-club-insurance"],
-    related: ["feature/gradings", "feature/registers", "art/judo"],
-    share: { eyebrow: "Karate", title: "Software for karate clubs.", subtitle: "Kyu and dan grades, gradings, Direct Debit and a club website. One flat price." },
-  },
-  {
-    kind: "art",
-    slug: "kickboxing",
-    label: "Kickboxing",
-    metaTitle: "Kickboxing Gym and Club Software UK",
-    description: "Software for UK kickboxing clubs and gyms: memberships, Direct Debit, registers, gradings and trial bookings. One flat price, no cut of your fees.",
-    eyebrow: "Kickboxing",
-    h1: "Software for kickboxing clubs.",
-    intro: "Junior grading classes, adult fitness sessions and fight teams all in one place. Junbi handles the memberships, Direct Debits and registers so you can get on with coaching.",
-    sections: [
-      {
-        heading: "Belts for juniors, simple memberships for adults",
-        body: [
-          "Many kickboxing clubs grade their juniors through coloured belts while adults train for fitness or competition. Junbi handles both: belts and gradings for the students who need them, and straightforward memberships for those who don't.",
-          "Load the usual kickboxing belts when you set up, then change them to match your association.",
-        ],
-      },
-      {
-        heading: "Memberships that suit busy adults",
-        body: [
-          "- Monthly unlimited, one class a week or family memberships, each on Direct Debit.",
-          "- A sign-up fee taken with the first payment.",
-          "- Separate classes for juniors, adults, women-only sessions and fight teams.",
-        ],
-      },
-      {
-        heading: "Fill your classes",
-        body: ["Free trial bookings come in from your club website, get a welcome email and a reminder, and join on the night with a QR code by the door."],
-      },
-    ],
-    faq: [
-      { q: "Can we sell gloves and kit?", a: "Yes. Every plan includes a shop on your club website, with payments by card through your own Stripe." },
-      { q: "We also teach Muay Thai and MMA. Can we run them together?", a: "Yes. Pick every art you teach and run them all from one login." },
-    ],
-    guides: ["turning-trials-into-members", "marketing-a-martial-arts-club", "setting-membership-prices"],
-    related: ["feature/trial-classes", "feature/club-website", "art/taekwondo"],
-    share: { eyebrow: "Kickboxing", title: "Software for kickboxing clubs.", subtitle: "Memberships, Direct Debit, registers and trial bookings. No cut of your fees." },
-  },
-  {
-    kind: "art",
-    slug: "brazilian-jiu-jitsu",
-    label: "Brazilian Jiu-Jitsu",
-    metaTitle: "BJJ Academy Software UK",
-    description: "Software for UK Brazilian Jiu-Jitsu academies: adult and kids belts with stripes, attendance, Direct Debit memberships and trial bookings, for one flat price.",
-    eyebrow: "Brazilian Jiu-Jitsu",
-    h1: "Software for BJJ academies.",
-    intro: "Belts and stripes, attendance, memberships and trial classes, without the big monthly bill. Junbi is one flat price and your membership fees stay yours.",
-    sections: [
-      {
-        heading: "Belts and stripes",
-        body: [
-          "Junbi loads the adult belts from white to black and the kids' belts, with stripes in between. Promote on your own terms: record a stripe or a belt whenever the professor decides, with no formal grading needed.",
-          "Attendance is tracked for every class, so you can see mat time since each student's last promotion.",
-        ],
-      },
-      {
-        heading: "Gi, no-gi and open mats",
-        body: [
-          "- Separate weekly classes for gi, no-gi, fundamentals, competition and kids.",
-          "- Memberships for unlimited training, limited sessions or families, on Direct Debit.",
-          "- Seminars and open mats booked and paid for online.",
-        ],
-      },
-      {
-        heading: "Keep your mats full",
-        body: ["Free trial bookings from your academy website arrive in Leads with an automatic welcome and reminder. Spot members whose attendance has dropped before they cancel."],
-      },
-    ],
-    faq: [
-      { q: "Do we have to run formal gradings?", a: "No. You can record promotions whenever you like. Gradings with bookings and payment are there if you want them." },
-      { q: "Can we sell gis and rash guards?", a: "Yes. Every plan includes a shop on your website, paid by card through your own Stripe." },
-    ],
-    guides: ["turning-trials-into-members", "setting-membership-prices"],
-    related: ["feature/registers", "feature/trial-classes", "art/judo"],
-    share: { eyebrow: "Brazilian Jiu-Jitsu", title: "Software for BJJ academies.", subtitle: "Belts and stripes, attendance, memberships and trial classes. One flat price." },
-  },
-  {
-    kind: "art",
-    slug: "judo",
-    label: "Judo",
-    metaTitle: "Judo Club Software UK",
-    description: "Club software for UK judo clubs: junior and senior grades, gradings, licences, Direct Debit, registers and a club website. One flat price for your club.",
-    eyebrow: "Judo",
-    h1: "Software for judo clubs.",
-    intro: "Junior and senior grades, gradings, licences and family memberships in one place. Ideal for volunteer-run clubs that want less admin and more time on the mat.",
-    sections: [
-      {
-        heading: "Junior and senior grades",
-        body: [
-          "Junbi loads judo grades when you set up, and you can match them to your association's junior and senior syllabus, including any intermediate grades and tags.",
-          "Results from each grading become the student's grade, with a full history kept.",
-        ],
-      },
-      {
-        heading: "Run by volunteers? Even better",
-        body: [
-          "- Give each coach their own login, limited to the sessions they run.",
-          "- Coaches never see payment amounts.",
-          "- Licence numbers and expiry dates on every member.",
-          "- Parents keep their own contact and medical details up to date.",
-        ],
-      },
-      {
-        heading: "Collect subs without chasing",
-        body: ["Monthly subs by Direct Debit through your club's own Stripe or GoCardless account. No more cash in a tin and no cut of your fees."],
-      },
-    ],
-    faq: [
-      { q: "Does it work with British Judo grades?", a: "You set the grades yourself, so you can match British Judo or any other association's syllabus." },
-      { q: "We're a not-for-profit club. Is there a cheaper plan?", a: "Starter is £19 a month for up to 50 active students, with every feature included." },
-    ],
-    guides: ["safeguarding-policy-martial-arts-club", "gradings-that-run-themselves", "how-to-start-a-martial-arts-club-uk"],
-    related: ["feature/registers", "feature/parent-login", "art/karate"],
-    share: { eyebrow: "Judo", title: "Software for judo clubs.", subtitle: "Grades, gradings, licences and subs by Direct Debit. Less admin for volunteers." },
   },
 
   /* ---------- Comparisons ---------- */
@@ -473,11 +319,11 @@ export const LANDINGS: Landing[] = [
     kind: "compare",
     slug: "nest",
     label: "Junbi vs NEST",
-    metaTitle: "NEST Alternative for Martial Arts Clubs",
-    description: "Comparing Junbi and NEST for UK martial arts clubs: how each charges, who holds your money and what's included. Based on NEST's published pricing.",
+    metaTitle: "NEST Alternative for Taekwondo Clubs",
+    description: "Comparing Junbi and NEST for UK taekwondo clubs: how each charges, who holds your money and what's included. Based on NEST's published pricing.",
     eyebrow: "Compare",
     h1: "Junbi and NEST, side by side.",
-    intro: "NEST is a long-established, full-service option for UK martial arts clubs. Junbi is software only, at one flat price. Here's an honest comparison so you can decide which suits your club.",
+    intro: "NEST is a long-established, full-service option for UK martial arts clubs, including taekwondo. Junbi is software only, at one flat price. Here's an honest comparison so you can decide which suits your club.",
     sections: [
       {
         heading: "How each one charges",
@@ -531,7 +377,7 @@ export const LANDINGS: Landing[] = [
     slug: "martialytics",
     label: "Junbi vs Martialytics",
     metaTitle: "Martialytics Alternative for UK Clubs",
-    description: "Comparing Junbi and Martialytics for UK martial arts clubs: pricing in pounds or dollars, UK Direct Debit, and what each plan includes.",
+    description: "Comparing Junbi and Martialytics for UK taekwondo clubs: pricing in pounds or dollars, UK Direct Debit, and what each plan includes.",
     eyebrow: "Compare",
     h1: "Junbi and Martialytics, side by side.",
     intro: "Both charge a flat price with every feature on every plan, and neither takes a cut of your fees. The differences are in price, currency and how UK payments work.",
@@ -587,8 +433,8 @@ export const LANDINGS: Landing[] = [
     kind: "compare",
     slug: "spreadsheets",
     label: "Junbi vs spreadsheets",
-    metaTitle: "Moving Your Martial Arts Club Off Spreadsheets",
-    description: "Still running your martial arts club on spreadsheets, paper registers and cash? Here's what changes when you move to club software, and what it costs.",
+    metaTitle: "Moving Your Taekwondo Club Off Spreadsheets",
+    description: "Still running your taekwondo club on spreadsheets, paper registers and cash? Here's what changes when you move to club software, and what it costs.",
     eyebrow: "Compare",
     h1: "Spreadsheets got you this far.",
     intro: "Plenty of good clubs run on a spreadsheet, a paper register and a tin of cash. It works until it doesn't: a lost register, a missed payment, a parent's number out of date on the night you need it.",
@@ -618,7 +464,7 @@ export const LANDINGS: Landing[] = [
       { q: "Will we lose our records?", a: "No. Import your spreadsheet and keep the original as a backup. Nothing in it is changed." },
       { q: "Is it hard to learn?", a: "Most clubs are set up in an evening. If you can use a spreadsheet, you can use Junbi." },
     ],
-    guides: ["how-to-start-a-martial-arts-club-uk", "setting-membership-prices"],
+    guides: ["how-to-start-a-taekwondo-club-uk", "setting-membership-prices"],
     related: ["feature/direct-debit", "feature/registers", "compare/nest"],
     share: { eyebrow: "Compare", title: "Spreadsheets got you this far.", subtitle: "What changes when your club moves to proper club software, and what it costs." },
   },
@@ -645,16 +491,16 @@ export const INDEX: Record<LandingKind, { metaTitle: string; description: string
     share: { eyebrow: "Features", title: "Everything your club runs on.", subtitle: "Direct Debit, gradings, registers, trials, parent login and a club website. Every plan." },
   },
   art: {
-    metaTitle: "Club Software for Every Martial Art",
-    description: "Junbi works for taekwondo, karate, kickboxing, Brazilian Jiu-Jitsu, judo and more, with belts and gradings set up for each art.",
-    eyebrow: "Every art",
-    h1: "Whatever you teach.",
-    intro: "Pick your art to see how Junbi sets up the belts, classes and gradings to match. Teach more than one? Run them all from one login.",
-    share: { eyebrow: "Every art", title: "Club software for whatever you teach.", subtitle: "Taekwondo, karate, kickboxing, BJJ, judo and more, from one login." },
+    metaTitle: "Taekwondo Club Software",
+    description: "Club management software made for UK taekwondo clubs: kup and dan grades, gradings, Direct Debit and registers.",
+    eyebrow: "Taekwondo",
+    h1: "Made for taekwondo.",
+    intro: "Kup and dan grades, gradings, squads and family memberships, built in from day one.",
+    share: { eyebrow: "Taekwondo", title: "Made for taekwondo.", subtitle: "Kup and dan grades, gradings, Direct Debit and registers. One flat price." },
   },
   compare: {
-    metaTitle: "Compare Martial Arts Club Software",
-    description: "Honest comparisons of Junbi with NEST, Martialytics and spreadsheets for UK martial arts clubs, based on each provider's published pricing.",
+    metaTitle: "Compare Taekwondo Club Software",
+    description: "Honest comparisons of Junbi with NEST, Martialytics and spreadsheets for UK taekwondo clubs, based on each provider's published pricing.",
     eyebrow: "Compare",
     h1: "How Junbi compares.",
     intro: "Honest comparisons based on each provider's own published pricing, with the date we checked. If something has changed, tell us and we'll update it.",

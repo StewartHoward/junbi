@@ -7,7 +7,7 @@ import { EnquiryForm } from "./EnquiryForm";
 export const metadata: Metadata = pageMeta({
   ownImage: true,
   title: "Junbi Elite: a club system custom built for you",
-  description: "A website, member app, coach portal and payments system custom built for your martial arts club, around the way you run it. Your brand, no Junbi branding. By enquiry.",
+  description: "A website, member app, coach portal and payments system custom built for your taekwondo club, around the way you run it. Your brand, no Junbi branding. By enquiry.",
   path: "/elite",
 });
 
@@ -128,7 +128,7 @@ export default function ElitePage() {
       "@context": "https://schema.org",
       "@type": "Service",
       name: "Junbi Elite",
-      serviceType: "Custom built martial arts club website, member app and management system",
+      serviceType: "Custom built taekwondo club website, member app and management system",
       provider: { "@type": "Organization", name: "Junbi", url: SITE_URL },
       areaServed: "GB",
       url: `${SITE_URL}/elite`,

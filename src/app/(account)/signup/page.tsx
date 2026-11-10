@@ -5,7 +5,7 @@ import { currentActor } from "@/auth/session";
 import { SELF_SERVE_PLANS } from "@/lib/plans";
 import { SignupForm } from "./SignupForm";
 
-export const metadata: Metadata = pageMeta({ ownImage: true, title: "Start your free trial", description: "Try Junbi free for 7 days. Set up your martial arts club in an evening: students, classes, Direct Debit and more.", path: "/signup" });
+export const metadata: Metadata = pageMeta({ ownImage: true, title: "Start your free trial", description: "Try Junbi free for 7 days. Set up your taekwondo club in an evening: students, classes, Direct Debit and more.", path: "/signup" });
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ plan?: string; code?: string }> }) {
   if (await currentActor()) redirect("/today");

@@ -5,7 +5,7 @@ import { PricingPlans } from "./PricingPlans";
 
 export const metadata: Metadata = pageMeta({ ownImage: true,
   title: "Pricing",
-  description: "Flat pricing for UK martial arts clubs from £19 a month. Every feature on every plan, and no percentage of your membership fees, ever.",
+  description: "Flat pricing for UK taekwondo clubs from £19 a month. Every feature on every plan, and no percentage of your membership fees, ever.",
   path: "/pricing",
 });
 
@@ -19,7 +19,7 @@ const SAVINGS = [
 const FAQ = [
   { q: "Do you take a percentage of our fees?", a: "No. You pay one flat monthly price. Membership money goes from the parent's bank to yours through your own Stripe or GoCardless account." },
   { q: "What's the difference between the plans?", a: "Only the size of your club. Every plan has every feature: students and families, belts, timetable and registers, Direct Debit and messages to parents." },
-  { q: "Which martial arts does Junbi work with?", a: "Taekwondo, Karate, Kickboxing, Judo, Brazilian Jiu-Jitsu, Krav Maga, Muay Thai and MMA, with belt systems ready to go. Teach more than one? Pick them all when you set up." },
+  { q: "Does it work for WT and ITF clubs?", a: "Yes. WT (Kukkiwon) and ITF grades are ready to go, from 10th kup to black belt. Rename, recolour or add grades to match your association's syllabus." },
   { q: "What counts as an active student?", a: "Anyone on a live membership. Trials, paused and past students are free." },
   { q: "Can you move us from our current system?", a: "Yes. Import your students, families and belts from your current system or a spreadsheet. If you already collect through Stripe, Junbi can take over your Direct Debits without families signing up again." },
   { q: "Can we change plan later?", a: "Any time, up or down." },

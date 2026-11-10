@@ -39,7 +39,7 @@ export async function sendEliteEnquiry(raw: EliteInput): Promise<Result> {
     `Students: ${d.size}`,
     `Locations: ${d.sites}`,
     `Uses now: ${d.system}`,
-    ...(d.arts.length ? [`Teaches: ${d.arts.join(", ")}`] : []),
+    ...(d.arts.length ? [`Style: ${d.arts.join(", ")}`] : []),
     ...(d.currentSite ? [`Website now: ${d.currentSite}`] : []),
     ...(d.phone ? [`Phone: ${d.phone}`] : []),
     ...(d.message ? ["", d.message] : []),

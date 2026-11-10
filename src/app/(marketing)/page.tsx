@@ -9,9 +9,9 @@ import { featureOn } from "@/data/features";
 export const revalidate = 300;
 
 export const metadata: Metadata = pageMeta({
-  title: "Martial Arts Club Management Software · Junbi",
+  title: "Taekwondo Club Management Software · Junbi",
   absoluteTitle: true,
-  description: "Club management software for UK martial arts clubs: classes, attendance, Direct Debit, gradings and your club website, for one flat price. Your fees stay yours.",
+  description: "Club management software made for UK taekwondo clubs: kup and dan grades, gradings, registers and Direct Debit, for one flat price. Your fees stay yours.",
   path: "/",
 });
 
@@ -25,7 +25,7 @@ const STRUCTURED = [
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     url: SITE_URL,
-    description: "Club management software for UK martial arts clubs: students and families, classes and registers, Direct Debit, gradings, a club shop and a club website.",
+    description: "Club management software for UK taekwondo clubs: students and families, classes and registers, Direct Debit, gradings, a club shop and a club website.",
     offers: { "@type": "AggregateOffer", priceCurrency: "GBP", lowPrice: Math.min(...prices), highPrice: Math.max(...prices), offerCount: prices.length },
   },
 ];
@@ -54,14 +54,14 @@ const FEATURES = [
   { title: "Registers in seconds", text: "Tap through the class on your phone. Done before the bow.", icon: <><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M10 12l2 2 3-4" /></> },
   { title: "Direct Debit", text: "Collected through your own Stripe or GoCardless account, straight to your bank. Parents set it up when they sign up.", icon: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></> },
   { title: "Messages to parents", text: "Email a class, a site or everyone, with your club's name on it.", icon: <path d="M4 5h16v11H8l-4 4z" /> },
-  { title: "Every art, every belt", text: "Kup, kyu, dan, stripes or levels. Teach more than one art? Run them all from one login.", icon: <><path d="M3 12h18" /><path d="M10 12l-3 7M14 12l3 7" /><rect x="9" y="9" width="6" height="6" rx="1" /></> },
+  { title: "Kup and dan, ready to go", text: "WT and ITF grades set up for you, from 10th kup to black belt. Every class counts towards the next grading.", icon: <><path d="M3 12h18" /><path d="M10 12l-3 7M14 12l3 7" /><rect x="9" y="9" width="6" height="6" rx="1" /></> },
 ];
 
 const REGISTER = [
   { name: "Amelia R.", grade: "8th Kup", belt: "yellow", here: true },
-  { name: "Oliver T.", grade: "Green belt", belt: "green", here: true },
-  { name: "Maya K.", grade: "4th Kyu", belt: "purple", here: false },
-  { name: "Noah P.", grade: "Blue belt", belt: "blue", here: true },
+  { name: "Oliver T.", grade: "6th Kup", belt: "green", here: true },
+  { name: "Maya K.", grade: "3rd Kup", belt: "red", here: false },
+  { name: "Noah P.", grade: "5th Kup", belt: "blue", here: true },
 ];
 
 const PAYMENTS = [
@@ -71,8 +71,7 @@ const PAYMENTS = [
   { who: "Ella Hughes", amount: "£35.00", ok: true },
 ];
 
-const ARTS = ["Taekwondo", "Karate", "Kickboxing", "Judo", "Brazilian Jiu-Jitsu", "Krav Maga", "Muay Thai", "MMA"];
-const ART_LINK: Record<string, string> = { Taekwondo: "taekwondo", Karate: "karate", Kickboxing: "kickboxing", Judo: "judo", "Brazilian Jiu-Jitsu": "brazilian-jiu-jitsu" };
+const TKD = ["WT and ITF grades", "Kup, poom and dan", "Gradings and dan gradings", "Poomsae and sparring squads", "Licence numbers and expiry dates", "Family memberships"];
 
 export default async function Home() {
   const parentLogin = await featureOn("family");
@@ -80,7 +79,7 @@ export default async function Home() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(STRUCTURED)} />
       <section className="m-hero" style={{ paddingBottom: 120 }}>
-        <p className="m-eyebrow">Software for martial arts clubs</p>
+        <p className="m-eyebrow">Software for taekwondo clubs</p>
         <h1 className="m-hero-title">Less admin. More training.</h1>
         <p className="m-sub">Run your club with Junbi. Simple, fairly priced and made in the UK, with competitions on the way.</p>
         <div className="m-duo">
@@ -147,7 +146,7 @@ export default async function Home() {
                 <div className="m-stat"><p className="k">Checked in today</p><p className="v"><CountUp to={58} duration={1400} delay={300} /></p><p className="n">4 classes</p></div>
               </div>
               <div className="m-card m-rows" style={{ marginTop: 16 }}>
-                {[["17:00 Little Dragons", "Taekwondo", 14], ["18:00 Juniors", "Kickboxing", 22], ["19:15 Adults", "Brazilian Jiu-Jitsu", 18]].map(([cls, art, n], i) => (
+                {[["17:00 Little Dragons", "Ages 4 to 6", 14], ["18:00 Juniors", "Ages 7 to 11", 22], ["19:15 Poomsae squad", "Invite only", 18]].map(([cls, art, n], i) => (
                   <div key={cls} data-anim="up" style={{ "--i": i, "--d": "500ms" } as React.CSSProperties}><strong>{cls}</strong><span style={{ color: "#6e6e73" }}>{art} · <CountUp to={n as number} delay={700 + i * 120} duration={1000} /> here</span></div>
                 ))}
               </div>
@@ -234,15 +233,16 @@ export default async function Home() {
         </div>
       </section>
 
-      <section id="arts" className="m-section dark m-center">
-        <p className="m-eyebrow">Every art</p>
-        <h2 className="m-h2" style={{ maxWidth: 820, margin: "0 auto" }}>Whatever you teach. One login.</h2>
-        <p className="m-sub">Pick the arts you teach and Junbi sets up the belts, classes and dashboard to match. Teach more than one? Run them all together.</p>
+      <section id="taekwondo" className="m-section dark m-center">
+        <p className="m-eyebrow">Made for taekwondo</p>
+        <h2 className="m-h2" style={{ maxWidth: 860, margin: "0 auto" }}>Built by a taekwondo club. For taekwondo clubs.</h2>
+        <p className="m-sub">Junbi was built inside a working taekwondo club, so it already speaks your language: kup and dan, poomsae, gradings and squads.</p>
         <Reveal className="m-arts">
-          {ARTS.map((a, i) => (
-            ART_LINK[a] ? <Link key={a} href={`/club-software/${ART_LINK[a]}`} data-anim="up" style={{ color: "inherit", textDecoration: "none", "--i": i } as React.CSSProperties}><span>{a}</span></Link> : <span key={a} data-anim="up" style={{ "--i": i } as React.CSSProperties}>{a}</span>
+          {TKD.map((a, i) => (
+            <span key={a} data-anim="up" style={{ "--i": i } as React.CSSProperties}>{a}</span>
           ))}
         </Reveal>
+        <p style={{ margin: "36px 0 0" }}><Link href="/club-software/taekwondo" className="m-link">Why taekwondo clubs choose Junbi</Link></p>
       </section>
 
       <section id="competitions" className="m-section">

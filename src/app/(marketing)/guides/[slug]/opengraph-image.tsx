@@ -1,7 +1,7 @@
 import { GUIDES, guideBySlug } from "@/lib/guides";
 import { OG_SIZE, OG_TYPE, shareImage } from "@/lib/og";
 
-export const alt = "A guide for martial arts club owners";
+export const alt = "A guide for taekwondo club owners";
 export const size = OG_SIZE;
 export const contentType = OG_TYPE;
 

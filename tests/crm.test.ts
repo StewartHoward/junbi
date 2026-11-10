@@ -23,7 +23,7 @@ afterAll(async () => {
 });
 
 const order = (o: Partial<crm.OrderInput> = {}): crm.OrderInput => ({
-  name: "Sam Coach", email: "Sam@Example.test", clubName: "Sam's Dojo", role: "Club owner", arts: ["Karate"], size: "50 to 150", system: "NEST",
+  name: "Sam Coach", email: "Sam@Example.test", clubName: "Sam's Dojo", role: "Club owner", arts: ["ITF"], size: "50 to 150", system: "NEST",
   items: [EBOOKS[0].slug], marketingOk: true, ...o,
 });
 const contact = async (email: string) => (await adminSql`select * from crm_contacts where email = ${email}`)[0];
@@ -35,7 +35,7 @@ describe("library checkout", () => {
     if (!r.ok) return;
     const c = await contact("sam@example.test");
     expect(c).toMatchObject({ name: "Sam Coach", club_name: "Sam's Dojo", current_system: "NEST", stage: "new", marketing_ok: true, source: "library" });
-    expect(c.arts).toEqual(["Karate"]);
+    expect(c.arts).toEqual(["ITF"]);
     expect(c.followup_due_at).not.toBeNull();
     const page = await crm.libraryOrder(r.value.token);
     expect(page?.number).toBe(r.value.number);
@@ -120,7 +120,7 @@ describe("support messages", () => {
 describe("Elite enquiries", () => {
   const enquiry = (o: Partial<import("@/data/elite").EliteInput> = {}): import("@/data/elite").EliteInput => ({
     name: "Jo Master", email: "Jo@Elite.test", phone: "07700 900123", clubName: "Jo's Academy", currentSite: "josacademy.co.uk",
-    arts: ["Taekwondo"], size: "150 to 300", sites: "Two", system: "NEST", message: "We'd like to launch in spring.", ...o,
+    arts: ["WT / Kukkiwon"], size: "150 to 300", sites: "Two", system: "NEST", message: "We'd like to launch in spring.", ...o,
   });
 
   it("adds the enquiry to Leads, marked Elite and due a call today, with the details in a note", async () => {
@@ -129,7 +129,7 @@ describe("Elite enquiries", () => {
     expect(r.ok).toBe(true);
     const c = await contact("jo@elite.test");
     expect(c).toMatchObject({ name: "Jo Master", club_name: "Jo's Academy", phone: "07700 900123", source: "elite", stage: "new", current_system: "NEST", size_band: "150 to 300" });
-    expect(c.arts).toEqual(["Taekwondo"]);
+    expect(c.arts).toEqual(["WT / Kukkiwon"]);
     expect(new Date(c.next_action_on).toDateString()).toBe(new Date((await adminSql`select current_date as d`)[0].d).toDateString());
     const notes = await adminSql`select detail from crm_events where contact_id = ${c.id} and kind = 'note'`;
     expect(notes[0].detail).toContain("Elite enquiry");
@@ -145,7 +145,7 @@ describe("Elite enquiries", () => {
     const c = await contact("jo@elite.test");
     expect(c.stage).toBe("demo");
     expect(c.phone).toBe("07700 900123"); // a blank phone doesn't wipe the one we had
-    expect(c.arts).toEqual(["Taekwondo"]);
+    expect(c.arts).toEqual(["WT / Kukkiwon"]);
   });
 
   it("checks the form", async () => {

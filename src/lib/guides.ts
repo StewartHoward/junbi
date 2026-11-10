@@ -146,7 +146,7 @@ export const GUIDES: Guide[] = [
         heading: "Price for what it costs to run",
         body: [
           "Work out your real monthly costs: venue, instructors, insurance, licences, equipment, software and your own time. Divide by the number of members you can realistically have. That's your floor, not your price.",
-          "Then look at what other activities cost locally. Martial arts is often cheaper than swimming lessons or private football coaching, despite smaller classes and qualified instructors.",
+          "Then look at what other activities cost locally. Taekwondo is often cheaper than swimming lessons or private football coaching, despite smaller classes and qualified instructors.",
         ],
       },
       {
@@ -169,8 +169,8 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
-    slug: "how-to-start-a-martial-arts-club-uk",
-    title: "How to start a martial arts club in the UK",
+    slug: "how-to-start-a-taekwondo-club-uk",
+    title: "How to start a taekwondo club in the UK",
     summary: "Everything to sort before your first class: qualifications, insurance, checks, a venue, prices and your first students, in the order you'll need them.",
     minutes: 9,
     tags: ["starting", "running", "safeguarding", "payments", "marketing"],
@@ -178,7 +178,7 @@ export const GUIDES: Guide[] = [
       {
         heading: "Start with your qualification and association",
         body: [
-          "Most clubs in the UK sit under an association or governing body for their art. Joining one usually gives you an instructor qualification, a grading syllabus, insurance options and a licence scheme for your students. It also reassures parents, venues and schools that you're doing things properly.",
+          "Most taekwondo clubs in the UK sit under an association or governing body, such as British Taekwondo, TAGB or an ITF group. Joining one usually gives you an instructor qualification, a grading syllabus, insurance options and a licence scheme for your students. It also reassures parents, venues and schools that you're doing things properly.",
           "If you're already an instructor with your association, ask what they need from a new club: often a minimum grade, a coaching award, a first aid certificate and a background check. If you're going independent, you'll need to arrange each of those yourself.",
         ],
       },
@@ -234,8 +234,8 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
-    slug: "martial-arts-club-insurance",
-    title: "Insurance for martial arts clubs: what you actually need",
+    slug: "taekwondo-club-insurance",
+    title: "Insurance for taekwondo clubs: what you actually need",
     summary: "Public liability, instructor cover, employers' liability and the rest, in plain English, so you know what you're covered for and what you're not.",
     minutes: 5,
     tags: ["starting", "running"],
@@ -244,7 +244,7 @@ export const GUIDES: Guide[] = [
         heading: "Public liability",
         body: [
           "Public liability covers claims from members of the public, including students and parents, if they're injured or their property is damaged because of your club. Almost every venue will ask to see it before they let you hire the hall.",
-          "Check the level of cover your venue requires, and whether the policy covers the arts you actually teach, including any sparring or contact.",
+          "Check the level of cover your venue requires, and whether the policy covers what you actually teach, including sparring and competition.",
         ],
       },
       {
@@ -273,7 +273,7 @@ export const GUIDES: Guide[] = [
       {
         heading: "Questions to ask before you buy",
         body: [
-          "- Does it cover every art and age group I teach, including sparring?",
+          "- Does it cover every age group I teach, including sparring and competitions?",
           "- Does it cover me at every venue, at gradings, competitions and outdoor events?",
           "- Are assistant instructors and volunteers covered?",
           "- What's already included in my association membership?",
@@ -286,8 +286,8 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
-    slug: "safeguarding-policy-martial-arts-club",
-    title: "Writing a safeguarding policy for your martial arts club",
+    slug: "safeguarding-policy-taekwondo-club",
+    title: "Writing a safeguarding policy for your taekwondo club",
     summary: "What a club safeguarding policy should cover, who does what, and how to make it something you actually use rather than a document in a drawer.",
     minutes: 6,
     tags: ["safeguarding", "starting", "running"],
@@ -337,8 +337,8 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
-    slug: "marketing-a-martial-arts-club",
-    title: "Marketing a martial arts club on a small budget",
+    slug: "marketing-a-taekwondo-club",
+    title: "Marketing a taekwondo club on a small budget",
     summary: "The few things that actually bring new students through the door, from your Google listing to school tasters, and what to stop wasting money on.",
     minutes: 6,
     tags: ["marketing", "growth"],
@@ -382,8 +382,8 @@ export const GUIDES: Guide[] = [
     ],
   },
   {
-    slug: "martial-arts-membership-terms",
-    title: "Membership terms for martial arts clubs: what to include",
+    slug: "taekwondo-club-membership-terms",
+    title: "Membership terms for taekwondo clubs: what to include",
     summary: "Clear terms prevent most arguments with parents. Here's what a club's membership terms should cover, written fairly and in plain English.",
     minutes: 5,
     tags: ["payments", "running", "starting"],
