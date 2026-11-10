@@ -12,7 +12,7 @@ const ago = (d: Date) => {
   return days <= 0 ? "Today" : days === 1 ? "Yesterday" : days < 30 ? `${days} days ago` : day(d);
 };
 
-export default async function CrmPage({ searchParams }: { searchParams: Promise<{ stage?: string; q?: string; book?: string }> }) {
+export default async function CrmPage({ searchParams }: { searchParams: Promise<{ stage?: string; q?: string; book?: string; source?: string }> }) {
   const sp = await searchParams;
   const { contacts, counts, byStage, books } = await crmOverview(sp);
   const today = new Date().toISOString().slice(0, 10);
@@ -67,6 +67,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
           <form action="/admin/crm" role="search" style={{ display: "flex", gap: 8, flex: "1 1 220px", justifyContent: "flex-end" }}>
             {sp.stage && <input type="hidden" name="stage" value={sp.stage} />}
             {sp.book && <input type="hidden" name="book" value={sp.book} />}
+            {sp.source && <input type="hidden" name="source" value={sp.source} />}
             <label htmlFor="q" className="sr-only">Search leads</label>
             <input id="q" name="q" type="search" defaultValue={sp.q ?? ""} placeholder="Search name, club or email" style={{ minHeight: 40, width: "100%", maxWidth: 300 }} />
           </form>
@@ -75,6 +76,11 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
           <Link href={href({ stage: undefined })} aria-current={!sp.stage ? "true" : undefined}>All {counts.total}</Link>
           {STAGES.map((s) => <Link key={s.key} href={href({ stage: s.key })} aria-current={sp.stage === s.key ? "true" : undefined}>{s.label} {byStage[s.key] ?? 0}</Link>)}
         </nav>
+        {counts.elite > 0 && (
+          <p style={{ margin: "12px 0 0", fontSize: 14 }}>
+            {sp.source === "elite" ? <>Showing Elite enquiries only. <Link href={href({ source: undefined })}>Show everyone</Link></> : <Link href={href({ source: "elite" })}>Elite enquiries ({counts.elite}) ›</Link>}
+          </p>
+        )}
         {sp.book && <p className="muted" style={{ margin: "12px 0 0", fontSize: 14 }}>Showing people who ordered {books.find((b) => b.book.slug === sp.book)?.book.title ?? sp.book}. <Link href={href({ book: undefined })}>Show everyone</Link></p>}
         <div className="table-wrap admin-table" style={{ marginTop: 12 }}>
           <table className="data" style={{ minWidth: 960 }}>
@@ -86,7 +92,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                   <td><span className={`pill ${STAGE_PILL[c.stage]}`}>{stageLabel(c.stage)}</span></td>
                   <td>{c.clubName || <span className="muted">No club yet</span>}<span className="sub">{[c.arts.join(", "), c.size].filter(Boolean).join(" · ")}</span></td>
                   <td>{c.system || <span className="muted">Unknown</span>}</td>
-                  <td>{c.ordered.length ? c.ordered.map((s) => books.find((b) => b.book.slug === s)?.book.title ?? s).join(", ") : <span className="muted">Added by hand</span>}</td>
+                  <td>{c.source === "elite" && <span className="pill warn" style={{ marginRight: 6 }}>Elite enquiry</span>}{c.ordered.length ? c.ordered.map((s) => books.find((b) => b.book.slug === s)?.book.title ?? s).join(", ") : c.source === "elite" ? null : <span className="muted">{c.source === "support" ? "Support message" : "Added by hand"}</span>}</td>
                   <td className={c.nextActionOn && c.nextActionOn <= today ? "warn-t" : undefined}>{c.nextActionOn ? day(new Date(`${c.nextActionOn}T12:00:00Z`)) : <span className="muted">None</span>}</td>
                   <td>{ago(c.lastActivity)}</td>
                 </tr>
@@ -102,6 +108,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
                 <div style={{ minWidth: 0 }}><b>{c.name || c.email}</b><span className="sub" style={{ overflowWrap: "anywhere" }}>{c.clubName || "Not open yet"} · {c.email}</span></div>
                 <span className={`pill ${STAGE_PILL[c.stage]}`}>{stageLabel(c.stage)}</span>
               </div>
+              {c.source === "elite" && <p style={{ marginTop: 8 }}><span className="pill warn">Elite enquiry</span></p>}
               <p className="sub" style={{ marginTop: 8 }}>{c.nextActionOn ? `Follow up ${day(new Date(`${c.nextActionOn}T12:00:00Z`))}` : `Last activity ${ago(c.lastActivity).toLowerCase()}`}</p>
             </Link>
           ))}

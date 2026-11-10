@@ -307,17 +307,19 @@ const shape = (r: ContactRow) => ({
 export type CrmContact = ReturnType<typeof shape>;
 
 /** The CRM list, newest activity first, with counts for the stage tabs and library numbers. */
-export async function crmOverview(f: { q?: string; stage?: string; book?: string } = {}) {
+export async function crmOverview(f: { q?: string; stage?: string; book?: string; source?: string } = {}) {
   await requireSuperAdmin();
   const q = (f.q ?? "").trim().toLowerCase().slice(0, 100);
   const stage = STAGE_KEYS.includes(f.stage as Stage) ? f.stage : null;
   const all = await allEbooks();
   const book = all.find((b) => b.slug === f.book)?.slug ?? null;
+  const source = f.source === "elite" ? "elite" : null;
   const like = `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
   const rows = (await db().execute(sql`
     select ${contactCols} from crm_contacts c
     where (${stage}::text is null or c.stage = ${stage})
       and (${q} = '' or lower(c.email) like ${like} or lower(c.name) like ${like} or lower(c.club_name) like ${like})
+      and (${source}::text is null or c.source = ${source})
       and (${book}::text is null or exists (select 1 from crm_orders o where o.contact_id = c.id and ${book} = any(o.items)))
     order by c.next_action_on asc nulls last, c.last_activity_at desc limit 500`)) as unknown as ContactRow[];
   const [counts] = (await db().execute(sql`
@@ -325,8 +327,9 @@ export async function crmOverview(f: { q?: string; stage?: string; book?: string
       count(*) filter (where created_at > now() - interval '7 days')::int as week,
       count(*) filter (where marketing_ok and unsubscribed_at is null)::int as emails_ok,
       count(*) filter (where signed_up_club is not null)::int as signed_up,
-      count(*) filter (where next_action_on <= current_date and stage not in ('customer', 'not_interested'))::int as due
-    from crm_contacts`)) as unknown as Array<{ total: number; week: number; emails_ok: number; signed_up: number; due: number }>;
+      count(*) filter (where next_action_on <= current_date and stage not in ('customer', 'not_interested'))::int as due,
+      count(*) filter (where source = 'elite')::int as elite
+    from crm_contacts`)) as unknown as Array<{ total: number; week: number; emails_ok: number; signed_up: number; due: number; elite: number }>;
   const byStage = (await db().execute(sql`select stage, count(*)::int as n from crm_contacts group by stage`)) as unknown as Array<{ stage: string; n: number }>;
   const byBook = (await db().execute(sql`
     select i as slug, count(distinct o.contact_id)::int as people,
@@ -335,7 +338,7 @@ export async function crmOverview(f: { q?: string; stage?: string; book?: string
     from crm_orders o, unnest(o.items) i group by i`)) as unknown as Array<{ slug: string; people: number; waiting: number; downloads: number }>;
   return {
     contacts: rows.map(shape),
-    counts: { total: counts?.total ?? 0, week: counts?.week ?? 0, emailsOk: counts?.emails_ok ?? 0, signedUp: counts?.signed_up ?? 0, due: counts?.due ?? 0 },
+    counts: { total: counts?.total ?? 0, week: counts?.week ?? 0, emailsOk: counts?.emails_ok ?? 0, signedUp: counts?.signed_up ?? 0, due: counts?.due ?? 0, elite: counts?.elite ?? 0 },
     byStage: Object.fromEntries(byStage.map((r) => [r.stage, r.n])) as Record<string, number>,
     books: all.map((b) => ({ book: b, ...(byBook.find((x) => x.slug === b.slug) ?? { people: 0, waiting: 0, downloads: 0 }) })),
   };

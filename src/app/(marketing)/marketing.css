@@ -306,3 +306,42 @@
 .m-price .was { font-size: 17px; color: var(--m-muted); }
 .m-price.big .was { font-size: 22px; }
 img.m-cover { padding: 0; object-fit: cover; display: block; height: auto; background: #e8e8ed; }
+
+/* ---------- Junbi Elite ---------- */
+.elite-hero { padding-bottom: 0; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #1c1c1e 0%, #000 60%); }
+.elite-surfaces { margin: 64px auto 0; max-width: 1040px; display: grid; grid-template-columns: 1fr 0.8fr 1fr; gap: 20px; align-items: end; text-align: left; }
+.elite-surfaces .surface { position: relative; }
+.elite-surfaces .tag { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: #a1a1a6; margin: 0 0 10px 4px; }
+.elite-surfaces .site, .elite-surfaces .app { background: #f5f5f7; color: #1d1d1f; border-radius: 16px 16px 0 0; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 230px; box-shadow: 0 -10px 60px rgba(255, 255, 255, 0.06); }
+.elite-surfaces .bar { display: block; height: 8px; width: 40%; border-radius: 4px; background: #d2d2d7; }
+.elite-surfaces b { font-size: 17px; letter-spacing: -0.01em; }
+.elite-surfaces em { font-style: normal; }
+.elite-surfaces .row { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+.elite-surfaces .go { color: #fff; background: var(--m-hong); border-radius: 980px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+.elite-surfaces .tick { color: var(--m-success); font-weight: 700; }
+.elite-surfaces .phone .app { border-radius: 28px 28px 0 0; border: 6px solid #2c2c2e; border-bottom: 0; min-height: 300px; background: #fff; }
+.elite-surfaces .card { display: flex; flex-direction: column; gap: 2px; background: #f5f5f7; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+.elite-surfaces .card em { font-size: 11px; font-weight: 500; color: var(--m-muted); }
+.elite-surfaces .card.hl { background: #fff0f1; }
+.elite-surfaces .belt { display: inline-block; width: 28px; height: 6px; border-radius: 3px; background: #2e8b3d; margin: 4px 0; }
+@media (max-width: 760px) {
+  .elite-surfaces { grid-template-columns: 1fr; max-width: 320px; }
+  .elite-surfaces .surface:not(.phone) { display: none; }
+}
+.elite-groups { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+.elite-group { background: var(--m-alt); border-radius: 18px; padding: 32px; }
+.elite-group .n { margin: 0; font-size: 13px; font-weight: 600; color: var(--m-hong); font-variant-numeric: tabular-nums; }
+.elite-group h3 { margin: 10px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.elite-group .intro { margin: 10px 0 0; color: var(--m-muted); font-size: 17px; line-height: 1.45; }
+.elite-group .m-ticks { font-size: 16px; margin-top: 16px; }
+.elite-steps { list-style: none; padding: 0; margin: 56px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 20px; }
+.elite-steps li { background: #fff; border-radius: 18px; padding: 24px; }
+.elite-steps .num { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #000; color: #fff; font-size: 15px; font-weight: 600; }
+.elite-steps h3 { margin: 14px 0 0; font-size: 19px; letter-spacing: -0.01em; }
+.elite-steps p { margin: 6px 0 0; color: var(--m-muted); font-size: 15px; line-height: 1.45; }
+.elite-price { margin-top: 56px; display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch; }
+.elite-price .m-plan { flex: 1 1 320px; }
+.elite-price .m-plan .for { min-height: 0; }
+.elite-compare { flex: 1 1 360px; background: var(--m-alt); border-radius: 18px; padding: 32px; }
+.elite-compare h3 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+.elite-compare > p { margin: 10px 0 20px; color: var(--m-muted); font-size: 17px; line-height: 1.45; }

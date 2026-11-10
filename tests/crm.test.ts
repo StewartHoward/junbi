@@ -116,3 +116,42 @@ describe("support messages", () => {
   });
 });
 
+
+describe("Elite enquiries", () => {
+  const enquiry = (o: Partial<import("@/data/elite").EliteInput> = {}): import("@/data/elite").EliteInput => ({
+    name: "Jo Master", email: "Jo@Elite.test", phone: "07700 900123", clubName: "Jo's Academy", currentSite: "josacademy.co.uk",
+    arts: ["Taekwondo"], size: "150 to 300", sites: "Two", system: "NEST", message: "We'd like to launch in spring.", ...o,
+  });
+
+  it("adds the enquiry to Leads, marked Elite and due a call today, with the details in a note", async () => {
+    const { sendEliteEnquiry } = await import("@/data/elite");
+    const r = await sendEliteEnquiry(enquiry());
+    expect(r.ok).toBe(true);
+    const c = await contact("jo@elite.test");
+    expect(c).toMatchObject({ name: "Jo Master", club_name: "Jo's Academy", phone: "07700 900123", source: "elite", stage: "new", current_system: "NEST", size_band: "150 to 300" });
+    expect(c.arts).toEqual(["Taekwondo"]);
+    expect(new Date(c.next_action_on).toDateString()).toBe(new Date((await adminSql`select current_date as d`)[0].d).toDateString());
+    const notes = await adminSql`select detail from crm_events where contact_id = ${c.id} and kind = 'note'`;
+    expect(notes[0].detail).toContain("Elite enquiry");
+    expect(notes[0].detail).toContain("Locations: Two");
+    expect(notes[0].detail).toContain("launch in spring");
+  });
+
+  it("an existing lead who enquires is updated, not duplicated, and keeps a later stage", async () => {
+    await adminSql`update crm_contacts set stage = 'demo' where email = 'jo@elite.test'`;
+    const { sendEliteEnquiry } = await import("@/data/elite");
+    expect((await sendEliteEnquiry(enquiry({ phone: "", arts: [] }))).ok).toBe(true);
+    expect((await adminSql`select count(*)::int as n from crm_contacts where email = 'jo@elite.test'`)[0].n).toBe(1);
+    const c = await contact("jo@elite.test");
+    expect(c.stage).toBe("demo");
+    expect(c.phone).toBe("07700 900123"); // a blank phone doesn't wipe the one we had
+    expect(c.arts).toEqual(["Taekwondo"]);
+  });
+
+  it("checks the form", async () => {
+    const { sendEliteEnquiry } = await import("@/data/elite");
+    const r = await sendEliteEnquiry(enquiry({ email: "nope", clubName: "", sites: "Lots" as never, phone: "abc" }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(["clubName", "email", "phone", "sites"]);
+  });
+});
