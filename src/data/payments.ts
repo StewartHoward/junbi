@@ -10,6 +10,7 @@ import type { Result } from "./accounts";
 import { formatPence } from "./students";
 import { appUrl, sendEmail, templates } from "@/lib/email";
 import { removeOwnStripeWebhook } from "./stripe-own";
+import { discounted } from "@/lib/discounts";
 
 /*
  * Club payments: each club connects its own Stripe or GoCardless account, sets its membership prices,
@@ -69,7 +70,7 @@ export async function moneySummary(actor: Actor) {
       select
         (select coalesce(sum(amount_pence), 0)::int from payments, month where status in ('confirmed', 'paid_out') and charge_date >= month.start) as collected,
         (select coalesce(sum(amount_pence), 0)::int from payments, month where status in ('pending', 'submitted') and charge_date >= month.start) as on_the_way,
-        (select coalesce(sum(case p.interval when 'monthly' then p.amount_pence when 'annual' then p.amount_pence / 12.0 else p.amount_pence * 3 / 12.0 end), 0)::int
+        (select coalesce(sum((case p.interval when 'monthly' then p.amount_pence when 'annual' then p.amount_pence / 12.0 else p.amount_pence * 3 / 12.0 end) * (100 - m.discount_percent) / 100.0), 0)::int
            from memberships m join plans p on p.id = m.plan_id join students s on s.id = m.student_id
            where m.status = 'active' and (m.ends_on is null or m.ends_on >= current_date) and s.status = 'active') as expected,
         (select coalesce(sum(amount_pence), 0)::int from payments where status in ('failed', 'retrying', 'charged_back') and charge_date >= current_date - 90) as outstanding,
@@ -456,7 +457,11 @@ export async function joinPaymentOptions(tx: Tx) {
 /** Starts Direct Debit for a family that has just signed up. Returns the provider page to send them to. */
 export async function startJoinPayment(
   clubId: string,
-  input: { householdId: string; email: string; firstName: string; lastName: string; items: Array<{ studentId: string; planId: string }>; successUrl: (setupId: string) => string; cancelUrl: string; withSignupFee?: boolean },
+  input: {
+    householdId: string; email: string; firstName: string; lastName: string; items: Array<{ studentId: string; planId: string }>; successUrl: (setupId: string) => string; cancelUrl: string; withSignupFee?: boolean;
+    /** From a discount code: this percentage comes off each membership price, for as long as it runs. */
+    discount?: { id: string; percent: number } | null;
+  },
 ): Promise<Result<{ url: string; setupId: string }>> {
   const prepared = await withClub({ clubId }, async (tx) => {
     const account = await accountFor(tx);
@@ -468,7 +473,8 @@ export async function startJoinPayment(
       const plan = plans.find((p) => p.id === i.planId);
       const st = students.find((x) => x.id === i.studentId);
       if (!plan || !st || plan.interval === "termly") return [];
-      return [{ studentId: st.id, planId: plan.id, name: `${plan.name} (${st.firstName})`, amountPence: plan.amountPence, interval: plan.interval }];
+      const pct = input.discount?.percent ?? 0;
+      return [{ studentId: st.id, planId: plan.id, name: `${plan.name} (${st.firstName})${pct ? `, ${pct}% off` : ""}`, amountPence: discounted(plan.amountPence, pct), interval: plan.interval }];
     });
     if (!items.length) return null;
     const [club] = await tx.select({ fee: s.clubs.signupFeePence, card: s.clubs.joinCard }).from(s.clubs).where(eq(s.clubs.id, clubId));
@@ -481,7 +487,10 @@ export async function startJoinPayment(
     if (stale.length) await tx.update(s.paymentSetups).set({ status: "abandoned" }).where(inArray(s.paymentSetups.id, stale.map((x) => x.id)));
     const [setup] = await tx
       .insert(s.paymentSetups)
-      .values({ clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })), signupFeePence })
+      .values({
+        clubId, householdId: input.householdId, provider: account.provider, items: items.map((i) => ({ studentId: i.studentId, planId: i.planId })), signupFeePence,
+        discountCodeId: input.discount?.id ?? null, discountPercent: input.discount?.percent ?? 0,
+      })
       .returning({ id: s.paymentSetups.id });
     return { account, items, setupId: setup.id, signupFeePence, allowCard: account.provider === "stripe" && club?.card !== false, stale: stale.map((x) => x.ref).filter((r): r is string => Boolean(r)) };
   });
@@ -556,7 +565,11 @@ export async function loadSetup(clubId: string, setupId: string) {
     const students = items.length ? await tx.select({ id: s.students.id, firstName: s.students.firstName }).from(s.students).where(inArray(s.students.id, items.map((i) => i.studentId))) : [];
     return {
       ...setup,
-      items: items.map((i) => ({ ...i, plan: plans.find((p) => p.id === i.planId), firstName: students.find((x) => x.id === i.studentId)?.firstName ?? "" })),
+      items: items.map((i) => {
+        const plan = plans.find((p) => p.id === i.planId);
+        // What the family pays: the plan price less any discount code they used.
+        return { ...i, plan, amountPence: discounted(plan?.amountPence ?? 0, setup.discountPercent), firstName: students.find((x) => x.id === i.studentId)?.firstName ?? "" };
+      }),
     };
   });
 }
@@ -586,7 +599,10 @@ export async function completeSetup(
       await tx.update(s.mandates).set({ method: "card", status: "active" }).where(eq(s.mandates.id, existing[0].id));
     }
     for (const sub of r.subscriptions) {
-      await tx.insert(s.memberships).values({ clubId, studentId: sub.studentId, planId: sub.planId, startsOn: today, providerSubscriptionId: sub.subscriptionId, status: "active" });
+      await tx.insert(s.memberships).values({
+        clubId, studentId: sub.studentId, planId: sub.planId, startsOn: today, providerSubscriptionId: sub.subscriptionId, status: "active",
+        discountPercent: setup.discountPercent, discountCodeId: setup.discountCodeId,
+      });
     }
     const ids = r.subscriptions.map((x) => x.studentId);
     if (ids.length) await tx.update(s.students).set({ status: "active", archivedAt: null, archivedFrom: null }).where(and(inArray(s.students.id, ids), inArray(s.students.status, ["trial", "pending", "archived", "cancelled"])));

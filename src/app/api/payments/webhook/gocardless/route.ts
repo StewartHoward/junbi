@@ -65,10 +65,10 @@ async function handle(e: GcEvent) {
           "/subscriptions",
           {
             subscriptions: {
-              amount: item.plan.amountPence,
+              amount: item.amountPence,
               currency: "GBP",
               interval_unit: item.plan.interval === "annual" ? "yearly" : "monthly",
-              name: `${item.plan.name} (${item.firstName})`.slice(0, 255),
+              name: `${item.plan.name} (${item.firstName})${setup.discountPercent ? `, ${setup.discountPercent}% off` : ""}`.slice(0, 255),
               metadata: { junbi_student_id: item.studentId },
               links: { mandate },
             },

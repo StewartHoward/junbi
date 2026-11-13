@@ -337,6 +337,9 @@ export const paymentSetups = pgTable("payment_setups", {
   status: text("status").notNull().default("pending"),
   /** Total sign-up fee taken with the first payment (already multiplied by the number of members). */
   signupFeePence: integer("signup_fee_pence").notNull().default(0),
+  /** A discount code the family used: this percentage comes off every membership in the set-up. */
+  discountCodeId: uuid("discount_code_id").references(() => discountCodes.id, { onDelete: "set null" }),
+  discountPercent: integer("discount_percent").notNull().default(0),
   createdAt: createdAt(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
@@ -356,6 +359,9 @@ export const memberships = pgTable("memberships", {
   providerSubscriptionId: text("provider_subscription_id"),
   /** pending (waiting for Direct Debit), active, cancelled */
   status: text("status").notNull().default("active"),
+  /** Percentage off the plan price for this membership, from a discount code. 0 = full price. */
+  discountPercent: integer("discount_percent").notNull().default(0),
+  discountCodeId: uuid("discount_code_id").references(() => discountCodes.id, { onDelete: "set null" }),
   createdAt: createdAt(),
 });
 
@@ -623,6 +629,24 @@ export const websiteImages = pgTable("website_images", {
   createdAt: createdAt(),
 });
 
+/* ---------- Discount codes ---------- */
+
+/** Codes families type in on the sign-up link to take a percentage off their membership fees. */
+export const discountCodes = pgTable("discount_codes", {
+  id: id(),
+  clubId: clubId(),
+  /** Upper case letters, numbers and dashes, e.g. SUMMER20. Unique per club. */
+  code: text("code").notNull(),
+  percent: integer("percent").notNull(),
+  note: text("note"),
+  /** Null = no limit; 1 = a one-off code for one family. */
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  expiresOn: date("expires_on"),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
 /* ---------- Shop ---------- */
 
 export const products = pgTable("products", {
@@ -722,6 +746,7 @@ export const platformSettings = pgTable("platform_settings", {
 });
 
 export const TENANT_TABLES = [
+  "discount_codes",
   "website_images",
   "products",
   "orders",

@@ -779,6 +779,74 @@ describe("club payments and paying at sign-up", () => {
     await pay.setJoinCard(p, true);
   });
 
+  it("discount codes: clubs make them, families use them at sign-up, and the price comes down for good", async () => {
+    const dc = await import("@/data/discounts");
+    // Only staff who manage payments can make codes, and codes are checked.
+    await expect(dc.createDiscount({ ...p, role: "instructor" }, { code: "X", percent: "10", note: "", maxUses: "", expiresOn: "" })).rejects.toThrow(/Not allowed/);
+    const bad = await dc.createDiscount(p, { code: "a!", percent: "120", note: "", maxUses: "0", expiresOn: "2001-01-01" });
+    expect(!bad.ok && Object.keys(bad.errors).sort()).toEqual(["code", "expiresOn", "maxUses", "percent"]);
+    const made = await dc.createDiscount(p, { code: "open day 20", percent: "20%", note: "Open day", maxUses: "", expiresOn: "" });
+    expect(made.ok && made.value.code).toBe("OPENDAY20");
+    expect((await dc.createDiscount(p, { code: "openday20", percent: "5", note: "", maxUses: "", expiresOn: "" })).ok).toBe(false); // same code twice
+    const one = await dc.createDiscount(p, { code: "SARAH-ONE", percent: "50", note: "Sarah Jones", maxUses: "1", expiresOn: "" });
+    expect(one.ok).toBe(true);
+
+    const token = (await join.joinLink(p)).split("/join/")[1];
+    expect((await join.joinForm(token))?.discounts).toBe(true);
+    expect(await join.checkJoinDiscount(token, " openday20 ")).toEqual({ ok: true, code: "OPENDAY20", percent: 20 });
+    expect(await join.checkJoinDiscount(token, "NOPE")).toMatchObject({ ok: false });
+    const kids = (await join.joinForm(token))!.payment!.plans.find((x) => x.name === "Kids monthly")!.id;
+    const input = (email: string, first: string, discountCode?: string) => ({
+      who: "children" as const, parentFirstName: "Dee", parentLastName: "Count", email, phone: "07700 900444",
+      children: [{ firstName: first, dateOfBirth: "2017-03-03", siteId: site, planId: kids }],
+      firstAidConsent: true, photoConsent: false, terms: true, discountCode,
+    });
+    const urls = { success: (id: string) => `http://x/done?setup=${id}`, cancel: "http://x/cancel" };
+    const spy = quiet();
+
+    // A wrong code stops the sign-up with a message on the code, and nothing is saved.
+    const wrong = await join.submitJoin(token, input("dee@example.test", "Wren", "WRONG"), urls);
+    expect(!wrong.ok && wrong.errors.discountCode).toMatch(/isn't valid/);
+    expect(await adminSql`select 1 from students where club_id = ${p.clubId} and first_name = 'Wren'`).toHaveLength(0);
+
+    // 20% off £35 is £28 a month, on Direct Debit and on the membership once it's set up.
+    const r = await join.submitJoin(token, input("dee@example.test", "Wren", "openday20"), urls);
+    expect(r.ok).toBe(true);
+    const setupId = r.ok ? new URL(r.value.paymentUrl!).searchParams.get("setup")! : "";
+    const setup = await pay.loadSetup(p.clubId, setupId);
+    expect(setup?.discountPercent).toBe(20);
+    expect(setup?.items.map((i) => [i.firstName, i.amountPence, i.plan?.amountPence])).toEqual([["Wren", 2800, 3500]]);
+    await pay.completeSetup(p.clubId, setupId, { customerId: "CU_D", mandateId: "MD_D", subscriptions: setup!.items.map((i) => ({ studentId: i.studentId, planId: i.planId, subscriptionId: "SB_Wren" })) });
+    const [m] = await adminSql`select discount_percent from memberships where provider_subscription_id = 'SB_Wren'`;
+    expect(m.discount_percent).toBe(20);
+
+    // A one-family code works once only.
+    expect((await join.submitJoin(token, input("first@example.test", "Asha", "sarah-one"), urls)).ok).toBe(true);
+    const again = await join.submitJoin(token, input("second@example.test", "Beau", "SARAH-ONE"), urls);
+    expect(!again.ok && again.errors.discountCode).toMatch(/already been used/);
+    spy.mockRestore();
+
+    // The Discounts page shows uses and who's on it; switched-off codes stop working but members keep the discount.
+    const list = await dc.listDiscounts(p);
+    expect(list.find((c) => c.code === "OPENDAY20")).toMatchObject({ uses: 1, members: 1, blocked: null });
+    expect(list.find((c) => c.code === "SARAH-ONE")).toMatchObject({ uses: 1, blocked: "All used" });
+    const openId = list.find((c) => c.code === "OPENDAY20")!.id;
+    await dc.setDiscountActive(p, openId, false);
+    expect(await join.checkJoinDiscount(token, "OPENDAY20")).toMatchObject({ ok: false });
+    await dc.deleteDiscount(p, openId);
+    expect((await adminSql`select discount_percent from memberships where provider_subscription_id = 'SB_Wren'`)[0].discount_percent).toBe(20);
+
+    // Another club can't see or use these codes.
+    expect(await join.checkJoinDiscount((await join.joinLink(a)).split("/join/")[1], "SARAH-ONE")).toMatchObject({ ok: false });
+    await expect(dc.listDiscounts(a)).resolves.toEqual([]);
+    await dc.deleteDiscount(p, list.find((c) => c.code === "SARAH-ONE")!.id);
+    // Tidy up so the later money tests only see their own families.
+    await adminSql`delete from payment_setups where club_id = ${p.clubId} and household_id in (select household_id from guardians where email in ('dee@example.test', 'first@example.test'))`;
+    await adminSql`delete from mandates where provider_mandate_id = 'MD_D'`;
+    await adminSql`delete from students where household_id in (select household_id from guardians where club_id = ${p.clubId} and email in ('dee@example.test', 'first@example.test'))`;
+    await adminSql`delete from households where id in (select household_id from guardians where club_id = ${p.clubId} and email in ('dee@example.test', 'first@example.test'))`;
+  });
+
   it("tracks the mandate, payments and cancellations from the provider", async () => {
     await pay.updateMandate(p.clubId, { mandateId: "MD1" }, "active");
     await pay.recordPayment(p.clubId, { providerPaymentId: "PM1", mandateId: "MD1", amountPence: 7000, chargeDate: "2026-11-01", status: "pending", description: "Membership" });

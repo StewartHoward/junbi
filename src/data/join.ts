@@ -10,6 +10,7 @@ import type { FieldErrors, Result } from "./accounts";
 import { joinPlans, startJoinPayment } from "./payments";
 import { convertLeads } from "./leads";
 import { isRealDate } from "@/lib/dates";
+import { checkDiscount, hasLiveDiscounts, redeemDiscount } from "./discounts";
 
 /*
  * Family sign-up link: each club has one secret link (/join/<token>) that staff share or email.
@@ -64,6 +65,8 @@ export type JoinForm = {
   arts: Array<{ id: string; name: string }>;
   /** The memberships to choose from (set when the club has prices). provider is set when they pay by Direct Debit straight away. */
   payment: { provider: "stripe" | "gocardless" | null; plans: Array<{ id: string; name: string; amountPence: number; interval: string }>; signupFeePence: number; card: boolean } | null;
+  /** The club has a discount code families could use, so the form asks for one. */
+  discounts: boolean;
 };
 
 /** What the public sign-up page needs. Null when the link is wrong or has been reset. */
@@ -75,7 +78,8 @@ export async function joinForm(token: unknown): Promise<JoinForm | null> {
     const arts = (
       await tx.select({ d: s.clubDisciplines.discipline }).from(s.clubDisciplines).where(eq(s.clubDisciplines.active, true)).orderBy(asc(s.clubDisciplines.createdAt))
     ).map((r) => ({ id: r.d, name: disciplineName(r.d) }));
-    return { clubName: club.clubName, sites, arts, payment: await joinPlans(tx) };
+    const payment = await joinPlans(tx);
+    return { clubName: club.clubName, sites, arts, payment, discounts: payment ? await hasLiveDiscounts(tx) : false };
   });
 }
 
@@ -122,6 +126,7 @@ export const joinSchema = z
     firstAidConsent: z.boolean(),
     photoConsent: z.boolean(),
     terms: z.boolean().refine((v) => v, "Please tick to confirm."),
+    discountCode: z.string().trim().max(40).optional(),
   })
   .superRefine((d, ctx) => {
     if (d.who === "children" && d.children.length === 0) ctx.addIssue({ code: "custom", path: ["children"], message: "Add at least one child." });
@@ -164,6 +169,14 @@ export async function submitJoin(
       if (d.who === "me" && !planOk(d.myPlanId)) errs.myPlanId = "Choose a membership.";
       if (d.who === "children") d.children.forEach((c, i) => { if (!planOk(c.planId)) errs[`children.${i}.planId`] = "Choose a membership."; });
       if (Object.keys(errs).length) return { error: errs };
+    }
+
+    // A discount code takes its percentage off every membership in this sign-up.
+    let discount: { id: string; percent: number } | null = null;
+    if (payment && d.discountCode) {
+      const r = await redeemDiscount(tx, d.discountCode);
+      if (!r.ok) return { error: { discountCode: r.error } as FieldErrors };
+      discount = { id: r.id, percent: r.percent };
     }
 
     const people =
@@ -220,8 +233,11 @@ export async function submitJoin(
       if (!payment || !planId) return;
       const [has] = await tx.select({ id: s.memberships.id }).from(s.memberships).where(and(eq(s.memberships.studentId, studentId), eq(s.memberships.status, "active"))).limit(1);
       if (has) return;
-      if (payment.provider) return void items.push({ studentId, planId });
-      await tx.insert(s.memberships).values({ clubId: club.clubId, studentId, planId, startsOn: today, status: "active" });
+      const off = discount ? { discountPercent: discount.percent, discountCodeId: discount.id } : {};
+      // 100% off: nothing to collect, so they're members straight away.
+      if (payment.provider && discount?.percent !== 100) return void items.push({ studentId, planId });
+      await tx.insert(s.memberships).values({ clubId: club.clubId, studentId, planId, startsOn: today, status: "active", ...off });
+      await tx.update(s.students).set({ status: "active" }).where(and(eq(s.students.id, studentId), eq(s.students.status, "pending")));
     };
     for (const p of people) {
       const known = have.get(key(p));
@@ -262,7 +278,7 @@ export async function submitJoin(
     const notify = (await tx.execute(
       sql`select u.email from club_staff cs join users u on u.id = cs.user_id where cs.role in ('owner', 'admin')`,
     )) as unknown as Array<{ email: string }>;
-    return { names, items, householdId, notify: notify.map((n) => n.email) };
+    return { names, items, householdId, discount, notify: notify.map((n) => n.email) };
   });
   if ("error" in out) return { ok: false, errors: out.error! };
 
@@ -288,6 +304,7 @@ export async function submitJoin(
       firstName: d.parentFirstName,
       lastName: d.parentLastName,
       items: out.items,
+      discount: out.discount,
       successUrl: urls.success,
       cancelUrl: urls.cancel,
     });
@@ -309,6 +326,16 @@ export async function recentSignups(actor: Actor) {
       .orderBy(desc(s.students.createdAt))
       .limit(20);
     return rows.filter((r) => actor.sites === "all" || actor.sites.includes(r.siteId)).slice(0, 8);
+  });
+}
+
+/** Checks a code on the sign-up form so the family sees their new price before they carry on. */
+export async function checkJoinDiscount(token: unknown, code: string): Promise<{ ok: true; code: string; percent: number } | { ok: false; error: string }> {
+  const club = await lookup(token);
+  if (!club) return { ok: false, error: "This sign-up link has changed. Ask the club for the new one." };
+  return withClub({ clubId: club.clubId }, async (tx) => {
+    const r = await checkDiscount(tx, code);
+    return r.ok ? { ok: true as const, code: r.code, percent: r.percent } : r;
   });
 }
 

@@ -1,22 +1,27 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { joinAction, type JoinState } from "./actions";
+import { useActionState, useState, useTransition } from "react";
+import { checkDiscountAction, joinAction, type JoinState } from "./actions";
+import { discounted } from "@/lib/discounts";
 import { FieldError, errProps } from "@/components/FormBits";
 
 type Site = { id: string; name: string };
 type Plan = { id: string; name: string; amountPence: number; interval: string };
 type Payment = { provider: "stripe" | "gocardless" | null; plans: Plan[]; signupFeePence: number; card?: boolean } | null;
 
-const price = (p: Plan) => `£${(p.amountPence / 100).toFixed(p.amountPence % 100 ? 2 : 0)} ${p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month"}`;
+const pounds = (pence: number) => `£${(pence / 100).toFixed(pence % 100 ? 2 : 0)}`;
+const price = (p: Plan, off = 0) => {
+  const per = p.interval === "annual" ? "a year" : p.interval === "termly" ? "a term" : "a month";
+  return off ? `${pounds(discounted(p.amountPence, off))} ${per} (was ${pounds(p.amountPence)})` : `${pounds(p.amountPence)} ${per}`;
+};
 
-function PlanPicker({ name, plans, value, error, onChange }: { name: string; plans: Plan[]; value?: string; error?: string; onChange: (id: string) => void }) {
+function PlanPicker({ name, plans, value, error, off, onChange }: { name: string; plans: Plan[]; value?: string; error?: string; off: number; onChange: (id: string) => void }) {
   return (
     <div>
       <label htmlFor={name}>Membership</label>
       <select id={name} name={name} defaultValue={value ?? ""} aria-invalid={error ? true : undefined} onChange={(e) => onChange(e.target.value)}>
         <option value="" disabled>Choose one</option>
-        {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · {price(p)}</option>)}
+        {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · {price(p, off)}</option>)}
       </select>
       <FieldError id={`${name}-err`} msg={error} />
     </div>
@@ -36,7 +41,7 @@ function SitePicker({ name, sites, value }: { name: string; sites: Site[]; value
   );
 }
 
-export function JoinFormView({ token, sites, payment }: { token: string; sites: Site[]; payment: Payment }) {
+export function JoinFormView({ token, sites, payment, discounts = false }: { token: string; sites: Site[]; payment: Payment; discounts?: boolean }) {
   const [state, action, pending] = useActionState<JoinState, FormData>(joinAction.bind(null, token), {});
   const v = state.values ?? {};
   const e = state.errors;
@@ -46,9 +51,22 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
   const pick = (key: string) => (id: string) => setChosen((c) => ({ ...c, [key]: id }));
   const keys = who === "me" ? ["myPlanId"] : Array.from({ length: count }, (_, i) => `c${i}_planId`);
   const picked = payment ? keys.map((k) => payment.plans.find((p) => p.id === (chosen[k] ?? v[k]))).filter(Boolean) as Plan[] : [];
-  const monthly = picked.filter((p) => p.interval === "monthly").reduce((n, p) => n + p.amountPence, 0);
-  const termly = picked.filter((p) => p.interval === "termly").reduce((n, p) => n + p.amountPence, 0);
-  const yearly = picked.filter((p) => p.interval === "annual").reduce((n, p) => n + p.amountPence, 0);
+  // Discount code: checked with "Apply" so the family sees their price, and checked again when they sign up.
+  const [code, setCode] = useState(v.discountCode ?? "");
+  const [applied, setApplied] = useState<{ code: string; percent: number } | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [checking, startCheck] = useTransition();
+  const off = applied && applied.code === code.toUpperCase().replace(/\s+/g, "") ? applied.percent : 0;
+  const apply = () =>
+    startCheck(async () => {
+      const r = await checkDiscountAction(token, code);
+      if (r.ok) { setApplied({ code: r.code, percent: r.percent }); setCode(r.code); setCodeError(null); }
+      else { setApplied(null); setCodeError(r.error); }
+    });
+  const sum = (interval: string) => picked.filter((p) => p.interval === interval).reduce((n, p) => n + discounted(p.amountPence, off), 0);
+  const monthly = sum("monthly");
+  const termly = sum("termly");
+  const yearly = sum("annual");
 
   if (state.done) {
     const n = state.done.names;
@@ -137,7 +155,7 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
               <FieldError id="myDateOfBirth-err" msg={e?.myDateOfBirth} />
             </div>
             <SitePicker name="mySiteId" sites={sites} value={v.mySiteId} />
-            {payment && <PlanPicker name="myPlanId" plans={payment.plans} value={v.myPlanId} error={e?.myPlanId} onChange={pick("myPlanId")} />}
+            {payment && <PlanPicker name="myPlanId" plans={payment.plans} value={v.myPlanId} error={e?.myPlanId} off={off} onChange={pick("myPlanId")} />}
             <div>
               <label htmlFor="myMedical">Anything the instructors should know? (optional)</label>
               <textarea id="myMedical" name="myMedical" defaultValue={v.myMedical} placeholder="Medical conditions, allergies, injuries" />
@@ -171,7 +189,7 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
                   <FieldError id={`c${i}_dateOfBirth-err`} msg={e?.[k("dateOfBirth")]} />
                 </div>
                 <SitePicker name={`c${i}_siteId`} sites={sites} value={v[`c${i}_siteId`]} />
-                {payment && <PlanPicker name={`c${i}_planId`} plans={payment.plans} value={v[`c${i}_planId`]} error={e?.[k("planId")]} onChange={pick(`c${i}_planId`)} />}
+                {payment && <PlanPicker name={`c${i}_planId`} plans={payment.plans} value={v[`c${i}_planId`]} error={e?.[k("planId")]} off={off} onChange={pick(`c${i}_planId`)} />}
                 <div>
                   <label htmlFor={`c${i}_medical`}>Anything the instructors should know? (optional)</label>
                   <textarea id={`c${i}_medical`} name={`c${i}_medical`} defaultValue={v[`c${i}_medical`]} placeholder="Medical conditions, allergies, additional needs" />
@@ -191,6 +209,35 @@ export function JoinFormView({ token, sites, payment }: { token: string; sites: 
             </button>
           )}
         </>
+      )}
+
+      {payment && discounts && (
+        <fieldset>
+          <legend>Discount code</legend>
+          <div>
+            <label htmlFor="discountCode">Got a code from the club? (optional)</label>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                id="discountCode"
+                name="discountCode"
+                value={code}
+                onChange={(ev) => { setCode(ev.target.value); setCodeError(null); }}
+                onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); if (code.trim()) apply(); } }}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                style={{ flex: "1 1 180px", textTransform: "uppercase" }}
+                aria-invalid={codeError || e?.discountCode ? true : undefined}
+                aria-describedby="discountCode-err"
+              />
+              <button type="button" className="m-btn soft" onClick={apply} disabled={checking || !code.trim()}>
+                {checking ? "Checking…" : "Apply"}
+              </button>
+            </div>
+            {off > 0 && <p className="m-fine" role="status" style={{ margin: "8px 0 0", color: "var(--m-success)" }}>✓ {off}% off your {off === 100 ? "membership" : "membership fees"} with {applied!.code}.</p>}
+            <FieldError id="discountCode-err" msg={codeError ?? e?.discountCode} />
+          </div>
+        </fieldset>
       )}
 
       <fieldset>

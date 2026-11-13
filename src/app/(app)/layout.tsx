@@ -23,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(on.events && canSeeEvents(actor) ? [{ href: "/events", label: "Gradings" }] : []),
     ...(can(actor, "messages.send") ? [{ href: "/messages", label: "Messages" }] : []),
     ...(can(actor, "payments.view") ? [{ href: "/payments", label: "Payments" }] : []),
+    ...(can(actor, "payments.manage") ? [{ href: "/discounts", label: "Discounts" }] : []),
     ...(on.shop && can(actor, "payments.manage") ? [{ href: "/shop", label: "Shop" }] : []),
     ...(on.website && can(actor, "club.manage") ? [{ href: "/website", label: "Website" }] : []),
     ...(can(actor, "club.manage") || can(actor, "classes.manage") ? [{ href: "/settings", label: "Settings" }] : []),

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { MAX_CHILDREN, submitJoin } from "@/data/join";
+import { MAX_CHILDREN, checkJoinDiscount, submitJoin } from "@/data/join";
 import { appUrl } from "@/lib/email";
 import { rateLimited, type FieldErrors } from "@/data/accounts";
 
@@ -44,6 +44,7 @@ export async function joinAction(token: string, _prev: JoinState, f: FormData): 
     firstAidConsent: f.get("firstAidConsent") === "on",
     photoConsent: f.get("photoConsent") === "on",
     terms: f.get("terms") === "on",
+    discountCode: str(f, "discountCode"),
   }, {
     success: (setupId) => `${base}/join/${token}/done?setup=${setupId}`,
     cancel: `${base}/join/${token}/done?cancelled=1`,
@@ -51,4 +52,10 @@ export async function joinAction(token: string, _prev: JoinState, f: FormData): 
   if (!r.ok) return { errors: r.errors, values };
   if (r.value.paymentUrl) redirect(r.value.paymentUrl);
   return { done: { clubName: r.value.clubName, names: r.value.names, paymentError: r.value.paymentError } };
+}
+
+/** The "Apply" button next to the discount code. */
+export async function checkDiscountAction(token: string, code: string): Promise<{ ok: true; code: string; percent: number } | { ok: false; error: string }> {
+  if (await rateLimited("join-code", 40)) return { ok: false, error: "Too many tries. Please wait 15 minutes." };
+  return checkJoinDiscount(token, code);
 }
