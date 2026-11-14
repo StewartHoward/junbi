@@ -76,7 +76,7 @@ export async function sendEmail(e: Email): Promise<SendResult> {
   return result;
 }
 
-export type BatchEmail = { to: string; subject: string; html: string; text: string; fromName?: string; replyTo?: string };
+export type BatchEmail = { to: string; subject: string; html: string; text: string; fromName?: string; replyTo?: string; headers?: Record<string, string> };
 export type BatchResult = { status: "sent" | "logged" | "failed"; providerId?: string; error?: string };
 
 /** "Junbi <hello@junbi.co.uk>" with a different display name, e.g. the club's. */
@@ -113,6 +113,7 @@ export async function sendBatch(emails: BatchEmail[]): Promise<BatchResult[]> {
             html: e.html,
             text: e.text,
             ...(e.replyTo ? { reply_to: e.replyTo } : {}),
+            ...(e.headers ? { headers: e.headers } : {}),
           })),
         ),
       });
